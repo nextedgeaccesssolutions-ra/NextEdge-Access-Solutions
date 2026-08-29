@@ -1,0 +1,9 @@
+# Reference site notes
+
+Reference: https://nextedge-access-solutions.info-nextedgeaccesss.chatgpt.site/#top
+
+The reference is a single-page industrial access-services site for NextEdge Access Solutions / NEAS in the Philippines. It uses a white header with the logo on the left, compact navigation for Home, About Us, Our Services, Courses, Projects, Online Store, and Request a Quote, plus a green quote CTA. The hero is a deep navy-to-forest gradient with a subtle grid texture, a large white statement “Height is not a limit. It is our expertise.”, supporting copy, two CTAs, a right-side abstract light mark, an experience stat, and an industry strip for Wind, Commercial, Telecom, and Industrial.
+
+The page sections are: About Us with a large left editorial statement and explanatory copy; Our Team with named people and role descriptions; Our Services with four numbered image cards for Rope Access, Wind Energy, Commercial, and Training & PPE; Experience Without Borders with project-country tabs; Training & Consultancy; Online Store; and a dark green contact section with a structured quote form containing Name, Company, Email, Service dropdown, Project details, and Send enquiry. The footer is deep green with the company descriptor, grouped service/industry/company/resource links, Bulacan office contact information, and social icons.
+
+Visual cues to carry over: deep navy/forest backgrounds, bright lime-green CTA accent, thin uppercase eyebrow labels, oversized sans-serif headings, high-contrast white copy, dark ink on white sections, numbered service cards, horizontal category strips, responsive single-column stacking, and a professional industrial tone. The reference includes real-looking service imagery and contact details; do not fabricate factual company claims or reuse unlicensed imagery without permission.

@@ -1,0 +1,1 @@
+ALTER TABLE `pages` ADD `scheduleCronTaskUid` varchar(65);
