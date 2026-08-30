@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0d2948" />
+    <meta name="description" content="Open Store & Booking: request NEAS rope-access equipment quotations, site services, and online meetings." />
+    <meta property="og:title" content="Open Store & Booking | NEAS" />
+    <meta property="og:description" content="Rope-access equipment quotations, site services, and browser meetings in one reviewed workflow." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://neas-store-booking.nextedge-acc-6333.chatgpt.site/" />
+    <link rel="canonical" href="https://neas-store-booking.nextedge-acc-6333.chatgpt.site/" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/icon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+    <title>Open Store & Booking | NEAS Rope Access</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="NEAS Open Store and Booking home">
+        <img src="https://neascontent-bhnm8kjp.manus.space/manus-storage/NEASPNG1.1_22de2ec7.png" alt="NEAS" width="48" height="48" />
+        <span><strong>NEAS</strong><small>Open store & booking</small></span>
+      </a>
+      <nav aria-label="Primary navigation"><a href="#store">Equipment</a><a href="#booking">Services</a><a href="#meeting">Meet online</a></nav>
+      <div class="header-actions">
+        <button id="theme-toggle" class="theme-toggle" type="button">Dark</button>
+        <a class="cart-pill" href="#quote" data-select-mode="equipment_quote">Quote cart <strong id="cart-count">0</strong></a>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="hero-copy">
+          <p class="eyebrow lime">NextEdge Access Solutions</p>
+          <h1>Equipment and access support, booked in one place.</h1>
+          <p>Request approved rope-access PPE, schedule a site service, or arrange a browser meeting with the NEAS team.</p>
+          <div class="hero-actions"><a class="primary-button" href="#booking">Book a service</a><a class="ghost-button" href="#store">Browse equipment</a></div>
+          <small>Every request is reviewed before it becomes a confirmed booking or order.</small>
+        </div>
+        <div class="request-rail" aria-label="Request workflow">
+          <p class="rail-label">NEAS work-order rail</p>
+          <article><span>Site</span><strong>Share the work location</strong><small>Optional browser coordinates help the team verify access.</small></article>
+          <article><span>Scope</span><strong>Choose equipment or service</strong><small>Specifications and certification are confirmed during review.</small></article>
+          <article><span>Approval</span><strong>NEAS confirms the request</strong><small>No booking or order is final until it is approved.</small></article>
+        </div>
+      </section>
+
+      <section class="store-section" id="store">
+        <div class="section-heading"><div><p class="eyebrow blue">Online quotation store</p><h2>Rope-access equipment for reviewed supply.</h2></div><p>Prices, brands, stock, certifications, and suitability are confirmed by NEAS before supply.</p></div>
+        <div class="product-grid" id="products" aria-live="polite"></div>
+      </section>
+
+      <section class="booking-section" aria-labelledby="request-heading">
+        <div class="tab-list" role="tablist" aria-label="Choose request type">
+          <button type="button" role="tab" data-mode="service_booking">Service booking</button>
+          <button type="button" role="tab" data-mode="meeting_request">Meeting request</button>
+          <button type="button" role="tab" data-mode="equipment_quote">Quotation cart</button>
+        </div>
+        <div class="request-panel" id="request-panel">
+          <form id="request-form">
+            <div class="form-heading"><p class="eyebrow blue">Reviewed request</p><h2 id="request-heading" tabindex="-1">Request an access service</h2><p>Required fields are marked. Your request remains pending until NEAS confirms it.</p></div>
+            <div class="form-grid">
+              <label>Full name <span aria-hidden="true">*</span><input required name="name" autocomplete="name" maxlength="160" /></label>
+              <label>Company<input name="company" autocomplete="organization" maxlength="180" /></label>
+              <label>Email <span aria-hidden="true">*</span><input required type="email" name="email" autocomplete="email" maxlength="320" /></label>
+              <label>Telephone<input name="telephone" autocomplete="tel" maxlength="80" /></label>
+              <div id="mode-fields" class="mode-fields"></div>
+              <label class="wide">Details <span aria-hidden="true">*</span><textarea required id="details" name="details" rows="5" maxlength="5000"></textarea></label>
+              <label class="consent wide"><input required name="consent" type="checkbox" /> <span>I consent to NEAS using these details to respond to this request.</span></label>
+              <label class="honeypot" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off" /></label>
+            </div>
+            <p id="form-status" class="form-status" role="status" aria-live="polite"></p>
+            <button class="primary-button" id="submit-request" type="submit">Send request</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="meeting-section" id="meeting">
+        <article><p class="eyebrow blue">Voice conference</p><h2>Talk with NEAS online.</h2><p>Use the browser meeting room for non-confidential discussions. Do not share sensitive job details in the room.</p><a href="https://meet.jit.si/NEAS-20e2e777" target="_blank" rel="noreferrer">Start voice room ↗</a></article>
+        <article><p class="eyebrow blue">Video conference</p><h2>Meet in your browser.</h2><p>Start a browser meeting and share the room link only with intended participants.</p><a href="https://meet.jit.si/NEAS-20e2e777" target="_blank" rel="noreferrer">Start video room ↗</a></article>
+      </section>
+    </main>
+
+    <footer>
+      <div><strong>NextEdge Access Solutions</strong><p>Safe access. Smart solutions. Professional support.</p></div>
+      <div><strong>Contact</strong><a href="mailto:info.nextedgeaccesssolutions@gmail.com">info.nextedgeaccesssolutions@gmail.com</a><a href="tel:+639914265886">+63 991 426 5886</a></div>
+      <div><strong>Manage</strong><a href="https://neascontent-bhnm8kjp.manus.space/admin" target="_blank" rel="noreferrer">Admin portal ↗</a><a href="https://www.nextedge-access-solutions.com/" target="_blank" rel="noreferrer">Corporate website ↗</a></div>
+    </footer>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

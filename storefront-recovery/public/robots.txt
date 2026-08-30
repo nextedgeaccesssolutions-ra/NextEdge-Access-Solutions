@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://neas-store-booking.nextedge-acc-6333.chatgpt.site/sitemap.xml

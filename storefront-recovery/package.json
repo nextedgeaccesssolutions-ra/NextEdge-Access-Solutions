@@ -1,0 +1,17 @@
+{
+  "name": "neas-open-store-booking",
+  "description": "Standalone NEAS equipment quotation and service-booking storefront.",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "lint": "node --check public/app.js && node --check public/catalog.js && node --check api/store-content.js && node --check api/store-request.js && node --check scripts/build.mjs && node --check scripts/serve.mjs",
+    "check": "node scripts/build.mjs --check",
+    "test": "node --test",
+    "build": "node scripts/build.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

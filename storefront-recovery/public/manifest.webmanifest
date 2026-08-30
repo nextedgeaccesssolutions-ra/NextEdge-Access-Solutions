@@ -1,0 +1,11 @@
+{
+  "name": "NEAS Open Store & Booking",
+  "short_name": "Open Store",
+  "description": "Rope-access equipment quotations, service requests, and meeting booking.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f3f7fc",
+  "theme_color": "#0d2948",
+  "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
