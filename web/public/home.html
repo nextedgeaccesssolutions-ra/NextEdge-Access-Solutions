@@ -1122,6 +1122,7 @@ var pl=document.getElementById('store-pricelist');if(pl)pl.addEventListener('cli
 .acct-go{border:0;background:#f97316;color:#fff;border-radius:8px;padding:12px;font-weight:700;cursor:pointer}
 .acct-msg{font-size:13px;color:#15803d;min-height:18px}
 .acct-info{background:#f1f5f9;border-radius:10px;padding:12px 14px;font-size:14px;color:#334155;line-height:1.55}
+.acct-social{display:grid;gap:9px;margin-top:14px}.acct-social a{display:block;text-align:center;text-decoration:none;border-radius:8px;padding:12px;font-weight:700}.acct-google{background:#fff;color:#1f2937;border:1px solid #cbd5e1}.acct-facebook{background:#1877f2;color:#fff}.acct-email{display:block;text-align:center;margin-top:12px;color:#0f766e;font-size:13px;font-weight:700;text-decoration:none}
 .acct-tabs{display:flex;gap:6px;margin-bottom:14px}.acct-tabs button{flex:1;border:1px solid #e2e8f0;background:#fff;border-radius:8px;padding:9px;font-weight:700;cursor:pointer}.acct-tabs button.on{background:#0f172a;color:#fff;border-color:#0f172a}
 @media(max-width:768px){.acct-btn{padding:5px 9px;font-size:12px}}
 </style>
@@ -1136,7 +1137,7 @@ function setNav(){var l=document.getElementById('acct-login'),s=document.getElem
 function render(){
   if(!ready){body.innerHTML='<p class="acct-info">Connecting…</p>';return}
   if(!db||!uid){title.textContent=mode==='signup'?'Sign up':'Log in';
-    body.innerHTML='<p class="acct-info">To create or use a NEAS customer account, sign in to <b>claude.ai</b> first, then reopen this page. You can still browse and order from the Online Store without an account.</p>';return}
+    body.innerHTML='<p class="acct-info">Create or use your NEAS customer account with an active Gmail or Facebook account. You can still browse the Online Store without signing in.</p><div class="acct-social"><a class="acct-google" href="/api/auth/oauth/google?next=%2Fstore">Continue with Gmail</a><a class="acct-facebook" href="/api/auth/oauth/facebook?next=%2Fstore">Continue with Facebook</a></div><a class="acct-email" href="/login?next=%2Fstore">Use email and password</a>';return}
   if(profile&&profile.name&&mode!=='edit'){title.textContent='My Account';
     body.innerHTML='<div class="acct-info"><b>'+esc(profile.name)+'</b>'+(profile.company?'<br>'+esc(profile.company):'')+'<br>'+esc(profile.phone||'')+'<br>'+esc(profile.address||'')+'</div>'+
     '<p style="font-size:13px;color:#64748b">You\'re logged in. Your details fill in automatically at checkout.</p><div style="display:flex;gap:8px"><button type="button" class="acct-go" id="acct-edit" style="flex:1">Edit details</button><button type="button" class="acct-go" id="acct-shop" style="flex:1;background:#0f766e">Go to Online Store</button></div>';
@@ -1145,7 +1146,7 @@ function render(){
   var isNew=!(profile&&profile.name);
   title.textContent=mode==='edit'?'Edit my details':(isNew?(mode==='signup'?'Sign up':'Log in'):'Log in');
   var tabs=isNew&&mode!=='edit'?'<div class="acct-tabs"><button type="button" data-m="login" class="'+(mode==='login'?'on':'')+'">Log in</button><button type="button" data-m="signup" class="'+(mode==='signup'?'on':'')+'">Sign up</button></div>':'';
-  if(isNew&&mode==='login'){body.innerHTML=tabs+'<p class="acct-info">No NEAS account is linked to your claude.ai sign-in yet. Choose <b>Sign up</b> to create one — it takes a minute.</p>';}
+  if(isNew&&mode==='login'){body.innerHTML=tabs+'<p class="acct-info">Choose an active Gmail or Facebook account to continue, or use your NEAS email and password.</p><div class="acct-social"><a class="acct-google" href="/api/auth/oauth/google?next=%2Fstore">Continue with Gmail</a><a class="acct-facebook" href="/api/auth/oauth/facebook?next=%2Fstore">Continue with Facebook</a></div><a class="acct-email" href="/login?next=%2Fstore">Use email and password</a>';}
   else{var p=profile||{};
     body.innerHTML=tabs+'<form class="acct-form" id="acct-form"><label>Full name<input name="name" required maxlength="160" value="'+esc(p.name)+'"></label><label>Company (optional)<input name="company" maxlength="180" value="'+esc(p.company)+'"></label><label>Mobile number<input name="phone" required maxlength="40" value="'+esc(p.phone)+'"></label><label>Delivery address<textarea name="address" rows="2" maxlength="600" required>'+esc(p.address)+'</textarea></label><div class="acct-msg" id="acct-msg"></div><button class="acct-go">'+(mode==='edit'?'Save details':'Create my account')+'</button></form>';
     document.getElementById('acct-form').onsubmit=function(e){e.preventDefault();var f=e.target,m=document.getElementById('acct-msg');
