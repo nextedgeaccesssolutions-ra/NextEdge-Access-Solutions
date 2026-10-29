@@ -8,7 +8,7 @@ const peso = (n: number) => "₱" + Math.round(n).toLocaleString("en-PH");
 
 function BankBox({ bank }: { bank: Bank }) {
   const [copied, setCopied] = useState(false);
-  return <div className="bank"><h4>Payment Mode · Bank Transfer</h4><table className="t"><tbody>
+  return <div className="bank"><h4>Payment Mode · Bank Transfer</h4><p className="muted" style={{ marginTop: 0, fontSize: 13 }}>Use your order reference as the transfer note. Online card payment will be enabled after the payment gateway is connected.</p><table className="t"><tbody>
     <tr><th>Account Name</th><td>{bank.accountName}</td></tr>
     <tr><th>Account Number</th><td><b>{bank.accountNumber}</b> <button type="button" className="copy" onClick={() => navigator.clipboard?.writeText(bank.accountNumber).then(() => setCopied(true))}>{copied ? "Copied ✓" : "Copy"}</button></td></tr>
     <tr><th>SWIFT Code</th><td>{bank.swift}</td></tr><tr><th>Bank</th><td>{bank.bank}</td></tr></tbody></table></div>;
@@ -79,6 +79,7 @@ export default function StoreClient({ products, user, bank }: { products: P[]; u
           <tr><td><b>Total</b></td><td><b>{count}</b></td><td style={{ textAlign: "right" }}><b>{peso(total)}</b></td></tr></tbody></table>
         <BankBox bank={bank} />
         <form onSubmit={placeOrder} style={{ display: "grid", gap: 10, marginTop: 14 }}>
+          <label className="field">Payment method<select name="paymentMethod" defaultValue="bank_transfer"><option value="bank_transfer">Bank transfer</option><option value="card" disabled>Online card payment (coming soon)</option></select></label>
           <label className="field">Delivery name / Company<input name="deliveryName" required defaultValue={user?.name} maxLength={160} /></label>
           <label className="field">Mobile number<input name="deliveryPhone" required defaultValue={user?.phone ?? ""} maxLength={40} /></label>
           <label className="field">Delivery address<textarea name="deliveryAddress" required rows={2} maxLength={600} /></label>
