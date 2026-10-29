@@ -28,6 +28,11 @@ await sql`create index if not exists orders_user_idx on orders(user_id)`;
 await sql`alter table users alter column password_hash drop not null`;
 await sql`alter table users add column if not exists google_id text unique`;
 await sql`alter table users add column if not exists facebook_id text unique`;
+await sql`alter table orders add column if not exists delivery_email text`;
+await sql`alter table orders add column if not exists payment_method text not null default 'bank_transfer'`;
+await sql`alter table orders add column if not exists payment_slip_name text`;
+await sql`alter table orders add column if not exists payment_slip_type text`;
+await sql`alter table orders add column if not exists payment_slip_data text`;
 await sql`insert into settings (key, value) values ('markup_percent', '20') on conflict (key) do nothing`;
 
 const [{ count }] = await sql`select count(*)::int as count from products`;

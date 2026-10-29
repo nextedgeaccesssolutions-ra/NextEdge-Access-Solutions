@@ -27,6 +27,6 @@ export default async function Store() {
     <div className="eyebrow">Online Store · PPE &amp; Rope Access Equipment</div>
     <h1>Shop Certified Height-Safety Gear</h1>
     <p className="muted" style={{ maxWidth: 680 }}>Genuine Skylotec, Singing Rock and Trestec equipment. Order online and pay by bank transfer. We confirm stock and delivery once payment is received.</p>
-    <StoreClient products={pub} user={user ? { name: user.name, phone: user.phone } : null} bank={BANK} />
+    <StoreClient products={pub} user={user ? { name: user.name, phone: user.phone, email: user.email } : null} bank={BANK} />
   </div>;
 }

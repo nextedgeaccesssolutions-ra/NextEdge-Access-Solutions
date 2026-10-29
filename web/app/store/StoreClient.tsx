@@ -14,7 +14,7 @@ function BankBox({ bank }: { bank: Bank }) {
     <tr><th>SWIFT Code</th><td>{bank.swift}</td></tr><tr><th>Bank</th><td>{bank.bank}</td></tr></tbody></table></div>;
 }
 
-export default function StoreClient({ products, user, bank }: { products: P[]; user: { name: string; phone: string | null } | null; bank: Bank }) {
+export default function StoreClient({ products, user, bank }: { products: P[]; user: { name: string; phone: string | null; email: string } | null; bank: Bank }) {
   const [cat, setCat] = useState("All"); const [q, setQ] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({}); const [qty, setQty] = useState<Record<string, number>>({});
   const [wish, setWish] = useState<Record<string, 1>>({});
@@ -37,8 +37,9 @@ export default function StoreClient({ products, user, bank }: { products: P[]; u
 
   async function placeOrder(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setErr(""); setBusy(true);
-    const f = Object.fromEntries(new FormData(e.currentTarget).entries());
-    const res = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...f, items: lines.map((l) => ({ id: l.p.id, quantity: l.n })) }) });
+    const form = new FormData(e.currentTarget);
+    form.append("items", JSON.stringify(lines.map((l) => ({ id: l.p.id, quantity: l.n }))));
+    const res = await fetch("/api/orders", { method: "POST", body: form });
     const data = await res.json().catch(() => ({})); setBusy(false);
     if (res.status === 401) { location.href = "/login?next=/store"; return; }
     if (!res.ok) { setErr(data.error || "Order could not be placed."); return; }
@@ -82,7 +83,9 @@ export default function StoreClient({ products, user, bank }: { products: P[]; u
           <label className="field">Payment method<select name="paymentMethod" defaultValue="bank_transfer"><option value="bank_transfer">Bank transfer</option><option value="card" disabled>Online card payment (coming soon)</option></select></label>
           <label className="field">Delivery name / Company<input name="deliveryName" required defaultValue={user?.name} maxLength={160} /></label>
           <label className="field">Mobile number<input name="deliveryPhone" required defaultValue={user?.phone ?? ""} maxLength={40} /></label>
+          <label className="field">Email<input name="deliveryEmail" type="email" required defaultValue={user?.email ?? ""} maxLength={320} /></label>
           <label className="field">Delivery address<textarea name="deliveryAddress" required rows={2} maxLength={600} /></label>
+          <label className="field">Upload payment slip <span className="muted">(photo or PDF, max 5 MB)</span><input name="paymentSlip" type="file" accept="image/*,.pdf,application/pdf" required /></label>
           <label className="field">Notes (optional)<input name="notes" maxLength={1000} /></label>
           {err && <p className="err" role="alert">{err}</p>}
           <button className="btn btn-primary" disabled={busy || !count}>{busy ? "Placing order…" : "Place order · " + peso(total)}</button>
