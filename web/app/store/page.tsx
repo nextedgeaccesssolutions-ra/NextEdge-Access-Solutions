@@ -1,0 +1,18 @@
+import { listProducts } from "@/lib/db";
+import { getUser } from "@/lib/auth";
+import { BANK } from "@/lib/http";
+import StoreClient from "./StoreClient";
+
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Online Store — NEAS" };
+
+export default async function Store() {
+  const [products, user] = await Promise.all([listProducts(), getUser().catch(() => null)]);
+  const pub = products.map((p) => ({ id: p.id, category: p.category, code: p.code, name: p.name, price: p.price }));
+  return <div className="wrap" style={{ padding: "40px 20px" }}>
+    <div className="eyebrow">Online Store · PPE &amp; Rope Access Equipment</div>
+    <h1>Shop Certified Height-Safety Gear</h1>
+    <p className="muted" style={{ maxWidth: 680 }}>Genuine Skylotec, Singing Rock and Trestec equipment. Order online and pay by bank transfer. We confirm stock and delivery once payment is received.</p>
+    <StoreClient products={pub} user={user ? { name: user.name, phone: user.phone } : null} bank={BANK} />
+  </div>;
+}
