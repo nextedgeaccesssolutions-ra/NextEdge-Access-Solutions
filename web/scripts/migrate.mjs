@@ -25,6 +25,9 @@ await sql`create table if not exists order_items (
   id serial primary key, order_id int not null references orders(id) on delete cascade, product_id text not null,
   name text not null, code text not null default '', unit_price numeric(12,2) not null, quantity int not null check (quantity > 0))`;
 await sql`create index if not exists orders_user_idx on orders(user_id)`;
+await sql`alter table users alter column password_hash drop not null`;
+await sql`alter table users add column if not exists google_id text unique`;
+await sql`alter table users add column if not exists facebook_id text unique`;
 await sql`insert into settings (key, value) values ('markup_percent', '20') on conflict (key) do nothing`;
 
 const [{ count }] = await sql`select count(*)::int as count from products`;
