@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { rewrite } from "next/navigation";
 
 export default function HomePage() {
-  redirect("/home.html");
+  rewrite("/home.html");
 }

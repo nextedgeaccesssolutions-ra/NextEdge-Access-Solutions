@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async redirects() {
-    return [{ source: "/", destination: "/home.html", permanent: false }];
+    return [{ source: "/home.html", destination: "/", permanent: true }];
   },
   async headers() {
     return [{ source: "/:path*", headers: [
