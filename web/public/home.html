@@ -1156,8 +1156,9 @@ function render(){
 }
 function open(m){mode=m;render();ov.hidden=false;document.body.style.overflow='hidden';}
 function close(){ov.hidden=true;document.body.style.overflow='';}
-document.getElementById('acct-login').onclick=function(){open('login')};
-document.getElementById('acct-signup').onclick=function(){open('signup')};
+/* Use the live NEAS session routes so the homepage cannot show a separate signed-out state. */
+document.getElementById('acct-login').onclick=function(){location.href='/account'};
+document.getElementById('acct-signup').onclick=function(){location.href='/login?next=%2Fstore'};
 ov.addEventListener('click',function(e){if(e.target===ov||e.target.classList.contains('ap-x'))close()});
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!ov.hidden)close()});
 /* autofill checkout */
