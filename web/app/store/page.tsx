@@ -2,12 +2,26 @@ import { listProducts } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { BANK } from "@/lib/http";
 import StoreClient from "./StoreClient";
+import catalog from "../../scripts/catalog.json";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Online Store — NEAS" };
 
 export default async function Store() {
-  const [products, user] = await Promise.all([listProducts(), getUser().catch(() => null)]);
+  const [products, user] = await Promise.all([
+    listProducts().catch(() => catalog.map((p, i) => ({
+      id: p.id,
+      category: p.cat,
+      code: p.code,
+      name: p.name,
+      dealer_price: p.dealer,
+      price_override: null,
+      active: true,
+      price: Math.ceil((Number(p.dealer) * 1.2) / 5) * 5,
+      sort: i,
+    }))),
+    getUser().catch(() => null),
+  ]);
   const pub = products.map((p) => ({ id: p.id, category: p.category, code: p.code, name: p.name, price: p.price }));
   return <div className="wrap" style={{ padding: "40px 20px" }}>
     <div className="eyebrow">Online Store · PPE &amp; Rope Access Equipment</div>
