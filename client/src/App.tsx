@@ -9,9 +9,10 @@ import Admin from "./pages/Admin";
 import StoreBooking from "./pages/StoreBooking";
 import CmsPage from "./pages/CmsPage";
 import GitHubConnector from "./pages/GitHubConnector";
+import Marketing from "./pages/Marketing";
 
 function Router() {
-  return <Switch><Route path="/" component={Home}/><Route path="/store" component={StoreBooking}/><Route path="/store-booking" component={StoreBooking}/><Route path="/admin" component={Admin}/><Route path="/github-connector" component={GitHubConnector}/><Route path="/page/:slug" component={CmsPage}/><Route path="/404" component={NotFound}/><Route component={NotFound}/></Switch>;
+  return <Switch><Route path="/" component={Home}/><Route path="/store" component={StoreBooking}/><Route path="/store-booking" component={StoreBooking}/><Route path="/admin/marketing" component={Marketing}/><Route path="/admin" component={Admin}/><Route path="/github-connector" component={GitHubConnector}/><Route path="/page/:slug" component={CmsPage}/><Route path="/404" component={NotFound}/><Route component={NotFound}/></Switch>;
 }
 
 export default function App() {
