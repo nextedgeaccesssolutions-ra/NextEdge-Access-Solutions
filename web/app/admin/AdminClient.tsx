@@ -41,7 +41,7 @@ export default function AdminClient(props: { markup: number; categoryMarkup: Rec
   return <div className="wrap" style={{ padding: "34px 20px" }}>
     <div className="eyebrow">Admin control panel</div><h1>NEAS Store Admin</h1>
     <div style={{ display: "flex", gap: 8, margin: "16px 0", flexWrap: "wrap" }}>
-      {([["orders", `Orders (${pending} awaiting payment)`], ["products", "Products & prices"], ["customers", `Customers (${props.customers.length})`]] as const).map(([k, l]) => <button key={k} type="button" className={"btn " + (tab === k ? "btn-primary" : "btn-ghost")} onClick={() => setTab(k)}>{l}</button>)}
+      {([["orders", `Orders (${pending} awaiting payment)`], ["products", "Products & prices"], ["customers", `Customers (${props.customers.length})`]] as const).map(([k, l]) => <button key={k} type="button" className={"btn " + (tab === k ? "btn-primary" : "btn-ghost")} onClick={() => setTab(k)}>{l}</button>)}\n      <a href="/admin/marketing" className="btn btn-ghost">✦ Marketing Command Center</a>
       {msg && <span className="ok" role="status" style={{ alignSelf: "center" }}>{msg}</span>}
     </div>
 
