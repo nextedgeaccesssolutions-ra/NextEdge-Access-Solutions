@@ -70,6 +70,17 @@ Required environment variables are environment-specific and must be supplied thr
 4. Treat customer/contact submissions as confidential.
 5. Test mobile, desktop, accessibility, SEO metadata, forms, authentication, CMS publishing, and rollback before production promotion.
 
+## Container deployment
+
+For production hosting in a container, build and run the app with the platform-provided `PORT` value:
+
+```bash
+docker build -t neas-content-platform .
+docker run --rm -p 3000:3000 -e PORT=3000 neas-content-platform
+```
+
+This keeps the Express app compatible with container orchestrators and cloud hosts that assign a dynamic port at runtime while preserving the local development fallback that auto-selects the next free port when `PORT` is not supplied.
+
 ## Deployment references
 
 - Main domain: `https://www.nextedge-access-solutions.com/`

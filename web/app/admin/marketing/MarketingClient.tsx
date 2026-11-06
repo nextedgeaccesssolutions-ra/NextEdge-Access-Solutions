@@ -3,11 +3,13 @@
 import { useMemo, useState } from "react";
 
 type Props = { user: { name: string; email: string } };
-const nav = [
+type NavItem = readonly [id: string, label: string, icon: string];
+type NavGroup = { readonly group: string; readonly items: readonly NavItem[] };
+const nav: readonly NavGroup[] = [
   { group: "WORKSPACE", items: [["overview", "Dashboard", "▦"], ["compose", "Compose", "✎"], ["calendar", "Calendar", "▦"], ["inbox", "Inbox", "✉"], ["analytics", "Analytics", "▥"]] },
   { group: "MANAGEMENT", items: [["brands", "Brands", "◇"], ["accounts", "Social Accounts", "◎"], ["reports", "Reports", "▤"], ["strategy", "Content Strategy", "✧"], ["automation", "Automation", "⌘"], ["creative", "Creative Studio", "✦"], ["bio", "Link-in-Bio", "↗"]] },
   { group: "ADMINISTRATION", items: [["team", "Team & Permissions", "♙"], ["settings", "Settings", "⚙"]] },
-] as const;
+];
 
 const descriptions: Record<string, { title: string; body: string; note: string }> = {
   calendar: { title: "Publishing calendar", body: "Plan, review and schedule NEAS content across connected social channels.", note: "Calendar events will be loaded from the marketing content API after the data model and scheduling service are implemented." },
