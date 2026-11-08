@@ -12,6 +12,12 @@ export async function renderHomepage(): Promise<string> {
     getSetting<Seo>("seo", DEFAULT_SEO), getSetting<Social>("social", DEFAULT_SOCIAL), getSetting<Business>("business", DEFAULT_BUSINESS),
   ]);
   const origin = (() => { try { return new URL(seo.canonical).origin; } catch { return "https://www.nextedge-access-solutions.com"; } })();
+  // Normalize the legacy public contact record to the verified NEAS business details.
+  if (biz.email?.trim().toLowerCase() === "info.nextedgeaccesssolutions@gmail.com") biz.email = "info@nextedge-access-solutions.com";
+  if (!biz.street?.trim()) biz.street = "B 15 Lot 6, Marilao Grand Villas, Barangay Loma de Gato";
+  if (!biz.city?.trim()) biz.city = "Marilao";
+  if (!biz.region?.trim()) biz.region = "Bulacan";
+  if (!biz.postal?.trim()) biz.postal = "3019";
   const ogSrc = seo.ogImage || biz.logo || "/img/logo.png";
   const ogImage = ogSrc.startsWith("/") ? origin + ogSrc : ogSrc;
   const sameAs = [social.facebook, social.instagram, social.linkedin, social.youtube, social.tiktok, social.x, social.googleBusiness].filter(Boolean);
