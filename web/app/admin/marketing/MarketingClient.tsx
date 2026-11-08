@@ -325,7 +325,7 @@ function Calendar({ posts, can, run, openCompose }: { posts: Post[]; can: Can; r
   const unscheduled = list.filter((p) => !p.scheduled_at && p.status !== "published");
   const title = view === "month" ? cur.toLocaleDateString("en-PH", { month: "long", year: "numeric" }) : view === "day" ? cur.toLocaleDateString("en-PH", { dateStyle: "full" }) : `Week of ${days[0].toLocaleDateString("en-PH", { dateStyle: "medium" })}`;
   return <>
-    <H t="Content calendar" sub="Drag a post onto a day to reschedule it. Click a post to open it.">
+    <H t="Content calendar" sub="Drag a post onto a day to reschedule it. Click a post to open it. All schedule times use Philippine time (Asia/Manila).">
       <select className="mk-sel" value={filter} onChange={(e) => setFilter(e.target.value as Status | "")}><option value="">All statuses</option>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
       {(["month", "week", "day", "list"] as const).map((v) => <button key={v} type="button" className={"mk-btn sm" + (view === v ? "" : " ghost")} onClick={() => setView(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}
       {can("editor") && <button type="button" className="mk-btn sm" onClick={() => openCompose()}>+ New</button>}
