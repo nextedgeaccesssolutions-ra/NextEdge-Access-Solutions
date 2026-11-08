@@ -27,8 +27,13 @@ export async function receiveStoreRequest(req: Request, res: Response) {
   setCors(res);
   const parsed = requestSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ success: false, message: "Please review the required fields.", issues: parsed.error.flatten() });
-  await createSubmission(`store_${parsed.data.type}`, JSON.stringify(parsed.data));
-  return res.json({ success: true });
+  try {
+    await createSubmission(`store_${parsed.data.type}`, JSON.stringify(parsed.data));
+    return res.status(201).json({ success: true });
+  } catch (error) {
+    console.error("[store-request] Failed to persist public request", error);
+    return res.status(503).json({ success: false, message: "We could not save your request right now. Please try again later." });
+  }
 }
 
 export function allowStoreRequestPreflight(_req: Request, res: Response) {
