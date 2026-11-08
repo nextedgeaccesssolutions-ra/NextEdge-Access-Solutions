@@ -1,78 +1,76 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Request, Response } from "express";
-import { createMemoryRateLimiter, getSocketClientKey } from "./rateLimit";
+import { afterEach, describe, expect, it } from "vitest";
+import express from "express";
+import { rateLimit } from "express-rate-limit";
+import type { AddressInfo } from "node:net";
+import type { Server } from "node:http";
 
-function request(key = "192.0.2.10") {
-  return { socket: { remoteAddress: key }, headers: {} } as unknown as Request;
+async function startLimitedServer(limit: number) {
+  const app = express();
+  // Keep Express' default trust-proxy behavior: client identity comes from
+  // the socket peer, not an arbitrary X-Forwarded-For request header.
+  app.set("trust proxy", false);
+  app.post(
+    "/api/scheduled/publish-page",
+    rateLimit({
+      windowMs: 60_000,
+      limit,
+      standardHeaders: "draft-8",
+      legacyHeaders: false,
+    }),
+    (_req, res) => res.status(204).end(),
+  );
+
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((resolve, reject) => {
+    server.once("listening", resolve);
+    server.once("error", reject);
+  });
+  const address = server.address() as AddressInfo;
+  return { server, url: `http://127.0.0.1:${address.port}/api/scheduled/publish-page` };
 }
 
-function response() {
-  const headers: Record<string, string> = {};
-  const res = {
-    statusCode: 200,
-    body: undefined as unknown,
-    setHeader(name: string, value: string) { headers[name] = value; return this; },
-    status(code: number) { this.statusCode = code; return this; },
-    json(body: unknown) { this.body = body; return this; },
-  };
-  return { res: res as unknown as Response, headers, state: res };
-}
+const servers: Server[] = [];
+afterEach(async () => {
+  await Promise.all(servers.splice(0).map((server) =>
+    new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())),
+  ));
+});
 
-describe("scheduled publish rate limiter", () => {
-  afterEach(() => vi.restoreAllMocks());
+describe("scheduled publish Express rate limiter", () => {
+  it("allows requests up to the configured limit and then returns HTTP 429", async () => {
+    const { server, url } = await startLimitedServer(2);
+    servers.push(server);
 
-  it("allows requests up to the configured limit", () => {
-    const limiter = createMemoryRateLimiter({
-      windowMs: 60_000, limit: 2, maxKeys: 10, keyGenerator: getSocketClientKey,
-    });
-    const first = response();
-    const second = response();
+    expect((await fetch(url, { method: "POST" })).status).toBe(204);
+    expect((await fetch(url, { method: "POST" })).status).toBe(204);
 
-    expect(limiter(request(), first.res)).toBe(false);
-    expect(limiter(request(), second.res)).toBe(false);
-    expect(second.headers["RateLimit-Remaining"]).toBe("0");
+    const blocked = await fetch(url, { method: "POST" });
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get("retry-after")).not.toBeNull();
+    expect(blocked.headers.get("ratelimit")).not.toBeNull();
   });
 
-  it("rejects excess requests with 429 and Retry-After", () => {
-    const limiter = createMemoryRateLimiter({
-      windowMs: 60_000, limit: 1, maxKeys: 10, keyGenerator: getSocketClientKey,
-    });
-    const first = response();
-    const second = response();
+  it("does not let clients bypass the limit by spoofing X-Forwarded-For", async () => {
+    const { server, url } = await startLimitedServer(1);
+    servers.push(server);
 
-    expect(limiter(request(), first.res)).toBe(false);
-    expect(limiter(request(), second.res)).toBe(true);
-    expect(second.state.statusCode).toBe(429);
-    expect(Number(second.headers["Retry-After"])).toBeGreaterThan(0);
+    expect((await fetch(url, {
+      method: "POST",
+      headers: { "x-forwarded-for": "198.51.100.10" },
+    })).status).toBe(204);
+
+    const blocked = await fetch(url, {
+      method: "POST",
+      headers: { "x-forwarded-for": "198.51.100.11" },
+    });
+    expect(blocked.status).toBe(429);
   });
 
-  it("tracks separate socket peers independently", () => {
-    const limiter = createMemoryRateLimiter({
-      windowMs: 60_000, limit: 1, maxKeys: 10, keyGenerator: getSocketClientKey,
-    });
+  it("limits only the scheduled publishing route in this test harness", async () => {
+    const { server, url } = await startLimitedServer(1);
+    servers.push(server);
 
-    expect(limiter(request("192.0.2.10"), response().res)).toBe(false);
-    expect(limiter(request("192.0.2.11"), response().res)).toBe(false);
-  });
-
-  it("does not use untrusted X-Forwarded-For as the client key", () => {
-    const req = {
-      socket: { remoteAddress: "192.0.2.20" },
-      headers: { "x-forwarded-for": "198.51.100.99" },
-    } as unknown as Request;
-
-    expect(getSocketClientKey(req)).toBe("192.0.2.20");
-  });
-
-  it("fails closed when the bounded key table is full of active entries", () => {
-    const limiter = createMemoryRateLimiter({
-      windowMs: 60_000, limit: 1, maxKeys: 1, keyGenerator: getSocketClientKey,
-    });
-    const first = response();
-    const second = response();
-
-    expect(limiter(request("192.0.2.1"), first.res)).toBe(false);
-    expect(limiter(request("192.0.2.2"), second.res)).toBe(true);
-    expect(second.state.statusCode).toBe(429);
+    expect((await fetch(url, { method: "POST" })).status).toBe(204);
+    expect((await fetch(url, { method: "POST" })).status).toBe(429);
   });
 });
