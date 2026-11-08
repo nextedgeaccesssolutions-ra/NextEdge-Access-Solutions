@@ -110,7 +110,7 @@ export default function MarketingClient() {
         {mod === "compose" && <Compose s={s} can={can} post={editing} setPost={setEditing} run={run} />}
         {mod === "calendar" && <Calendar posts={posts} can={can} run={run} openCompose={openCompose} />}
         {mod === "inbox" && <Inbox s={s} go={go} can={can} />}
-        {mod === "analytics" && <Analytics s={s} />}
+        {mod === "analytics" && <Analytics s={s} refresh={load} />}
         {mod === "brands" && <Brands s={s} can={can} run={run} />}
         {mod === "accounts" && <Accounts s={s} can={can} />}
         {mod === "reports" && <Reports s={s} />}
@@ -372,25 +372,75 @@ function Inbox({ s, go, can }: { s: State; go: (m: Mod) => void; can: Can }) {
     </div></>;
 }
 
-function Analytics({ s }: { s: State }) {
+function Analytics({ s, refresh }: { s: State; refresh: () => Promise<void> }) {
+  const [range, setRange] = useState<"30" | "90" | "180" | "all">("90");
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshedAt, setRefreshedAt] = useState("");
+  const now = new Date();
+  const days = range === "all" ? null : Number(range);
+  // The current schema records status changes in updated_at, but has no dedicated published_at column.
+  // Use that timestamp as the best available publication proxy and disclose this in the report.
+  const published = s.posts.filter((p) => p.status === "published");
+  const inRange = published.filter((p) => !days || now.getTime() - new Date(p.updated_at).getTime() <= days * 86400000);
   const byStatus = (Object.keys(STATUS_LABEL) as Status[]).map((k) => [k, s.posts.filter((p) => p.status === k).length] as const);
-  const months = Array.from({ length: 6 }, (_, i) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - (5 - i)); return d; });
-  const perMonth = months.map((m) => s.posts.filter((p) => p.status === "published" && new Date(p.updated_at).getMonth() === m.getMonth() && new Date(p.updated_at).getFullYear() === m.getFullYear()).length);
-  const max = Math.max(1, ...perMonth);
-  const plat = Object.keys(PLAT).map((k) => [k, s.posts.filter((p) => p.platforms.includes(k)).length] as const);
-  return <><H t="Analytics" sub="Real numbers only, from your website and connected accounts." />
+  const months = Array.from({ length: 6 }, (_, i) => new Date(now.getFullYear(), now.getMonth() - (5 - i), 1));
+  const perMonth = months.map((m) => published.filter((p) => { const d = new Date(p.updated_at); return d.getMonth() === m.getMonth() && d.getFullYear() === m.getFullYear(); }).length);
+  const maxMonth = Math.max(1, ...perMonth);
+  const plat = Object.keys(PLAT).map((k) => [k, inRange.filter((p) => p.platforms.includes(k)).length] as const);
+  const maxPlat = Math.max(1, ...plat.map(([, count]) => count));
+  const clicks = s.links.reduce((sum, link) => sum + (Number(link.clicks) || 0), 0);
+  const rangeLabel = range === "all" ? "all available records" : "last " + range + " days";
+  const refreshAll = async () => {
+    setRefreshing(true);
+    try { await refresh(); setRefreshedAt(new Date().toISOString()); }
+    finally { setRefreshing(false); }
+  };
+  return <>
+    <H t="Analytics" sub="Operational reporting from NEAS posts, link-in-bio tracking, store records and connected platform insights.">
+      <div className="mk-row">
+        <select className="mk-sel" aria-label="Analytics reporting period" value={range} onChange={(e) => setRange(e.target.value as typeof range)}>
+          <option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="180">Last 180 days</option><option value="all">All available</option>
+        </select>
+        <button type="button" className="mk-btn ghost" onClick={() => void refreshAll()} disabled={refreshing}>{refreshing ? "Refreshing…" : "↻ Refresh data"}</button>
+      </div>
+    </H>
+    <div className="mk-mini" style={{ marginBottom: 12 }}>Post period: {rangeLabel}. Publication dates use the post's last status-update timestamp because the current database does not store a separate published-at timestamp. {refreshedAt ? "Last refreshed " + fmt(refreshedAt) + "." : ""}</div>
     <div className="mk-grid4">
-      <div className="mk-card mk-kpi"><small>Total posts</small><b>{s.posts.length}</b><span className="mk-src">Source: NEAS database</span></div>
-      <div className="mk-card mk-kpi"><small>Bio link clicks</small><b>{s.links.reduce((a, l) => a + l.clicks, 0)}</b><span className="mk-src">Source: NEAS link-in-bio</span></div>
-      <div className="mk-card mk-kpi"><small>Store orders · 30 days</small><b>{s.site.orders30}</b><span className="mk-src">{peso(s.site.sales30)} · NEAS store</span></div>
-      <div className="mk-card mk-kpi"><small>Store customers</small><b>{s.site.customers}</b><span className="mk-src">Source: NEAS store</span></div>
+      <div className="mk-card mk-kpi"><small>Total posts in workspace</small><b>{s.posts.length.toLocaleString("en-PH")}</b><span className="mk-src">NEAS database · up to 1,000 recent records</span></div>
+      <div className="mk-card mk-kpi"><small>Published · selected period</small><b>{inRange.length.toLocaleString("en-PH")}</b><span className="mk-src">{rangeLabel}</span></div>
+      <div className="mk-card mk-kpi"><small>Bio link clicks</small><b>{clicks.toLocaleString("en-PH")}</b><span className="mk-src">All tracked NEAS bio links</span></div>
+      <div className="mk-card mk-kpi"><small>Store orders · 30 days</small><b>{s.site.orders30.toLocaleString("en-PH")}</b><span className="mk-src">{peso(s.site.sales30)} · NEAS store</span></div>
     </div>
-    <div className="mk-grid2">
-      <div className="mk-card"><div className="mk-label">Published posts · last 6 months</div><div className="mk-bars">{perMonth.map((n, i) => <div key={i} className="mk-bcol"><div className="mk-bval">{n}</div><div className="mk-b" style={{ height: (n / max) * 120 + 4 }} /><small>{months[i].toLocaleDateString("en-PH", { month: "short" })}</small></div>)}</div></div>
-      <div className="mk-card"><div className="mk-label">Pipeline by status</div>{byStatus.map(([k, n]) => <div key={k} className="mk-hb"><Pill st={k} /><div className="mk-hbar"><i style={{ width: (n / Math.max(1, s.posts.length)) * 100 + "%" }} /></div><b>{n}</b></div>)}
-        <div className="mk-label" style={{ marginTop: 14 }}>Posts planned per platform</div>{plat.map(([k, n]) => <div key={k} className="mk-hb"><span style={{ width: 120 }}>{PLAT[k]}</span><div className="mk-hbar"><i style={{ width: (n / Math.max(1, s.posts.length)) * 100 + "%" }} /></div><b>{n}</b></div>)}</div>
+    <div className="mk-grid4" style={{ marginTop: 12 }}>
+      <div className="mk-card mk-kpi"><small>Awaiting review</small><b>{s.posts.filter((p) => p.status === "pending").length}</b><span className="mk-src">Current content pipeline</span></div>
+      <div className="mk-card mk-kpi"><small>Scheduled</small><b>{s.posts.filter((p) => p.status === "scheduled").length}</b><span className="mk-src">Current content pipeline</span></div>
+      <div className="mk-card mk-kpi"><small>Store customers</small><b>{s.site.customers.toLocaleString("en-PH")}</b><span className="mk-src">NEAS store · all-time count</span></div>
+      <div className="mk-card mk-kpi"><small>Active products</small><b>{s.site.products.toLocaleString("en-PH")}</b><span className="mk-src">NEAS store catalogue</span></div>
     </div>
-    <FacebookInsights s={s} /></>;
+    <div className="mk-grid2" style={{ marginTop: 12 }}>
+      <div className="mk-card">
+        <div className="mk-label">Published posts · last 6 months</div>
+        {published.length ? <div className="mk-bars">{perMonth.map((count, i) => <div key={months[i].getTime()} className="mk-bcol"><div className="mk-bval">{count}</div><div className="mk-b" style={{ height: (count / maxMonth) * 120 + 4 }} /><small>{months[i].toLocaleDateString("en-PH", { month: "short", year: "2-digit" })}</small></div>)}</div> : <Empty icon="▥" title="No published posts yet">Approved or scheduled posts are not counted as published.</Empty>}
+      </div>
+      <div className="mk-card">
+        <div className="mk-label">Content pipeline · all available records</div>
+        {byStatus.map(([k, count]) => <div key={k} className="mk-hb"><Pill st={k} /><div className="mk-hbar"><i style={{ width: (count / Math.max(1, s.posts.length)) * 100 + "%" }} /></div><b>{count}</b></div>)}
+        <div className="mk-label" style={{ marginTop: 18 }}>Published posts by platform · {rangeLabel}</div>
+        {plat.map(([k, count]) => <div key={k} className="mk-hb"><span style={{ width: 120 }}>{PLAT[k]}</span><div className="mk-hbar"><i style={{ width: (count / maxPlat) * 100 + "%" }} /></div><b>{count}</b></div>)}
+        {!inRange.length && <p className="mk-mini">No posts marked published in this reporting period.</p>}
+      </div>
+    </div>
+    <div className="mk-card" style={{ marginTop: 12 }}>
+      <div className="mk-label">Store performance · last 30 days</div>
+      <p className="mk-mini">Orders and sales are based on NEAS store orders created during the last 30 days. Customer and active-product totals are current workspace counts.</p>
+      <div className="mk-grid3">
+        <div className="mk-kpi mk-stat"><small>Orders</small><b>{s.site.orders30.toLocaleString("en-PH")}</b></div>
+        <div className="mk-kpi mk-stat"><small>Sales value</small><b>{peso(s.site.sales30)}</b></div>
+        <div className="mk-kpi mk-stat"><small>Customers</small><b>{s.site.customers.toLocaleString("en-PH")}</b></div>
+      </div>
+    </div>
+    <FacebookInsights s={s} />
+  </>;
 }
 
 type Ins = { days: number; fetchedAt: string; pages: { page: string; followers: number | null; views: number | null; reached: number | null; engagements: number | null; daily: { date: string; value: number }[]; posts: { id: string; text: string; at: string; link: string; views: number | null; reactions: number; comments: number; shares: number }[]; errors: string[] }[] };
