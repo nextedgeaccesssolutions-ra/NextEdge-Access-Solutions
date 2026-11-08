@@ -15,7 +15,7 @@ type State = {
   site: { orders30: number; sales30: number; products: number; customers: number };
   accounts?: { id: number; platform: string; name: string; status: string; error: string; expires_at: string | null }[];
   results?: { post_id: number; platform: string; ok: boolean; remote_id: string; error: string; at: string }[];
-  connectReady?: { facebook: boolean; linkedin: boolean; google?: boolean; tiktok?: boolean };
+  connectReady?: { facebook: boolean; linkedin: boolean; linkedinPages?: boolean; google?: boolean; tiktok?: boolean };
   media?: { id: number; url: string; title: string; width: number | null; height: number | null; at: string }[];
   automation?: { orderAlert: boolean; orderConfirm: boolean; orderStatus: boolean; approval: boolean; publishFail: boolean; alertEmail: string };
   emailReady?: boolean;
@@ -48,7 +48,8 @@ const NAV: { group: string; items: [Mod, string, string][] }[] = [
 
 const fmt = (iso: string | null) => iso ? new Date(iso).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" }) : "—";
 const peso = (n: number) => "₱" + Math.round(n).toLocaleString("en-PH");
-const toLocalInput = (iso: string | null) => { if (!iso) return ""; const d = new Date(iso); const z = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; };
+const toLocalInput = (iso: string | null) => { if (!iso) return ""; const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso)); const v = Object.fromEntries(parts.map((p) => [p.type, p.value])); return `${v.year}-${v.month}-${v.day}T${v.hour}:${v.minute}`; };
+const fromPhInput = (value: string) => value ? new Date(`${value}:00+08:00`).toISOString() : null;
 const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
 async function call(body: unknown) {
@@ -110,7 +111,7 @@ export default function MarketingClient() {
         {mod === "compose" && <Compose s={s} can={can} post={editing} setPost={setEditing} run={run} />}
         {mod === "calendar" && <Calendar posts={posts} can={can} run={run} openCompose={openCompose} />}
         {mod === "inbox" && <Inbox s={s} go={go} can={can} />}
-        {mod === "analytics" && <Analytics s={s} />}
+        {mod === "analytics" && <Analytics s={s} refresh={load} />}
         {mod === "brands" && <Brands s={s} can={can} run={run} />}
         {mod === "accounts" && <Accounts s={s} can={can} />}
         {mod === "reports" && <Reports s={s} />}
@@ -216,10 +217,38 @@ function Compose({ s, can, post, setPost, run }: { s: State; can: Can; post: Par
   const history = p.id ? s.activity.filter((a) => a.post_id === p.id) : [];
   const limits: Record<string, number> = { instagram: 2200, linkedin: 3000, tiktok: 2200, facebook: 63206, youtube: 5000, google_business: 1500 };
   const over = (p.platforms ?? []).filter((x) => (p.body ?? "").length > limits[x]);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [formError, setFormError] = useState("");
+  async function uploadMedia(file?: File) {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) { setFormError("Upload a JPG, PNG, WebP or GIF image. For video, use a direct HTTPS video URL."); return; }
+    if (file.size > 3 * 1024 * 1024) { setFormError("Image must be 3 MB or smaller."); return; }
+    setUploading(true); setFormError("");
+    try {
+      const fd = new FormData(); fd.append("file", file);
+      const response = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.url) throw new Error(result.error || "Image upload failed.");
+      set("media_url", result.url);
+    } catch (e) { setFormError((e as Error).message); }
+    finally { setUploading(false); }
+  }
   async function save(submit = false) {
-    const r = (await run({ action: "savePost", id: p.id, title: p.title, body: p.body, platforms: p.platforms, scheduled_at: p.scheduled_at || null, media_url: p.media_url, campaign: p.campaign, notes: p.notes }, submit ? "Saved" : "Saved ✓")) as { id?: number } | null;
-    if (r?.id && submit) await run({ action: "transition", id: r.id, to: "pending" }, "Submitted for review ✓");
-    if (r?.id) setPost(null);
+    setFormError("");
+    if (!(p.body ?? "").trim()) { setFormError("Add post text before saving."); return; }
+    if (submit && !(p.platforms ?? []).length) { setFormError("Select at least one platform before submitting for review."); return; }
+    if (over.length) { setFormError("Shorten the post text to fit: " + over.map((x) => PLAT[x]).join(", ") + "."); return; }
+    if (p.media_url && !/^(https:\/\/|\/api\/img\/[a-f0-9]{16}$)/.test(p.media_url)) { setFormError("Media must be a secure HTTPS link or an uploaded NEAS image."); return; }
+    setSaving(true);
+    try {
+      const r = (await run({ action: "savePost", id: p.id, title: p.title, body: p.body, platforms: p.platforms, scheduled_at: p.scheduled_at || null, media_url: p.media_url, campaign: p.campaign, notes: p.notes }, "Draft saved ✓")) as { id?: number } | null;
+      if (r?.id && submit) {
+        const moved = await run({ action: "transition", id: r.id, to: "pending" }, "Submitted for review ✓");
+        if (!moved) return;
+      }
+      if (r?.id) setPost(null);
+    } finally { setSaving(false); }
   }
   return <>
     <H t={p.id ? "Edit post" : "Compose post"} sub="Write once, tailor per platform. Posts follow Draft → Pending review → Approved → Scheduled → Published.">
@@ -233,13 +262,17 @@ function Compose({ s, can, post, setPost, run }: { s: State; can: Can; post: Par
         <div className="mk-mini">{(p.body ?? "").length} characters{over.length > 0 && <span className="mk-warn"> · too long for {over.map((x) => PLAT[x]).join(", ")}</span>}</div>
         <div className="mk-f">Platforms<div className="mk-row">{Object.entries(PLAT).map(([id, name]) => <label key={id} className={"mk-chip" + ((p.platforms ?? []).includes(id) ? " on" : "")}><input type="checkbox" disabled={locked} checked={(p.platforms ?? []).includes(id)} onChange={(e) => set("platforms", e.target.checked ? [...(p.platforms ?? []), id] : (p.platforms ?? []).filter((x) => x !== id))} />{name}</label>)}</div></div>
         <div className="mk-grid2">
-          <label className="mk-f">Publish date &amp; time (PH)<input type="datetime-local" disabled={locked} value={toLocalInput(p.scheduled_at ?? null)} onChange={(e) => set("scheduled_at", e.target.value ? new Date(e.target.value).toISOString() : null)} /></label>
+          <label className="mk-f">Publish date &amp; time (Asia/Manila)<input type="datetime-local" disabled={locked} value={toLocalInput(p.scheduled_at ?? null)} onChange={(e) => set("scheduled_at", fromPhInput(e.target.value))} /><span className="mk-mini">Times are saved in Philippine time (UTC+8), regardless of your computer time zone.</span></label>
           <label className="mk-f">Campaign<input value={p.campaign ?? ""} disabled={locked} onChange={(e) => set("campaign", e.target.value)} placeholder="e.g. Q4 Wind Services" /></label>
         </div>
-        <label className="mk-f">Image / video link<input value={p.media_url ?? ""} disabled={locked} onChange={(e) => set("media_url", e.target.value)} placeholder="https://…" /></label>
-        {p.media_url && /^https?:|^\/api\/img\//.test(p.media_url) && <img src={p.media_url} alt="" className="mk-prev" onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />}
+        <label className="mk-f">Upload image<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={locked || uploading || saving} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) void uploadMedia(file); }} /><span className="mk-mini">JPG, PNG, WebP or GIF · maximum 3 MB. Uploaded images are stored in the NEAS media database.</span></label>
+        {uploading && <div className="mk-note">Uploading image…</div>}
+        <label className="mk-f">Or paste an image / video URL<input value={p.media_url ?? ""} disabled={locked} onChange={(e) => set("media_url", e.target.value)} placeholder="https://… or uploaded NEAS image" /></label>
+        {p.media_url && (/^\/api\/img\//.test(p.media_url) || /\.(png|jpe?g|gif|webp)(\?.*)?$/i.test(p.media_url)) && <img src={p.media_url} alt="Post media preview" className="mk-prev" onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />}
+        {p.media_url && /\.(mp4|webm|ogg)(\?.*)?$/i.test(p.media_url) && <video src={p.media_url} controls playsInline className="mk-prev" />}
+        {formError && <div className="mk-note" role="alert">{formError}</div>}
         <label className="mk-f">Internal notes<textarea rows={2} value={p.notes ?? ""} disabled={locked} onChange={(e) => set("notes", e.target.value)} /></label>
-        {!locked && <div className="mk-row"><button type="button" className="mk-btn ghost" onClick={() => save(false)}>Save draft</button>{(!p.id || p.status === "draft" || p.status === "failed") && <button type="button" className="mk-btn" onClick={() => save(true)}>Save &amp; submit for review</button>}</div>}
+        {!locked && <div className="mk-row"><button type="button" className="mk-btn ghost" disabled={saving || uploading} onClick={() => save(false)}>{saving ? "Saving…" : "Save draft"}</button>{(!p.id || p.status === "draft" || p.status === "failed") && <button type="button" className="mk-btn" disabled={saving || uploading} onClick={() => save(true)}>{saving ? "Saving…" : "Save &amp; submit for review"}</button>}</div>}
         {p.id && <div style={{ marginTop: 12 }}><PostActions p={p as Post} can={can} run={async (b, m) => { const r = await run(b, m); setPost(null); return r; }} />{can("manager") && <button type="button" className="mk-btn sm ghost danger" style={{ marginTop: 8 }} onClick={() => { if (confirm("Delete this post?")) run({ action: "deletePost", id: p.id }, "Deleted").then(() => setPost(null)); }}>Delete post</button>}</div>}
         {p.id && (s.results ?? []).some((r) => r.post_id === p.id) && <><div className="mk-label" style={{ marginTop: 16 }}>Publishing results</div>{(s.results ?? []).filter((r) => r.post_id === p.id).map((r, i) => <div key={i} className="mk-log">{r.ok ? "✅" : "❌"} <b>{PLAT[r.platform] ?? r.platform}</b> · {fmt(r.at)}{r.error && <div className="mk-warn">{r.error}</div>}</div>)}</>}
         {history.length > 0 && <><div className="mk-label" style={{ marginTop: 16 }}>Audit trail</div>{history.map((a) => <div key={a.id} className="mk-log"><b>{a.action}</b> · {a.who} · {fmt(a.at)}{a.detail && <div className="mk-mini">{a.detail}</div>}</div>)}</>}
@@ -292,7 +325,7 @@ function Calendar({ posts, can, run, openCompose }: { posts: Post[]; can: Can; r
   const unscheduled = list.filter((p) => !p.scheduled_at && p.status !== "published");
   const title = view === "month" ? cur.toLocaleDateString("en-PH", { month: "long", year: "numeric" }) : view === "day" ? cur.toLocaleDateString("en-PH", { dateStyle: "full" }) : `Week of ${days[0].toLocaleDateString("en-PH", { dateStyle: "medium" })}`;
   return <>
-    <H t="Content calendar" sub="Drag a post onto a day to reschedule it. Click a post to open it.">
+    <H t="Content calendar" sub="Drag a post onto a day to reschedule it. Click a post to open it. All schedule times use Philippine time (Asia/Manila).">
       <select className="mk-sel" value={filter} onChange={(e) => setFilter(e.target.value as Status | "")}><option value="">All statuses</option>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
       {(["month", "week", "day", "list"] as const).map((v) => <button key={v} type="button" className={"mk-btn sm" + (view === v ? "" : " ghost")} onClick={() => setView(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}
       {can("editor") && <button type="button" className="mk-btn sm" onClick={() => openCompose()}>+ New</button>}
@@ -347,7 +380,7 @@ function Inbox({ s, go, can }: { s: State; go: (m: Mod) => void; can: Can }) {
     {(["open", "mine", "done", "all"] as const).map((f) => <button key={f} type="button" className={"mk-btn sm" + (filter === f ? "" : " ghost")} onClick={() => setFilter(f)}>{{ open: "Open", mine: "Assigned to me", done: "Done", all: "All" }[f]}</button>)}
     <button type="button" className="mk-btn sm ghost" onClick={load} disabled={loading}>{loading ? "Loading…" : "↻ Refresh"}</button>
   </H>
-    {(data?.errors ?? []).length > 0 && <div className="mk-note">{data!.errors.map((e, i) => <div key={i}>⚠ {e}</div>)}<div style={{ marginTop: 6 }}>If this says a permission is missing: in your Meta app's Facebook Login for Business configuration, add <code>pages_messaging</code>, <code>pages_read_user_content</code> and <code>pages_manage_engagement</code>, then click Reconnect on Social Accounts.</div></div>}
+    {msg && !data && <div className="mk-note" role="status">{msg}</div>}{(data?.errors ?? []).length > 0 && <div className="mk-note">{data!.errors.map((e, i) => <div key={i}>⚠ {e}</div>)}<div style={{ marginTop: 6 }}>If this says a permission is missing: in your Meta app's Facebook Login for Business configuration, add <code>pages_messaging</code>, <code>pages_read_user_content</code> and <code>pages_manage_engagement</code>, then click Reconnect on Social Accounts.</div></div>}
     <div className="mk-inbox">
       <div className="mk-card mk-ilist">{!data && loading && <p className="mk-mini">Loading conversations…</p>}
         {threads.map((x) => <button key={x.key} type="button" className={"mk-ithread" + (x.key === sel ? " sel" : "")} onClick={() => setSel(x.key)}>
@@ -372,25 +405,75 @@ function Inbox({ s, go, can }: { s: State; go: (m: Mod) => void; can: Can }) {
     </div></>;
 }
 
-function Analytics({ s }: { s: State }) {
+function Analytics({ s, refresh }: { s: State; refresh: () => Promise<void> }) {
+  const [range, setRange] = useState<"30" | "90" | "180" | "all">("90");
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshedAt, setRefreshedAt] = useState("");
+  const now = new Date();
+  const days = range === "all" ? null : Number(range);
+  // The current schema records status changes in updated_at, but has no dedicated published_at column.
+  // Use that timestamp as the best available publication proxy and disclose this in the report.
+  const published = s.posts.filter((p) => p.status === "published");
+  const inRange = published.filter((p) => !days || now.getTime() - new Date(p.updated_at).getTime() <= days * 86400000);
   const byStatus = (Object.keys(STATUS_LABEL) as Status[]).map((k) => [k, s.posts.filter((p) => p.status === k).length] as const);
-  const months = Array.from({ length: 6 }, (_, i) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - (5 - i)); return d; });
-  const perMonth = months.map((m) => s.posts.filter((p) => p.status === "published" && new Date(p.updated_at).getMonth() === m.getMonth() && new Date(p.updated_at).getFullYear() === m.getFullYear()).length);
-  const max = Math.max(1, ...perMonth);
-  const plat = Object.keys(PLAT).map((k) => [k, s.posts.filter((p) => p.platforms.includes(k)).length] as const);
-  return <><H t="Analytics" sub="Real numbers only, from your website and connected accounts." />
+  const months = Array.from({ length: 6 }, (_, i) => new Date(now.getFullYear(), now.getMonth() - (5 - i), 1));
+  const perMonth = months.map((m) => published.filter((p) => { const d = new Date(p.updated_at); return d.getMonth() === m.getMonth() && d.getFullYear() === m.getFullYear(); }).length);
+  const maxMonth = Math.max(1, ...perMonth);
+  const plat = Object.keys(PLAT).map((k) => [k, inRange.filter((p) => p.platforms.includes(k)).length] as const);
+  const maxPlat = Math.max(1, ...plat.map(([, count]) => count));
+  const clicks = s.links.reduce((sum, link) => sum + (Number(link.clicks) || 0), 0);
+  const rangeLabel = range === "all" ? "all available records" : "last " + range + " days";
+  const refreshAll = async () => {
+    setRefreshing(true);
+    try { await refresh(); setRefreshedAt(new Date().toISOString()); }
+    finally { setRefreshing(false); }
+  };
+  return <>
+    <H t="Analytics" sub="Operational reporting from NEAS posts, link-in-bio tracking, store records and connected platform insights.">
+      <div className="mk-row">
+        <select className="mk-sel" aria-label="Analytics reporting period" value={range} onChange={(e) => setRange(e.target.value as typeof range)}>
+          <option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="180">Last 180 days</option><option value="all">All available</option>
+        </select>
+        <button type="button" className="mk-btn ghost" onClick={() => void refreshAll()} disabled={refreshing}>{refreshing ? "Refreshing…" : "↻ Refresh data"}</button>
+      </div>
+    </H>
+    <div className="mk-mini" style={{ marginBottom: 12 }}>Post period: {rangeLabel}. Publication dates use the post's last status-update timestamp because the current database does not store a separate published-at timestamp. {refreshedAt ? "Last refreshed " + fmt(refreshedAt) + "." : ""}</div>
     <div className="mk-grid4">
-      <div className="mk-card mk-kpi"><small>Total posts</small><b>{s.posts.length}</b><span className="mk-src">Source: NEAS database</span></div>
-      <div className="mk-card mk-kpi"><small>Bio link clicks</small><b>{s.links.reduce((a, l) => a + l.clicks, 0)}</b><span className="mk-src">Source: NEAS link-in-bio</span></div>
-      <div className="mk-card mk-kpi"><small>Store orders · 30 days</small><b>{s.site.orders30}</b><span className="mk-src">{peso(s.site.sales30)} · NEAS store</span></div>
-      <div className="mk-card mk-kpi"><small>Store customers</small><b>{s.site.customers}</b><span className="mk-src">Source: NEAS store</span></div>
+      <div className="mk-card mk-kpi"><small>Total posts in workspace</small><b>{s.posts.length.toLocaleString("en-PH")}</b><span className="mk-src">NEAS database · up to 1,000 recent records</span></div>
+      <div className="mk-card mk-kpi"><small>Published · selected period</small><b>{inRange.length.toLocaleString("en-PH")}</b><span className="mk-src">{rangeLabel}</span></div>
+      <div className="mk-card mk-kpi"><small>Bio link clicks</small><b>{clicks.toLocaleString("en-PH")}</b><span className="mk-src">All tracked NEAS bio links</span></div>
+      <div className="mk-card mk-kpi"><small>Store orders · 30 days</small><b>{s.site.orders30.toLocaleString("en-PH")}</b><span className="mk-src">{peso(s.site.sales30)} · NEAS store</span></div>
     </div>
-    <div className="mk-grid2">
-      <div className="mk-card"><div className="mk-label">Published posts · last 6 months</div><div className="mk-bars">{perMonth.map((n, i) => <div key={i} className="mk-bcol"><div className="mk-bval">{n}</div><div className="mk-b" style={{ height: (n / max) * 120 + 4 }} /><small>{months[i].toLocaleDateString("en-PH", { month: "short" })}</small></div>)}</div></div>
-      <div className="mk-card"><div className="mk-label">Pipeline by status</div>{byStatus.map(([k, n]) => <div key={k} className="mk-hb"><Pill st={k} /><div className="mk-hbar"><i style={{ width: (n / Math.max(1, s.posts.length)) * 100 + "%" }} /></div><b>{n}</b></div>)}
-        <div className="mk-label" style={{ marginTop: 14 }}>Posts planned per platform</div>{plat.map(([k, n]) => <div key={k} className="mk-hb"><span style={{ width: 120 }}>{PLAT[k]}</span><div className="mk-hbar"><i style={{ width: (n / Math.max(1, s.posts.length)) * 100 + "%" }} /></div><b>{n}</b></div>)}</div>
+    <div className="mk-grid4" style={{ marginTop: 12 }}>
+      <div className="mk-card mk-kpi"><small>Awaiting review</small><b>{s.posts.filter((p) => p.status === "pending").length}</b><span className="mk-src">Current content pipeline</span></div>
+      <div className="mk-card mk-kpi"><small>Scheduled</small><b>{s.posts.filter((p) => p.status === "scheduled").length}</b><span className="mk-src">Current content pipeline</span></div>
+      <div className="mk-card mk-kpi"><small>Store customers</small><b>{s.site.customers.toLocaleString("en-PH")}</b><span className="mk-src">NEAS store · all-time count</span></div>
+      <div className="mk-card mk-kpi"><small>Active products</small><b>{s.site.products.toLocaleString("en-PH")}</b><span className="mk-src">NEAS store catalogue</span></div>
     </div>
-    <FacebookInsights s={s} /></>;
+    <div className="mk-grid2" style={{ marginTop: 12 }}>
+      <div className="mk-card">
+        <div className="mk-label">Published posts · last 6 months</div>
+        {published.length ? <div className="mk-bars">{perMonth.map((count, i) => <div key={months[i].getTime()} className="mk-bcol"><div className="mk-bval">{count}</div><div className="mk-b" style={{ height: (count / maxMonth) * 120 + 4 }} /><small>{months[i].toLocaleDateString("en-PH", { month: "short", year: "2-digit" })}</small></div>)}</div> : <Empty icon="▥" title="No published posts yet">Approved or scheduled posts are not counted as published.</Empty>}
+      </div>
+      <div className="mk-card">
+        <div className="mk-label">Content pipeline · all available records</div>
+        {byStatus.map(([k, count]) => <div key={k} className="mk-hb"><Pill st={k} /><div className="mk-hbar"><i style={{ width: (count / Math.max(1, s.posts.length)) * 100 + "%" }} /></div><b>{count}</b></div>)}
+        <div className="mk-label" style={{ marginTop: 18 }}>Published posts by platform · {rangeLabel}</div>
+        {plat.map(([k, count]) => <div key={k} className="mk-hb"><span style={{ width: 120 }}>{PLAT[k]}</span><div className="mk-hbar"><i style={{ width: (count / maxPlat) * 100 + "%" }} /></div><b>{count}</b></div>)}
+        {!inRange.length && <p className="mk-mini">No posts marked published in this reporting period.</p>}
+      </div>
+    </div>
+    <div className="mk-card" style={{ marginTop: 12 }}>
+      <div className="mk-label">Store performance · last 30 days</div>
+      <p className="mk-mini">Orders and sales are based on NEAS store orders created during the last 30 days. Customer and active-product totals are current workspace counts.</p>
+      <div className="mk-grid3">
+        <div className="mk-kpi mk-stat"><small>Orders</small><b>{s.site.orders30.toLocaleString("en-PH")}</b></div>
+        <div className="mk-kpi mk-stat"><small>Sales value</small><b>{peso(s.site.sales30)}</b></div>
+        <div className="mk-kpi mk-stat"><small>Customers</small><b>{s.site.customers.toLocaleString("en-PH")}</b></div>
+      </div>
+    </div>
+    <FacebookInsights s={s} />
+  </>;
 }
 
 type Ins = { days: number; fetchedAt: string; pages: { page: string; followers: number | null; views: number | null; reached: number | null; engagements: number | null; daily: { date: string; value: number }[]; posts: { id: string; text: string; at: string; link: string; views: number | null; reactions: number; comments: number; shares: number }[]; errors: string[] }[] };
@@ -437,8 +520,8 @@ function Brands({ s, can, run }: { s: State; can: Can; run: Run }) {
 }
 
 function Accounts({ s, can }: { s: State; can: Can }) {
-  const [msg] = useState(() => { try { return new URLSearchParams(location.search).get("msg") ?? ""; } catch { return ""; } });
-  const [busy, setBusy] = useState(0);
+  const [msg, setMsg] = useState(() => { try { return new URLSearchParams(location.search).get("msg") ?? ""; } catch { return ""; } });
+  const [busy, setBusy] = useState<number | null>(null);
   const origin = typeof location !== "undefined" ? location.origin : "";
   const accs = s.accounts ?? [];
   const cards: { id: string; name: string; connect?: "facebook" | "linkedin" | "google" | "tiktok"; ready: boolean; needs: string; note: string }[] = [
@@ -455,9 +538,9 @@ function Accounts({ s, can }: { s: State; can: Can }) {
       return <div key={c.id} className="mk-card mk-acc">
         <div className="mk-row between"><b>{c.name}</b><span className={"mk-pill " + (mine.some((a) => a.status === "ok") ? "st-published" : c.ready ? "st-approved" : "st-draft")}>{mine.some((a) => a.status === "ok") ? "Connected" : c.ready ? "Ready to connect" : c.needs ? "Not set up" : "Later phase"}</span></div>
         {mine.map((a) => <div key={a.id} className="mk-li" style={{ cursor: "default" }}><div style={{ flex: 1 }}><b>{a.name}</b><small>{a.status === "ok" ? "Healthy" + (a.expires_at ? " · token renews by reconnecting before " + new Date(a.expires_at).toLocaleDateString("en-PH") : "") : "⚠ " + a.error}</small></div>
-          {can("manager") && <button type="button" className="mk-btn sm ghost danger" disabled={busy === a.id} onClick={async () => { if (!confirm(`Disconnect ${a.name}?`)) return; setBusy(a.id); await call({ action: "disconnect", id: a.id }).catch(() => {}); location.reload(); }}>Disconnect</button>}</div>)}
+          {can("manager") && <button type="button" className="mk-btn sm ghost danger" disabled={busy === a.id} onClick={async () => { if (!confirm(`Disconnect ${a.name}?`)) return; setBusy(a.id); try { await call({ action: "disconnect", id: a.id }); setMsg(a.name + " disconnected."); location.reload(); } catch (e) { setMsg((e as Error).message); setBusy(null); } }}>Disconnect</button>}</div>)}
         <p className="mk-mini">{c.note}{!c.ready && c.needs ? <><br />Needs: <code>{c.needs}</code> (Settings &amp; Logs → API keys)</> : null}</p>
-        {c.connect && (c.ready && can("manager") ? <><a className="mk-btn sm" href={`/api/admin/social/connect/${c.connect}`}>{mine.length ? "Reconnect" : "Connect"}</a>{c.connect === "linkedin" && c.ready && can("manager") && <a className="mk-btn sm ghost" style={{ marginLeft: 6 }} href="/api/admin/social/connect/linkedin?pages=1" title="Needs LinkedIn to approve the Community Management API for your app">+ Connect LinkedIn Page</a>}</> : can("admin") && !s.tenant && c.needs ? <a className="mk-btn sm ghost" href="?m=settings" title="Add this platform's keys first">🔑 Add keys to connect</a> : <button type="button" className="mk-btn sm ghost" disabled>Connect</button>)}
+        {c.connect && ((c.ready || (c.connect === "linkedin" && s.connectReady?.linkedinPages)) && can("manager") ? <>{c.ready && <a className="mk-btn sm" href={`/api/admin/social/connect/${c.connect}`}>{mine.length ? "Reconnect" : "Connect"}</a>}{c.connect === "linkedin" && s.connectReady?.linkedinPages && <a className="mk-btn sm ghost" style={{ marginLeft: 6 }} href="/api/admin/social/connect/linkedin?pages=1" title="Uses the separate LinkedIn Company Page app credentials">+ Connect LinkedIn Page</a>}</> : can("admin") && !s.tenant && c.needs ? <a className="mk-btn sm ghost" href="?m=settings" title="Add this platform's keys first">🔑 Add keys to connect</a> : <button type="button" className="mk-btn sm ghost" disabled>Connect</button>)}
       </div>; })}</div>
     <div className="mk-card"><div className="mk-label">App settings to copy into each developer app</div>
       <table className="mk-t"><tbody>
@@ -481,45 +564,56 @@ function Reports({ s }: { s: State }) {
   const [period, setPeriod] = useState<"day" | "week" | "month" | "quarter" | "year">("month");
   const since = useMemo(() => { const d = new Date(); ({ day: () => d.setDate(d.getDate() - 1), week: () => d.setDate(d.getDate() - 7), month: () => d.setMonth(d.getMonth() - 1), quarter: () => d.setMonth(d.getMonth() - 3), year: () => d.setFullYear(d.getFullYear() - 1) })[period](); return d; }, [period]);
   const posts = s.posts.filter((p) => new Date(p.updated_at) >= since);
+  const published = posts.filter((p) => p.status === "published");
   const acts = s.activity.filter((a) => new Date(a.at) >= since);
+  const successfulResults = (s.results ?? []).filter((r) => r.ok && new Date(r.at) >= since);
   const label = { day: "Daily", week: "Weekly", month: "Monthly", quarter: "Quarterly", year: "Annual" }[period];
-  return <><H t="Reports" sub="Export to Excel (CSV) or save as PDF.">
-    <select className="mk-sel" value={period} onChange={(e) => setPeriod(e.target.value as typeof period)}><option value="day">Daily</option><option value="week">Weekly</option><option value="month">Monthly</option><option value="quarter">Quarterly</option><option value="year">Annual</option></select>
-    <button type="button" className="mk-btn ghost" onClick={() => download(`NEAS-${label}-posts.csv`, csv([["Status", "Title", "Platforms", "Scheduled", "Campaign", "Author", "Updated"], ...posts.map((p) => [STATUS_LABEL[p.status], p.title, p.platforms.map((x) => PLAT[x]).join("; "), fmt(p.scheduled_at), p.campaign, p.author, fmt(p.updated_at)])]))}>⬇ Excel (CSV)</button>
+  const clicks = s.links.reduce((a, l) => a + (Number(l.clicks) || 0), 0);
+  const rows = [["Post ID", "Status", "Title", "Platforms", "Scheduled", "Campaign", "Author", "Last updated"], ...posts.map((p) => [p.id, STATUS_LABEL[p.status], p.title, p.platforms.map((x) => PLAT[x]).join("; "), fmt(p.scheduled_at), p.campaign, p.author, fmt(p.updated_at)])];
+  return <><H t="Reports" sub="Export a period-based operational report. CSV opens in Excel; PDF uses your browser's print dialog.">
+    <select className="mk-sel" aria-label="Report period" value={period} onChange={(e) => setPeriod(e.target.value as typeof period)}><option value="day">Daily</option><option value="week">Weekly</option><option value="month">Monthly</option><option value="quarter">Quarterly</option><option value="year">Annual</option></select>
+    <button type="button" className="mk-btn ghost" onClick={() => download("NEAS-" + label + "-marketing-report.csv", csv(rows))}>⬇ Excel (CSV)</button>
     <button type="button" className="mk-btn" onClick={() => window.print()}>⎙ Save as PDF</button>
   </H>
-    <div className="mk-card mk-print"><h2 style={{ marginTop: 0 }}>NEAS {label} Marketing Report</h2><p className="mk-mini">{since.toLocaleDateString("en-PH", { dateStyle: "medium" })} – {new Date().toLocaleDateString("en-PH", { dateStyle: "medium" })}</p>
-      <div className="mk-grid4">{(Object.keys(STATUS_LABEL) as Status[]).filter((k) => k !== "approved").map((k) => <div key={k} className="mk-kpi"><small>{STATUS_LABEL[k]}</small><b>{posts.filter((p) => p.status === k).length}</b></div>)}</div>
-      <p className="mk-mini">Store (last 30 days): {s.site.orders30} orders, {peso(s.site.sales30)}. Bio link clicks (all time): {s.links.reduce((a, l) => a + l.clicks, 0)}. Social reach and engagement: unavailable until accounts are connected.</p>
-      <table className="mk-t"><thead><tr><th>Status</th><th>Post</th><th>Platforms</th><th>When</th></tr></thead><tbody>{posts.map((p) => <tr key={p.id}><td>{STATUS_LABEL[p.status]}</td><td>{p.title}</td><td>{p.platforms.map((x) => PLAT[x]).join(", ")}</td><td>{fmt(p.scheduled_at)}</td></tr>)}</tbody></table>
-      {!posts.length && <p className="mk-mini">No post activity in this period.</p>}
-      <div className="mk-label" style={{ marginTop: 14 }}>Activity ({acts.length})</div>{acts.slice(0, 40).map((a) => <div key={a.id} className="mk-log">{fmt(a.at)} · {a.who} · <b>{a.action}</b> {a.detail}</div>)}
+    <div className="mk-card mk-print"><h2 style={{ marginTop: 0 }}>NEAS {label} Marketing Report</h2><p className="mk-mini">{since.toLocaleDateString("en-PH", { dateStyle: "medium" })} – {new Date().toLocaleDateString("en-PH", { dateStyle: "medium" })} · generated {new Date().toLocaleString("en-PH")}</p>
+      <div className="mk-grid4"><div className="mk-kpi"><small>Posts updated</small><b>{posts.length}</b></div><div className="mk-kpi"><small>Published status</small><b>{published.length}</b></div><div className="mk-kpi"><small>Successful platform results</small><b>{successfulResults.length}</b></div><div className="mk-kpi"><small>Activity records</small><b>{acts.length}</b></div></div>
+      <div className="mk-grid3" style={{ marginTop: 12 }}>{(Object.keys(STATUS_LABEL) as Status[]).map((k) => <div key={k} className="mk-kpi"><small>{STATUS_LABEL[k]}</small><b>{posts.filter((p) => p.status === k).length}</b></div>)}</div>
+      <p className="mk-mini" style={{ marginTop: 12 }}>Store (last 30 days): {s.site.orders30} orders · {peso(s.site.sales30)}. Bio link clicks (all-time): {clicks}. {s.reach7 ? "Facebook last-7-day reach: " + s.reach7.reached.toLocaleString("en-PH") + " · views: " + s.reach7.views.toLocaleString("en-PH") + "." : "Facebook reach data has not been refreshed yet; open Analytics to retrieve it."}</p>
+      <div className="mk-label">Post activity · {posts.length}</div><div style={{ overflowX: "auto" }}><table className="mk-t"><thead><tr><th>Status</th><th>Post</th><th>Platforms</th><th>Scheduled</th><th>Last updated</th></tr></thead><tbody>{posts.map((p) => <tr key={p.id}><td>{STATUS_LABEL[p.status]}</td><td>{p.title || "Untitled"}</td><td>{p.platforms.map((x) => PLAT[x]).join(", ") || "—"}</td><td>{fmt(p.scheduled_at)}</td><td>{fmt(p.updated_at)}</td></tr>)}</tbody></table></div>
+      {!posts.length && <Empty icon="⎙" title="No post activity in this period" />}
+      <div className="mk-label" style={{ marginTop: 14 }}>Activity ({acts.length})</div>{acts.slice(0, 100).map((a) => <div key={a.id} className="mk-log">{fmt(a.at)} · {a.who} · <b>{a.action}</b> {a.detail}</div>)}
     </div></>;
 }
-
 function Strategy({ s, can, openCompose }: { s: State; can: Can; openCompose: (p?: Partial<Post>) => void }) {
-  const pillars = s.brand.services.split(/;|\n/).map((x) => x.trim()).filter(Boolean);
-  return <><H t="Content strategy" sub="Your content pillars and an AI planner for campaigns and schedules." />
-    <div className="mk-grid2 wide">
-      <div className="mk-card"><div className="mk-label">Content pillars (from Brands)</div><div className="mk-row">{pillars.map((x) => <span key={x} className="mk-chip on">{x}</span>)}</div>
-        <div className="mk-label" style={{ marginTop: 16 }}>Suggested weekly mix</div>
-        <table className="mk-t"><tbody><tr><td>Mon</td><td>Project showcase (before/after photos)</td></tr><tr><td>Wed</td><td>Safety tip or myth-busting</td></tr><tr><td>Fri</td><td>Equipment / PPE spotlight linking to the Online Store</td></tr><tr><td>Sat</td><td>Team, training or behind-the-scenes (Taglish works well)</td></tr></tbody></table>
-        {can("editor") && <button type="button" className="mk-btn ghost" style={{ marginTop: 10 }} onClick={() => openCompose()}>✎ Start a post</button>}
-      </div>
-      <AiPanel s={s} can={can} defaultTask="campaign" />
-    </div></>;
+  const services = s.brand.services.split(/;|\n/).map((x) => x.trim()).filter(Boolean);
+  const pillars = [
+    { name: "Rope access & facade", idea: "Before-and-after facade maintenance, access planning and inspection insights", kpi: "Qualified building and facility enquiries" },
+    { name: "Wind & renewable energy", idea: "Blade inspection, repair, cleaning and turbine maintenance education", kpi: "Wind farm and O&M enquiries" },
+    { name: "Met mast & telecom", idea: "Tower erection, maintenance, monitoring and field execution stories", kpi: "Tower service opportunities" },
+    { name: "Safety, rescue & training", idea: "Work-at-height lessons, rescue readiness, training and competence", kpi: "Training and consultancy enquiries" },
+    { name: "Industrial & power plant", idea: "Mechanical, electrical, NDT, coating and outage-support capabilities", kpi: "Industrial and plant RFQs" },
+  ];
+  return <><H t="Content strategy" sub="NEAS service-led campaign planning for industrial buyers, asset owners and training prospects." />
+    <div className="mk-grid2 wide"><div className="mk-card"><div className="mk-label">NEAS content pillars</div>
+      <div className="mk-grid2">{pillars.map((p) => <div key={p.name} className="mk-item" style={{ display: "block" }}><b>{p.name}</b><p className="mk-mini">{p.idea}</p><small className="mk-src">Primary KPI: {p.kpi}</small></div>)}</div>
+      <div className="mk-label" style={{ marginTop: 16 }}>Service portfolio from Brand settings</div><div className="mk-row">{services.map((x) => <span key={x} className="mk-chip on">{x}</span>)}</div>
+      {!services.length && <p className="mk-mini">Add the approved service portfolio in Brands to personalize the content plan.</p>}
+      <div className="mk-label" style={{ marginTop: 16 }}>Suggested weekly publishing rhythm</div>
+      <table className="mk-t"><tbody><tr><td>Monday</td><td>Project capability / field execution case study</td></tr><tr><td>Tuesday</td><td>Safety, rescue or technical education</td></tr><tr><td>Wednesday</td><td>Wind, renewable or tower service spotlight</td></tr><tr><td>Thursday</td><td>Client problem → NEAS solution / FAQ</td></tr><tr><td>Friday</td><td>Training, PPE or equipment spotlight with enquiry CTA</td></tr></tbody></table>
+      <p className="mk-mini">Recommended CTA: request a site assessment or quotation at +63 991 426 5886 · www.nextedge-access-solutions.com.</p>
+      {can("editor") && <button type="button" className="mk-btn ghost" style={{ marginTop: 10 }} onClick={() => openCompose()}>✎ Create a campaign post</button>}
+    </div><AiPanel s={s} can={can} defaultTask="campaign" /></div></>;
 }
-
 function Feeds({ s, can, run, openCompose }: { s: State; can: Can; run: Run; openCompose: (p?: Partial<Post>) => void }) {
   const [name, setName] = useState(""); const [url, setUrl] = useState("");
   const [sel, setSel] = useState<number | null>(null); const [items, setItems] = useState<{ title: string; link: string; summary: string }[]>([]); const [msg, setMsg] = useState("");
-  async function open(id: number) { setSel(id); setItems([]); setMsg("Loading…"); try { const r = await call({ action: "feedItems", id }); setItems(r.items); setMsg(r.items.length ? "" : "No items found."); } catch (e) { setMsg((e as Error).message); } }
+  async function open(id: number) { setSel(id); setItems([]); setMsg("Loading…"); try { const r = await call({ action: "feedItems", id }); setItems(Array.isArray(r.items) ? r.items : []); setMsg(r.items?.length ? "" : "No items found in this feed."); } catch (e) { setMsg((e as Error).message); } }
   return <><H t="Feed reader" sub="Follow industry news (RSS/Atom) and turn articles into draft posts." />
     <div className="mk-grid2 wide">
       <div className="mk-card"><div className="mk-label">Your feeds</div>
         {s.feeds.map((f) => <div key={f.id} className={"mk-li" + (sel === f.id ? " sel" : "")}><button type="button" className="mk-link" onClick={() => open(f.id)}>{f.name}</button>{can("manager") && <button type="button" className="mk-x" onClick={() => run({ action: "deleteFeed", id: f.id }, "Removed")}>×</button>}</div>)}
         {!s.feeds.length && <p className="mk-mini">No feeds yet. Add an industry news RSS link below.</p>}
-        {can("manager") && <><label className="mk-f">Name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Wind energy news" /></label><label className="mk-f">RSS / Atom link<input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…/feed" /></label><button type="button" className="mk-btn" onClick={() => run({ action: "saveFeed", name, url }, "Feed added ✓").then(() => { setName(""); setUrl(""); })}>Add feed</button></>}
+        {can("manager") && <><label className="mk-f">Name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Wind energy news" /></label><label className="mk-f">RSS / Atom link<input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…/feed" /></label><button type="button" className="mk-btn" disabled={!name.trim() || !url.trim()} onClick={async () => { const r = await run({ action: "saveFeed", name: name.trim(), url: url.trim() }, "Feed added ✓"); if (r) { setName(""); setUrl(""); } }}>Add feed</button></>}
       </div>
       <div className="mk-card"><div className="mk-label">Articles</div>{msg && <p className="mk-mini">{msg}</p>}
         {items.map((it, i) => <div key={i} className="mk-feeditem"><b>{it.title}</b><p className="mk-mini">{it.summary}</p><div className="mk-row">{it.link && <a className="mk-link" href={it.link} target="_blank" rel="noopener">Open ↗</a>}{can("editor") && <button type="button" className="mk-btn sm ghost" onClick={() => openCompose({ title: it.title.slice(0, 180), body: `${it.title}\n\n${it.summary}\n\nSource: ${it.link}`, platforms: [], status: "draft", scheduled_at: null, media_url: "", campaign: "Industry news", notes: "From feed reader" })}>Create draft</button>}</div></div>)}
@@ -534,15 +628,15 @@ function Automation({ s, can, run }: { s: State; can: Can; run: Run }) {
   const [copied, setCopied] = useState(false);
   const autoCard = <div className="mk-card"><div className="mk-row between"><div className="mk-label" style={{ margin: 0 }}>Publish scheduled posts automatically</div>
       <span className={"mk-pill " + (connected && sc?.last?.at ? "st-published" : connected ? "st-approved" : "st-draft")}>{connected && sc?.last?.at ? "Active" : connected ? "Ready: start the scheduler" : "Waiting for a connected account"}</span></div>
-    <p className="mk-mini">Posts set to <b>Scheduled</b> with a date and time are published when that time arrives, using the same rules as Publish now: marked Published only when every platform confirms, never posted twice. {due} post(s) currently scheduled.</p>
+    <p className="mk-mini">Posts set to <b>Scheduled</b> with a date and time are picked up by the scheduler. Publishing is attempted only for due posts and results are recorded per platform. {due} post(s) currently scheduled.</p>
     <table className="mk-t"><tbody>
       <tr><td>Last run</td><td>{sc?.last?.at ? `${fmt(sc.last.at)} · ${sc.last.published ?? 0} published, ${sc.last.failed ?? 0} failed` : "Not run yet"}</td></tr>
       <tr><td>Daily run (free, built in)</td><td>Every day at 9:00 AM PH via Vercel Cron. {sc?.hasCronSecret ? "✅ CRON_SECRET is set." : <>Add a <code>CRON_SECRET</code> setting in Vercel (any 32+ random characters), then Redeploy, to switch it on.</>}</td></tr>
-      <tr><td>On-time runs (free, recommended)</td><td>Create a free job at <b>cron-job.org</b> that opens the address below every 5 minutes. Posts then go out within 5 minutes of their time.</td></tr>
+      <tr><td>On-time runs (optional)</td><td>Use an external scheduler every 5–15 minutes with an <code>Authorization: Bearer</code> header containing your CRON_SECRET. Keep the secret in Vercel environment settings; do not put it in a public URL.</td></tr>
     </tbody></table>
     {sc?.url ? <div className="mk-row" style={{ marginTop: 8 }}><code style={{ wordBreak: "break-all", fontSize: 12, flex: 1, minWidth: 0 }}>{sc.url}</code><button type="button" className="mk-btn sm ghost" onClick={() => { navigator.clipboard?.writeText(sc.url).then(() => setCopied(true)).catch(() => {}); }}>{copied ? "Copied ✓" : "Copy"}</button></div>
       : <p className="mk-mini">Only marketing admins can see the scheduler address.</p>}
-    <p className="mk-mini">Keep this address private: anyone with it can trigger publishing of posts that are already scheduled.</p>
+    <p className="mk-mini">The endpoint is not a publishing credential. Authentication remains server-side; never share CRON_SECRET or include it in a public link.</p>
   </div>;
   const rules = [
     ["Weekly marketing report by email", "Needs an email provider key and Vercel Cron."],
@@ -676,11 +770,16 @@ function Studio({ s, can, run, openCompose }: { s: State; can: Can; run: Run; op
     const blob: Blob | null = await new Promise((res) => c.toBlob(res, "image/jpeg", 0.9));
     if (!blob) { setBusy(false); setMsg("Couldn't create the image."); return; }
     const fd = new FormData(); fd.append("file", new File([blob], "graphic.jpg", { type: "image/jpeg" }));
-    const r = await fetch("/api/admin/upload", { method: "POST", body: fd }); const j = await r.json().catch(() => ({}));
-    if (!r.ok) { setBusy(false); setMsg(j.error || "Upload failed."); return; }
-    await run({ action: "saveMedia", url: j.url, title: head.slice(0, 150), width: W, height: GH }, "Saved to media library ✓");
-    setBusy(false); setMsg("");
-    if (andUse) openCompose({ title: head.slice(0, 180), body: [head, sub, cta].filter(Boolean).join("\n\n"), platforms: [], status: "draft", scheduled_at: null, media_url: j.url, campaign: "", notes: "Graphic from Creative Studio" });
+    try {
+      const r = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.url) throw new Error(j.error || "Upload failed.");
+      const saved = await run({ action: "saveMedia", url: j.url, title: head.slice(0, 150), width: W, height: GH }, "Saved to media library ✓");
+      if (!saved) throw new Error("The image uploaded, but the media-library record was not saved. Refresh and check the Media Library before retrying.");
+      setMsg("Saved to media library ✓");
+      if (andUse) openCompose({ title: head.slice(0, 180), body: [head, sub, cta].filter(Boolean).join("\n\n"), platforms: [], status: "draft", scheduled_at: null, media_url: j.url, campaign: "", notes: "Graphic from Creative Studio" });
+    } catch (e) { setMsg((e as Error).message); }
+    finally { setBusy(false); }
   }
   function download() { const c = ref.current; if (!c) return; const a = document.createElement("a"); a.href = c.toDataURL("image/jpeg", 0.92); a.download = `NEAS-${SIZES[size][0].replace(/\W+/g, "-")}.jpg`; a.click(); }
   const library = [...(s.media ?? []).map((m) => ({ url: m.url, title: m.title, id: m.id })), ...s.posts.filter((p) => p.media_url && !(s.media ?? []).some((m) => m.url === p.media_url)).map((p) => ({ url: p.media_url, title: p.title, id: 0 }))];
@@ -728,7 +827,7 @@ function Bio({ s, can, run }: { s: State; can: Can; run: Run }) {
           {can("manager") && <><button type="button" className="mk-btn sm ghost" onClick={() => run({ action: "saveLink", id: l.id, label: l.label, url: l.url, sort: l.sort, active: !l.active }, l.active ? "Hidden" : "Shown")}>{l.active ? "Hide" : "Show"}</button><button type="button" className="mk-x" onClick={() => { if (confirm("Delete this link?")) run({ action: "deleteLink", id: l.id }, "Deleted"); }}>×</button></>}</div>)}
         {!s.links.length && <Empty icon="🔗" title="No links yet">Add your first link below.</Empty>}
         {can("manager") && <><label className="mk-f">Button text<input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Shop PPE online" /></label><label className="mk-f">Link<input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://www.nextedge-access-solutions.com/store" /></label>
-          <button type="button" className="mk-btn" onClick={() => run({ action: "saveLink", label, url, sort: s.links.length }, "Link added ✓").then(() => { setLabel(""); setUrl(""); })}>Add link</button></>}
+          <button type="button" className="mk-btn" disabled={!label.trim() || !url.trim()} onClick={async () => { const r = await run({ action: "saveLink", label: label.trim(), url: url.trim(), sort: s.links.length }, "Link added ✓"); if (r) { setLabel(""); setUrl(""); } }}>Add link</button></>}
       </div>
       <div className="mk-card"><div className="mk-label">Preview</div><div className="mk-phone"><div className="mk-logo-mark big">N</div><b>NextEdge Access Solutions</b><small>IRATA Rope Access · Height Safety</small>{s.links.filter((l) => l.active).map((l) => <span key={l.id} className="mk-biobtn">{l.label}</span>)}</div></div>
     </div></>;
@@ -789,7 +888,7 @@ function Settings({ s }: { s: State }) {
         <tr><td>AI generator</td><td><span className={"mk-pill " + (s.aiReady ? "st-approved" : "st-failed")}>{s.aiReady ? "On" : "Add GEMINI_API_KEY below (free)"}</span></td></tr>
         {s.platforms.map((p) => <tr key={p.id}><td>{p.name}</td><td><span className={"mk-pill " + (p.ready ? "st-approved" : "st-draft")}>{p.ready ? "App ready" : "Not set up"}</span></td></tr>)}
       </tbody></table></div>
-      <div className="mk-card"><div className="mk-label">Activity log ({s.activity.length})</div><div className="mk-scroll">{s.activity.map((a) => <div key={a.id} className="mk-log">{fmt(a.at)} · {a.who} · <b>{a.action}</b> {a.detail}</div>)}{!s.activity.length && <p className="mk-mini">No activity yet.</p>}</div></div>
+      <div className="mk-card"><div className="mk-label">Recent activity · last {s.activity.length} records</div><div className="mk-scroll">{s.activity.map((a) => <div key={a.id} className="mk-log">{fmt(a.at)} · {a.who} · <b>{a.action}</b> {a.detail}</div>)}{!s.activity.length && <p className="mk-mini">No activity yet.</p>}</div></div>
     </div></>;
 }
 
