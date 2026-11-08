@@ -1,7 +1,24 @@
 version: 2
 updates:
+  # NEAS uses pnpm (pnpm-lock.yaml), not npm/package-lock.json.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+      day: "monday"
+      time: "04:00"
+      timezone: "Asia/Manila"
+    versioning-strategy: "increase"
+    open-pull-requests-limit: 10
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    # Keep security fixes separate and reviewable; major upgrades are not grouped.
