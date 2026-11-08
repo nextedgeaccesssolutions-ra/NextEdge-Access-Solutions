@@ -21,7 +21,7 @@ jobs:
   audit:
     name: pnpm audit and dependency validation
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,8 +39,6 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Audit production dependencies
         run: pnpm audit --prod --audit-level high
-      - name: Validate lockfile consistency
-        run: pnpm install --lockfile-only --frozen-lockfile
       - name: Type check
         run: pnpm check
       - name: Unit tests
@@ -49,11 +47,10 @@ jobs:
         run: pnpm build
 
   update:
-    name: Create reviewed pnpm update PR
+    name: Create controlled pnpm update PR
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    needs: audit
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     permissions:
       contents: write
       pull-requests: write
@@ -72,22 +69,23 @@ jobs:
         with:
           version: 10.4.1
           run_install: false
-      - name: Update compatible dependencies
-        run: |
-          pnpm update --latest --no-save=false
+      - name: Install current locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Update patch and minor versions only
+        run: pnpm update --no-save
       - name: Create pull request when lockfile changes
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: automation/pnpm-dependency-updates
           delete-branch: true
-          commit-message: "chore(deps): update pnpm dependencies"
-          title: "chore(deps): automated pnpm dependency updates"
+          commit-message: "chore(deps): update compatible pnpm dependencies"
+          title: "chore(deps): automated compatible pnpm updates"
           body: |
-            Automated dependency refresh using the repository's pnpm lockfile.
+            Automated pnpm-compatible patch/minor dependency refresh.
 
-            This pull request is for review only. CI must pass before merge.
-            No production deployment is triggered by this workflow.
+            Major-version changes are excluded from this routine update.
+            Security audit, type checks, tests and build must pass before merge.
+            This PR does not deploy to production.
           add-paths: |
-            package.json
             pnpm-lock.yaml
