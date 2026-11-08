@@ -34,6 +34,7 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:javascript-typescript"
+          output: results
           upload: never
 
       - name: Summarize rate-limiting findings
@@ -42,7 +43,7 @@ jobs:
           node <<'NODE'
           const fs = require("node:fs");
           const path = require("node:path");
-          const dir = "../results";
+          const dir = "results";
           const files = fs.existsSync(dir)
             ? fs.readdirSync(dir).filter((name) => name.endsWith(".sarif")).map((name) => path.join(dir, name))
             : [];
