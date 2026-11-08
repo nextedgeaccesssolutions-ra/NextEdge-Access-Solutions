@@ -2,14 +2,20 @@ import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
 import { createSession } from "@/lib/auth";
 import { bad, ok, str } from "@/lib/http";
+import { clientIp, consumeRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
+  const ipLimit = await consumeRateLimit("auth-signup-ip", clientIp(req), 10, 60 * 60_000);
+  if (!ipLimit.allowed) return rateLimitResponse(ipLimit);
+
   const b = await req.json().catch(() => ({}));
   const email = str(b.email, 320)?.toLowerCase();
   const name = str(b.name, 160);
   const phone = str(b.phone, 40);
   const password = typeof b.password === "string" ? b.password : "";
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return bad("Enter a valid email address.");
+  const emailLimit = await consumeRateLimit("auth-signup-email", email, 3, 24 * 60 * 60_000);
+  if (!emailLimit.allowed) return rateLimitResponse(emailLimit);
   if (!name) return bad("Enter your name or company.");
   if (password.length < 8 || password.length > 200) return bad("Password must be at least 8 characters.");
   const exists = await sql`select 1 from users where email = ${email}`;
