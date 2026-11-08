@@ -24,7 +24,7 @@ function layout(title: string, body: string) {
 <div style="padding:14px 22px;background:#f8fafc;color:#64748b;font-size:12px">NextEdge Access Solutions (NEAS) OPC · +63 991 426 5886 · ${esc(SITE().replace(/^https?:\/\//, ""))}</div></div></div>`;
 }
 
-export async function sendMail(to: string, subject: string, html: string, kind: string): Promise<boolean> {
+export async function sendMail(to: string, subject: string, html: string, kind: string, replyTo?: string): Promise<boolean> {
   await loadConfig().catch(() => {});
   const key = process.env.RESEND_API_KEY;
   let ok = false, error: string | null = null;
@@ -32,12 +32,32 @@ export async function sendMail(to: string, subject: string, html: string, kind: 
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) error = "Invalid recipient";
   else {
     try {
-      const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ from: FROM(), to, subject, html }) });
+      const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ from: FROM(), to, subject, html, ...(replyTo ? { reply_to: replyTo } : {}) }), signal: AbortSignal.timeout(10_000) });
       ok = r.ok; if (!ok) error = ((await r.json().catch(() => ({}))) as { message?: string }).message || `Resend answered ${r.status}`;
-    } catch (e) { error = (e as Error).message; }
+    } catch (e) { error = e instanceof Error ? e.message : "Email provider request failed"; }
   }
   await sql`insert into mk_email_log (recipient, subject, kind, ok, error) values (${to.slice(0, 320)}, ${subject.slice(0, 300)}, ${kind}, ${ok}, ${error})`.catch(() => {});
   return ok;
+}
+
+export type WebsiteInquiry = { name: string; company?: string; email: string; phone?: string; service?: string; message: string };
+export async function sendWebsiteInquiry(inquiry: WebsiteInquiry): Promise<boolean> {
+  const rows = [
+    ["Name", inquiry.name],
+    ["Company", inquiry.company],
+    ["Email", inquiry.email],
+    ["Phone", inquiry.phone],
+    ["Service", inquiry.service],
+  ].filter((row): row is [string, string] => !!row[1]);
+  const details = rows.map(([label, value]) => `<p><b>${esc(label)}:</b> ${esc(value)}</p>`).join("");
+  const message = esc(inquiry.message).replace(/\r?\n/g, "<br>");
+  return sendMail(
+    "info.nextedgeaccesssolutions@gmail.com",
+    `Website inquiry from ${inquiry.name}`,
+    layout("New website inquiry", `${details}<p><b>Message:</b></p><p>${message}</p>`),
+    "website_inquiry",
+    inquiry.email,
+  );
 }
 
 async function orderWithItems(id: number) {

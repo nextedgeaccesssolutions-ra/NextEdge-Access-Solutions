@@ -5,8 +5,9 @@ import { readFileSync } from "node:fs";
 
 const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 if (!url) { console.log("[migrate] No DATABASE_URL set — skipping database setup."); process.exit(0); }
-const sql = postgres(url, { ssl: /localhost|127\.0\.0\.1|host=\/tmp/.test(url) ? false : "require", max: 1 });
+const sql = postgres(url, { ssl: /localhost|127\.0\.0\.1|host=\/tmp/.test(url) ? false : "require", max: 1, connect_timeout: 10 });
 
+async function migrate() {
 await sql`create table if not exists users (
   id serial primary key, email text unique not null, name text not null, phone text,
   password_hash text not null, role text not null default 'customer' check (role in ('customer','admin')),
@@ -16,6 +17,10 @@ await sql`create table if not exists products (
   dealer_price numeric(12,2) not null, price_override numeric(12,2), active boolean not null default true,
   sort int not null default 0)`;
 await sql`create table if not exists settings (key text primary key, value text not null)`;
+await sql`create table if not exists public_rate_limits (
+  scope text not null, key_hash text not null, window_start timestamptz not null,
+  expires_at timestamptz not null, hits int not null, primary key (scope, key_hash))`;
+await sql`create index if not exists public_rate_limits_expiry on public_rate_limits (expires_at)`;
 await sql`create table if not exists orders (
   id serial primary key, reference text unique not null, user_id int not null references users(id),
   status text not null default 'awaiting_payment' check (status in ('awaiting_payment','paid','processing','shipped','completed','cancelled')),
@@ -109,4 +114,10 @@ await sql`alter table users add column if not exists mk_access_ref text`;
 await sql`alter table users add column if not exists mk_access_at timestamptz`;
 await sql`alter table users add column if not exists mk_access_until timestamptz`;
 console.log("[migrate] Database ready.");
-await sql.end();
+}
+
+try {
+  await migrate();
+} finally {
+  await sql.end().catch(() => {});
+}
