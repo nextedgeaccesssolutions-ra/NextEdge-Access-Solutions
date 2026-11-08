@@ -7,13 +7,28 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { publishScheduledPage } from "../scheduled";
 import { allowStoreRequestPreflight, receiveStoreRequest } from "../storeRequests";
-import { createMemoryRateLimiter, getSocketClientKey } from "./rateLimit";
+import { rateLimit } from "express-rate-limit";
 
-const scheduledPublishRateLimit = createMemoryRateLimiter({
+// Standard Express middleware is recognized by static security analysis.
+// Vercel's edge overwrites X-Forwarded-For; app trust is scoped to one hop.
+// Apply a shared Vercel WAF quota as the distributed production control.
+const scheduledPublishRateLimit = rateLimit({
   windowMs: 60_000,
   limit: 10,
-  maxKeys: 2_000,
-  keyGenerator: getSocketClientKey,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+});
+const publicContactRateLimit = rateLimit({
+  windowMs: 60_000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+});
+const storeRequestRateLimit = rateLimit({
+  windowMs: 60_000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
 });
 
 /**
@@ -25,12 +40,17 @@ const scheduledPublishRateLimit = createMemoryRateLimiter({
 export function createApp() {
   const app = express();
 
+  // Vercel overwrites X-Forwarded-For with the public client IP. Trust the
+  // single Vercel proxy hop only in Vercel deployments; trust no proxy locally.
+  app.set("trust proxy", process.env.VERCEL === "1" ? 1 : false);
+
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   registerStorageProxy(app);
   registerOAuthRoutes(app);
 
+  app.use("/api/trpc/publicSite.submitContact", publicContactRateLimit);
   app.use(
     "/api/trpc",
     createExpressMiddleware({
@@ -39,13 +59,10 @@ export function createApp() {
     }),
   );
 
-  app.post("/api/scheduled/publish-page", (req, res, next) => {
-    if (scheduledPublishRateLimit(req, res)) return;
-    next();
-  }, publishScheduledPage);
+  app.post("/api/scheduled/publish-page", scheduledPublishRateLimit, publishScheduledPage);
 
   app.options("/api/public/store-request", allowStoreRequestPreflight);
-  app.post("/api/public/store-request", receiveStoreRequest);
+  app.post("/api/public/store-request", storeRequestRateLimit, receiveStoreRequest);
 
   return app;
 }
