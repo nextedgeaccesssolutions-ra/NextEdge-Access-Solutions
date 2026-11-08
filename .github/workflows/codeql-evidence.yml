@@ -1,0 +1,75 @@
+name: NEAS CodeQL Evidence (no SARIF upload)
+
+on:
+  push:
+    branches: ["fix/**"]
+  pull_request:
+    branches: [main, "fix/scheduled-publish-rate-limit"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neas-codeql-evidence-\${{ github.workflow }}-\${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze JavaScript and TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          build-mode: none
+          queries: security-extended
+
+      - name: Analyze without uploading to Code Scanning
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"
+          upload: never
+
+      - name: Summarize rate-limiting findings
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const dir = "results";
+          const files = fs.existsSync(dir)
+            ? fs.readdirSync(dir).filter((name) => name.endsWith(".sarif")).map((name) => path.join(dir, name))
+            : [];
+          if (!files.length) {
+            console.error("No SARIF result file was produced.");
+            process.exit(1);
+          }
+          const runs = files.flatMap((file) => JSON.parse(fs.readFileSync(file, "utf8")).runs || []);
+          const results = runs.flatMap((run) => run.results || []);
+          const missing = results.filter((result) =>
+            result.ruleId === "js/missing-rate-limiting" ||
+            /missing rate limiting/i.test(result.message?.text || "")
+          );
+          const details = missing.map((result) => {
+            const location = result.locations?.[0]?.physicalLocation;
+            const uri = location?.artifactLocation?.uri || "unknown";
+            const line = location?.region?.startLine || "?";
+            return "- " + uri + ":" + line + " — " + (result.message?.text || result.ruleId);
+          });
+          const summary = [
+            "## NEAS CodeQL evidence",
+            "- SARIF files: " + files.length,
+            "- Total findings: " + results.length,
+            "- Missing-rate-limiting findings: " + missing.length,
+            ...details,
+            ""
+          ].join("\n");
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          console.log(summary);
+          NODE
