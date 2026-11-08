@@ -42,7 +42,7 @@ function isRateLimited(req: Request, res: Response): boolean {
 
   if (!current || current.resetAt <= now) {
     if (requestWindows.size >= MAX_CLIENTS) {
-      for (const [client, entry] of requestWindows) {
+      for (const [client, entry] of Array.from(requestWindows.entries())) {
         if (entry.resetAt <= now) requestWindows.delete(client);
         if (requestWindows.size < MAX_CLIENTS) break;
       }
