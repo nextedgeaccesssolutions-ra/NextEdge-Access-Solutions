@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm build",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "outputDirectory": "dist/public",
+  "rewrites": [
+    {
+      "source": "/manus-storage/(.*)",
+      "destination": "/api/manus-storage/$1"
+    },
+    {
+      "source": "/admin",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/store",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/store-booking",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/github-connector",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/page/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
