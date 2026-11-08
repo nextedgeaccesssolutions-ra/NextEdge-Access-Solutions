@@ -41,10 +41,11 @@ export async function getSetting<T extends object>(key: string, fallback: T): Pr
     if (key === "business") {
       const business = merged as unknown as Business;
       if (business.email?.trim().toLowerCase() === "info.nextedgeaccesssolutions@gmail.com") business.email = "info@nextedge-access-solutions.com";
-      if (!business.street?.trim()) business.street = "B 15 Lot 6, Marilao Grand Villas, Barangay Loma de Gato";
-      if (!business.city?.trim()) business.city = "Marilao";
-      if (!business.region?.trim()) business.region = "Bulacan";
-      if (!business.postal?.trim()) business.postal = "3019";
+      business.street = "B 15 Lot 6, Marilao Grand Villas, Barangay Loma de Gato";
+      business.city = "Marilao";
+      business.region = "Bulacan";
+      business.postal = "3019";
+      business.country = "PH";
     }
     return merged;
   } catch { return fallback; }
