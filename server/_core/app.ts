@@ -44,8 +44,9 @@ export function createApp() {
   // single Vercel proxy hop only in Vercel deployments; trust no proxy locally.
   app.set("trust proxy", process.env.VERCEL === "1" ? 1 : false);
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Bound API payloads while leaving room for the CMS's validated 8 MB media uploads.
+  app.use(express.json({ limit: "16mb" }));
+  app.use(express.urlencoded({ limit: "1mb", extended: true }));
 
   registerStorageProxy(app);
   registerOAuthRoutes(app);

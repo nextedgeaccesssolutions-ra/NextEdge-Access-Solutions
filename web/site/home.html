@@ -810,16 +810,16 @@ body{background:var(--bg);color:var(--fg)}
       <div class="contact-form reveal">
         <form id="contact-form" onsubmit="submitForm(event)">
           <div class="form-row">
-            <div class="form-field"><label>Full Name</label><input type="text" placeholder="Juan dela Cruz" required></div>
-            <div class="form-field"><label>Company</label><input type="text" placeholder="Your Company"></div>
+            <div class="form-field"><label for="contact-name">Full Name</label><input type="text" name="name" id="contact-name" autocomplete="name" placeholder="Juan dela Cruz" required></div>
+            <div class="form-field"><label for="contact-company">Company</label><input type="text" name="company" id="contact-company" autocomplete="organization" placeholder="Your Company"></div>
           </div>
           <div class="form-row">
-            <div class="form-field"><label>Email</label><input type="email" placeholder="you@company.com" required></div>
-            <div class="form-field"><label>Phone</label><input type="tel" placeholder="+63 9XX XXX XXXX"></div>
+            <div class="form-field"><label for="contact-email">Email</label><input type="email" name="email" id="contact-email" autocomplete="email" placeholder="you@company.com" required></div>
+            <div class="form-field"><label for="contact-phone">Phone</label><input type="tel" name="phone" id="contact-phone" autocomplete="tel" placeholder="+63 9XX XXX XXXX"></div>
           </div>
           <div class="form-field">
-            <label>Service Required</label>
-            <select>
+            <label for="contact-service">Service Required</label>
+            <select name="service" id="contact-service">
               <option value="">Select a service…</option>
               <option>Rope Access &amp; Facade Works</option>
               <option>NDT &amp; Industrial Inspection</option>
@@ -830,8 +830,10 @@ body{background:var(--bg);color:var(--fg)}
               <option>Other</option>
             </select>
           </div>
-          <div class="form-field"><label>Message</label><textarea placeholder="Describe your project or inquiry…" required></textarea></div>
+          <div class="form-field"><label for="contact-message">Message</label><textarea name="message" id="contact-message" placeholder="Describe your project or inquiry…" required></textarea></div>
+          <div class="contact-honeypot" aria-hidden="true" style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden"><label for="contact-website">Leave this field empty</label><input type="text" id="contact-website" name="website" tabindex="-1" autocomplete="off"></div>
           <button type="submit" class="form-submit">Send Inquiry</button>
+          <p id="contact-status" class="contact-status" style="min-height:1.5em;margin-top:10px;font-size:13px" role="status" aria-live="polite"></p>
         </form>
       </div>
     </div>
@@ -967,12 +969,40 @@ function closeModal(e){
   document.body.style.overflow='';
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal({target:document.getElementById('modal')});});
-function submitForm(e){
+async function submitForm(e){
   e.preventDefault();
-  const btn=e.target.querySelector('.form-submit');
-  btn.textContent='✓ Inquiry Sent! We\'ll be in touch shortly.';
-  btn.style.background='#16a34a';
+  const form=e.currentTarget;
+  const btn=form.querySelector('.form-submit');
+  const status=document.getElementById('contact-status');
+  if(!btn||!status)return;
   btn.disabled=true;
+  btn.textContent='Sending...';
+  status.textContent='';
+  status.className='contact-status';
+  status.style.color='';
+  try{
+    const payload=Object.fromEntries(new FormData(form).entries());
+    const response=await fetch('/api/contact',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.error||data.message||'Your enquiry could not be sent. Please try again.');
+    form.reset();
+    status.textContent=data.message||'Thank you. Your enquiry has been sent to NEAS.';
+    status.classList.add('success');
+    status.style.color='#16a34a';
+    btn.textContent='✓ Inquiry Sent';
+    btn.style.background='#16a34a';
+  }catch(error){
+    status.textContent=error instanceof Error?error.message:'Network error. Please try again or contact NEAS by phone.';
+    status.classList.add('error');
+    status.style.color='#b91c1c';
+    btn.disabled=false;
+    btn.textContent='Send Inquiry';
+    btn.style.background='';
+  }
 }
 </script>
 
