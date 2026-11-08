@@ -1071,7 +1071,7 @@ var CATALOG=[{"id": "p001", "cat": "Helmets", "code": "6X945", "name": "Work She
 var BANK={name:'NextEdge Access Solutions. NEAS OPC',acct:'0000078251151',swift:'SETCPHMMXXX',bank:'Security Bank Corporation'};
 var ORDER_EMAIL='sales@nextedge-access-solutions.com';
 var markup=DEFAULT_MARKUP, overrides={}, admin=false, db=null, cat='All', q='', cart={}, qty={}, wish={};
-try{cart=JSON.parse(localStorage.getItem('neasCart')||'{}')}catch(e){cart={}}
+try{var savedCart=JSON.parse(localStorage.getItem('neasCart')||'{}');cart=savedCart&&typeof savedCart==='object'&&!Array.isArray(savedCart)?savedCart:{}}catch(e){cart={}}
 try{wish=JSON.parse(localStorage.getItem('neasWish')||'{}')}catch(e){}
 var $=function(id){return document.getElementById(id)};
 function saveCart(){try{localStorage.setItem('neasCart',JSON.stringify(cart))}catch(e){}}
@@ -1100,7 +1100,7 @@ function render(){
     d.querySelector('.q-plus').onclick=function(){qty[p.id]=n+1;render()};
     d.querySelector('.sp-cart').onclick=function(){addToCart(p.id,n);qty[p.id]=1;render()};
     d.querySelector('.sp-buy').onclick=function(){cart={};cart[p.id]=n;qty[p.id]=1;renderCart();render();openCheckout()};
-    if(admin)d.querySelector('.sp-price').onclick=function(){editPrice(p)};
+    
     g.appendChild(d);
   });
 }
@@ -1126,7 +1126,7 @@ function openSpec(p){
   wireCopy();if($('sm-share'))$('sm-share').onclick=function(){shareP(p)};$('sm-buy').onclick=function(){cart={};cart[p.id]=1;renderCart();render();openCheckout()};$('sm-add').onclick=function(){addToCart(p.id,1);closeModal()};
 }
 function openCheckout(){var x=totals();if(!x.n)return;saveCart();location.href='/store';}
-renderCats();render();
+renderCats();render();renderCart();
 function shareP(p){var u=location.origin+'/store/p/'+encodeURIComponent(p.id),t=p.name+' — '+peso(price(p))+' | NEAS Online Store',e=encodeURIComponent;
   if(navigator.share&&matchMedia('(pointer:coarse)').matches){navigator.share({title:t,text:t,url:u}).catch(function(){});return}
   var L=[['Facebook','https://www.facebook.com/sharer/sharer.php?u='+e(u)],['Messenger','fb-messenger://share/?link='+e(u)],['WhatsApp','https://wa.me/?text='+e(t+' '+u)],['Viber','viber://forward?text='+e(t+' '+u)],['X','https://twitter.com/intent/tweet?text='+e(t)+'&url='+e(u)],['LinkedIn','https://www.linkedin.com/sharing/share-offsite/?url='+e(u)],['Email','mailto:?subject='+e(t)+'&body='+e(t+'\n'+u)]];
