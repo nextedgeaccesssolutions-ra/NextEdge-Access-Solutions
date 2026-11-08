@@ -24,22 +24,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
+      # Install pnpm before setup-node resolves the pnpm cache location.
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.4.1
           run_install: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
       - name: Install exactly from lockfile
         run: pnpm install --frozen-lockfile
       - name: Capture production audit report
         id: audit
         continue-on-error: true
-        run: pnpm audit --prod --json > pnpm-audit.json
+        run: pnpm audit --prod --audit-level high --json > pnpm-audit.json
       - name: Upload production audit report
         if: always()
         uses: actions/upload-artifact@v4
@@ -50,7 +51,7 @@ jobs:
       - name: Enforce high and critical advisory gate
         if: steps.audit.outcome == 'failure'
         run: |
-          echo "Production audit found advisories. Download the neas-pnpm-audit-report artifact to inspect the full report."
+          echo "Production audit found high or critical advisories. Download the neas-pnpm-audit-report artifact to inspect the full report."
           exit 1
       - name: Type check
         run: pnpm check
