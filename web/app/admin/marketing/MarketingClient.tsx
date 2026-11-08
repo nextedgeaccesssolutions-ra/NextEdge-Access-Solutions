@@ -106,7 +106,7 @@ export default function MarketingClient() {
         <div className="mk-user"><span className="mk-av">{s.me.name.slice(0, 1).toUpperCase()}</span><span className="mk-hide-sm"><b>{s.me.name}</b><small>{s.me.role}</small></span></div>
       </header>
       <main className="mk-main">
-        {mod === "dashboard" && <Dashboard s={s} go={go} openCompose={openCompose} can={can} run={run} />}
+        {mod === "dashboard" && <Dashboard s={s} go={go} openCompose={openCompose} can={can} run={run} refresh={load} />}
         {mod === "compose" && <Compose s={s} can={can} post={editing} setPost={setEditing} run={run} />}
         {mod === "calendar" && <Calendar posts={posts} can={can} run={run} openCompose={openCompose} />}
         {mod === "inbox" && <Inbox s={s} go={go} can={can} />}
@@ -153,7 +153,7 @@ function PostActions({ p, can, run, onEdit }: { p: Post; can: Can; run: Run; onE
   </div>;
 }
 
-function Dashboard({ s, go, openCompose, can, run }: { s: State; go: (m: Mod) => void; openCompose: (p?: Partial<Post>) => void; can: Can; run: Run }) {
+function Dashboard({ s, go, openCompose, can, run, refresh }: { s: State; go: (m: Mod) => void; openCompose: (p?: Partial<Post>) => void; can: Can; run: Run; refresh: () => Promise<void> }) {
   const now = new Date();
   const today = s.posts.filter((p) => p.scheduled_at && sameDay(new Date(p.scheduled_at), now));
   const pending = s.posts.filter((p) => p.status === "pending");
@@ -161,14 +161,16 @@ function Dashboard({ s, go, openCompose, can, run }: { s: State; go: (m: Mod) =>
   const pubMonth = s.posts.filter((p) => p.status === "published" && new Date(p.updated_at).getMonth() === now.getMonth() && new Date(p.updated_at).getFullYear() === now.getFullYear()).length;
   const hr = now.getHours(); const greet = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
   const goal = s.brand.goal || 0;
+  const connectedCount = (s.accounts ?? []).filter((a) => a.status === "ok").length;
+  const accountErrors = (s.accounts ?? []).filter((a) => a.status !== "ok" || a.error);
   return <>
     <div className="mk-card mk-hero">
       <div><h1>{greet}, {s.me.name.split(" ")[0]} <span className="mk-tag">{s.me.role.toUpperCase()}</span></h1><p>{now.toLocaleDateString("en-PH", { weekday: "long", month: "long", day: "numeric" })} · NextEdge Access Solutions</p></div>
-      <div className="mk-row"><button type="button" className="mk-btn ghost" onClick={() => go("calendar")}>View calendar</button>{can("editor") && <button type="button" className="mk-btn" onClick={() => openCompose()}>+ New Post</button>}</div>
+      <div className="mk-row"><button type="button" className="mk-btn ghost" onClick={() => void refresh()}>↻ Refresh data</button><button type="button" className="mk-btn ghost" onClick={() => go("calendar")}>View calendar</button>{can("editor") && <button type="button" className="mk-btn" onClick={() => openCompose()}>+ New Post</button>}</div>
       <div className="mk-stats">
         <div className="mk-stat"><small>⚠ Need attention</small><b>{pending.length + failed.length}</b><span>items</span></div>
         <div className="mk-stat"><small>◷ Scheduled today</small><b>{today.length}</b><span>posts</span></div>
-        <div className="mk-stat"><small>✉ Unread inbox</small><b>—</b><span>not connected</span></div>
+        <div className="mk-stat"><small>◎ Connected social accounts</small><b>{connectedCount}</b><span>{s.accounts?.length ?? 0} account records · <button type="button" className="mk-link" onClick={() => go("accounts")}>Manage accounts →</button></span></div>
         <div className="mk-stat"><small>⚑ Monthly goal</small><b>{pubMonth} / {goal || "unlimited"}</b><span>published{goal ? "" : " · unlimited posting"}</span>{goal > 0 && <div className="mk-bar"><i style={{ width: Math.min(100, (pubMonth / goal) * 100) + "%" }} /></div>}</div>
       </div>
     </div>
@@ -179,6 +181,11 @@ function Dashboard({ s, go, openCompose, can, run }: { s: State; go: (m: Mod) =>
       <button type="button" className="mk-btn ghost" onClick={() => go("reports")}>⎙ Run Report</button>
       <button type="button" className="mk-btn ghost" onClick={() => go("strategy")}>✦ AI Content</button>
     </div></div>
+    <div className="mk-card"><div className="mk-label between">Connection health <button type="button" className="mk-link" onClick={() => go("accounts")}>Manage connections →</button></div>
+      <div className="mk-grid3">{s.platforms.map((p) => <div key={p.id} className="mk-item"><div><b>{p.name}</b><small>{p.ready ? "Credentials configured" : p.needs || "Not configured"}</small></div><span className={"mk-pill " + (p.ready ? "st-published" : "st-failed")}>{p.ready ? "Ready" : "Needs setup"}</span></div>)}</div>
+      {accountErrors.length > 0 && <div className="mk-note" style={{ marginTop: 12 }}>{accountErrors.length} connected account(s) need attention. Open Social Accounts for details.</div>}
+      {(s.accounts ?? []).length > 0 && <div className="mk-mini" style={{ marginTop: 10 }}>{connectedCount} of {s.accounts!.length} account records are healthy.</div>}
+    </div>
     {(pending.length > 0 || failed.length > 0) && <div className="mk-card"><div className="mk-label">Action items <span className="mk-badge">{pending.length + failed.length}</span></div>
       {[...failed, ...pending].map((p) => <div key={p.id} className={"mk-item " + (p.status === "failed" ? "bad" : "warn")}><div><b>{p.status === "failed" ? "Failed: " : "Waiting for approval: "}{p.title || "Untitled"}</b><small>{p.author} · updated {fmt(p.updated_at)}</small></div><PostActions p={p} can={can} run={run} onEdit={() => openCompose(p)} /></div>)}
     </div>}
