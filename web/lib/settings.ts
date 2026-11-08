@@ -27,8 +27,8 @@ export const DEFAULT_SOCIAL: Social = {
   x: "",
 };
 export const DEFAULT_BUSINESS: Business = {
-  name: "NextEdge Access Solutions. (NEAS) OPC", phone: "+63 991 426 5886", email: "info.nextedgeaccesssolutions@gmail.com",
-  street: "", city: "", region: "", postal: "", country: "PH", hours: "Mo-Su 00:00-23:59", logo: "/img/logo.png",
+  name: "NextEdge Access Solutions OPC", phone: "+63 991 426 5886", email: "info@nextedge-access-solutions.com",
+  street: "B 15 Lot 6, Marilao Grand Villas, Barangay Loma de Gato", city: "Marilao", region: "Bulacan", postal: "3019", country: "PH", hours: "Mo-Su 00:00-23:59", logo: "/img/logo.png",
 };
 
 export async function getSetting<T extends object>(key: string, fallback: T): Promise<T> {
@@ -36,7 +36,17 @@ export async function getSetting<T extends object>(key: string, fallback: T): Pr
     const rows = await sql`select value from settings where key = ${key}`;
     if (!rows[0]) return fallback;
     const v = JSON.parse(rows[0].value);
-    return v && typeof v === "object" ? { ...fallback, ...v } : fallback;
+    if (!v || typeof v !== "object") return fallback;
+    const merged = { ...fallback, ...v } as T;
+    if (key === "business") {
+      const business = merged as unknown as Business;
+      if (business.email?.trim().toLowerCase() === "info.nextedgeaccesssolutions@gmail.com") business.email = "info@nextedge-access-solutions.com";
+      if (!business.street?.trim()) business.street = "B 15 Lot 6, Marilao Grand Villas, Barangay Loma de Gato";
+      if (!business.city?.trim()) business.city = "Marilao";
+      if (!business.region?.trim()) business.region = "Bulacan";
+      if (!business.postal?.trim()) business.postal = "3019";
+    }
+    return merged;
   } catch { return fallback; }
 }
 export async function setSetting(key: string, value: unknown) {
