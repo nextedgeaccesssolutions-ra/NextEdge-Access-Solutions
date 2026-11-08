@@ -628,15 +628,15 @@ function Automation({ s, can, run }: { s: State; can: Can; run: Run }) {
   const [copied, setCopied] = useState(false);
   const autoCard = <div className="mk-card"><div className="mk-row between"><div className="mk-label" style={{ margin: 0 }}>Publish scheduled posts automatically</div>
       <span className={"mk-pill " + (connected && sc?.last?.at ? "st-published" : connected ? "st-approved" : "st-draft")}>{connected && sc?.last?.at ? "Active" : connected ? "Ready: start the scheduler" : "Waiting for a connected account"}</span></div>
-    <p className="mk-mini">Posts set to <b>Scheduled</b> with a date and time are published when that time arrives, using the same rules as Publish now: marked Published only when every platform confirms, never posted twice. {due} post(s) currently scheduled.</p>
+    <p className="mk-mini">Posts set to <b>Scheduled</b> with a date and time are picked up by the scheduler. Publishing is attempted only for due posts and results are recorded per platform. {due} post(s) currently scheduled.</p>
     <table className="mk-t"><tbody>
       <tr><td>Last run</td><td>{sc?.last?.at ? `${fmt(sc.last.at)} · ${sc.last.published ?? 0} published, ${sc.last.failed ?? 0} failed` : "Not run yet"}</td></tr>
       <tr><td>Daily run (free, built in)</td><td>Every day at 9:00 AM PH via Vercel Cron. {sc?.hasCronSecret ? "✅ CRON_SECRET is set." : <>Add a <code>CRON_SECRET</code> setting in Vercel (any 32+ random characters), then Redeploy, to switch it on.</>}</td></tr>
-      <tr><td>On-time runs (free, recommended)</td><td>Create a free job at <b>cron-job.org</b> that opens the address below every 5 minutes. Posts then go out within 5 minutes of their time.</td></tr>
+      <tr><td>On-time runs (optional)</td><td>Use an external scheduler every 5–15 minutes with an <code>Authorization: Bearer</code> header containing your CRON_SECRET. Keep the secret in Vercel environment settings; do not put it in a public URL.</td></tr>
     </tbody></table>
     {sc?.url ? <div className="mk-row" style={{ marginTop: 8 }}><code style={{ wordBreak: "break-all", fontSize: 12, flex: 1, minWidth: 0 }}>{sc.url}</code><button type="button" className="mk-btn sm ghost" onClick={() => { navigator.clipboard?.writeText(sc.url).then(() => setCopied(true)).catch(() => {}); }}>{copied ? "Copied ✓" : "Copy"}</button></div>
       : <p className="mk-mini">Only marketing admins can see the scheduler address.</p>}
-    <p className="mk-mini">Keep this address private: anyone with it can trigger publishing of posts that are already scheduled.</p>
+    <p className="mk-mini">The endpoint is not a publishing credential. Authentication remains server-side; never share CRON_SECRET or include it in a public link.</p>
   </div>;
   const rules = [
     ["Weekly marketing report by email", "Needs an email provider key and Vercel Cron."],
@@ -770,11 +770,16 @@ function Studio({ s, can, run, openCompose }: { s: State; can: Can; run: Run; op
     const blob: Blob | null = await new Promise((res) => c.toBlob(res, "image/jpeg", 0.9));
     if (!blob) { setBusy(false); setMsg("Couldn't create the image."); return; }
     const fd = new FormData(); fd.append("file", new File([blob], "graphic.jpg", { type: "image/jpeg" }));
-    const r = await fetch("/api/admin/upload", { method: "POST", body: fd }); const j = await r.json().catch(() => ({}));
-    if (!r.ok) { setBusy(false); setMsg(j.error || "Upload failed."); return; }
-    await run({ action: "saveMedia", url: j.url, title: head.slice(0, 150), width: W, height: GH }, "Saved to media library ✓");
-    setBusy(false); setMsg("");
-    if (andUse) openCompose({ title: head.slice(0, 180), body: [head, sub, cta].filter(Boolean).join("\n\n"), platforms: [], status: "draft", scheduled_at: null, media_url: j.url, campaign: "", notes: "Graphic from Creative Studio" });
+    try {
+      const r = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.url) throw new Error(j.error || "Upload failed.");
+      const saved = await run({ action: "saveMedia", url: j.url, title: head.slice(0, 150), width: W, height: GH }, "Saved to media library ✓");
+      if (!saved) throw new Error("The image uploaded, but the media-library record was not saved. Refresh and check the Media Library before retrying.");
+      setMsg("Saved to media library ✓");
+      if (andUse) openCompose({ title: head.slice(0, 180), body: [head, sub, cta].filter(Boolean).join("\n\n"), platforms: [], status: "draft", scheduled_at: null, media_url: j.url, campaign: "", notes: "Graphic from Creative Studio" });
+    } catch (e) { setMsg((e as Error).message); }
+    finally { setBusy(false); }
   }
   function download() { const c = ref.current; if (!c) return; const a = document.createElement("a"); a.href = c.toDataURL("image/jpeg", 0.92); a.download = `NEAS-${SIZES[size][0].replace(/\W+/g, "-")}.jpg`; a.click(); }
   const library = [...(s.media ?? []).map((m) => ({ url: m.url, title: m.title, id: m.id })), ...s.posts.filter((p) => p.media_url && !(s.media ?? []).some((m) => m.url === p.media_url)).map((p) => ({ url: p.media_url, title: p.title, id: 0 }))];
