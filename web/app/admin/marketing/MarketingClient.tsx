@@ -15,7 +15,7 @@ type State = {
   site: { orders30: number; sales30: number; products: number; customers: number };
   accounts?: { id: number; platform: string; name: string; status: string; error: string; expires_at: string | null }[];
   results?: { post_id: number; platform: string; ok: boolean; remote_id: string; error: string; at: string }[];
-  connectReady?: { facebook: boolean; linkedin: boolean; google?: boolean; tiktok?: boolean };
+  connectReady?: { facebook: boolean; linkedin: boolean; linkedinPages?: boolean; google?: boolean; tiktok?: boolean };
   media?: { id: number; url: string; title: string; width: number | null; height: number | null; at: string }[];
   automation?: { orderAlert: boolean; orderConfirm: boolean; orderStatus: boolean; approval: boolean; publishFail: boolean; alertEmail: string };
   emailReady?: boolean;
@@ -540,7 +540,7 @@ function Accounts({ s, can }: { s: State; can: Can }) {
         {mine.map((a) => <div key={a.id} className="mk-li" style={{ cursor: "default" }}><div style={{ flex: 1 }}><b>{a.name}</b><small>{a.status === "ok" ? "Healthy" + (a.expires_at ? " · token renews by reconnecting before " + new Date(a.expires_at).toLocaleDateString("en-PH") : "") : "⚠ " + a.error}</small></div>
           {can("manager") && <button type="button" className="mk-btn sm ghost danger" disabled={busy === a.id} onClick={async () => { if (!confirm(`Disconnect ${a.name}?`)) return; setBusy(a.id); try { await call({ action: "disconnect", id: a.id }); setMsg(a.name + " disconnected."); location.reload(); } catch (e) { setMsg((e as Error).message); setBusy(null); } }}>Disconnect</button>}</div>)}
         <p className="mk-mini">{c.note}{!c.ready && c.needs ? <><br />Needs: <code>{c.needs}</code> (Settings &amp; Logs → API keys)</> : null}</p>
-        {c.connect && (c.ready && can("manager") ? <><a className="mk-btn sm" href={`/api/admin/social/connect/${c.connect}`}>{mine.length ? "Reconnect" : "Connect"}</a>{c.connect === "linkedin" && s.connectReady?.linkedinPages && can("manager") && <a className="mk-btn sm ghost" style={{ marginLeft: 6 }} href="/api/admin/social/connect/linkedin?pages=1" title="Uses the separate LinkedIn Company Page app credentials">+ Connect LinkedIn Page</a>}</> : can("admin") && !s.tenant && c.needs ? <a className="mk-btn sm ghost" href="?m=settings" title="Add this platform's keys first">🔑 Add keys to connect</a> : <button type="button" className="mk-btn sm ghost" disabled>Connect</button>)}
+        {c.connect && ((c.ready || (c.connect === "linkedin" && s.connectReady?.linkedinPages)) && can("manager") ? <>{c.ready && <a className="mk-btn sm" href={`/api/admin/social/connect/${c.connect}`}>{mine.length ? "Reconnect" : "Connect"}</a>}{c.connect === "linkedin" && s.connectReady?.linkedinPages && <a className="mk-btn sm ghost" style={{ marginLeft: 6 }} href="/api/admin/social/connect/linkedin?pages=1" title="Uses the separate LinkedIn Company Page app credentials">+ Connect LinkedIn Page</a>}</> : can("admin") && !s.tenant && c.needs ? <a className="mk-btn sm ghost" href="?m=settings" title="Add this platform's keys first">🔑 Add keys to connect</a> : <button type="button" className="mk-btn sm ghost" disabled>Connect</button>)}
       </div>; })}</div>
     <div className="mk-card"><div className="mk-label">App settings to copy into each developer app</div>
       <table className="mk-t"><tbody>
