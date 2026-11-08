@@ -48,7 +48,8 @@ const NAV: { group: string; items: [Mod, string, string][] }[] = [
 
 const fmt = (iso: string | null) => iso ? new Date(iso).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" }) : "—";
 const peso = (n: number) => "₱" + Math.round(n).toLocaleString("en-PH");
-const toLocalInput = (iso: string | null) => { if (!iso) return ""; const d = new Date(iso); const z = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; };
+const toLocalInput = (iso: string | null) => { if (!iso) return ""; const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso)); const v = Object.fromEntries(parts.map((p) => [p.type, p.value])); return `${v.year}-${v.month}-${v.day}T${v.hour}:${v.minute}`; };
+const fromPhInput = (value: string) => value ? new Date(`${value}:00+08:00`).toISOString() : null;
 const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
 async function call(body: unknown) {
@@ -216,10 +217,38 @@ function Compose({ s, can, post, setPost, run }: { s: State; can: Can; post: Par
   const history = p.id ? s.activity.filter((a) => a.post_id === p.id) : [];
   const limits: Record<string, number> = { instagram: 2200, linkedin: 3000, tiktok: 2200, facebook: 63206, youtube: 5000, google_business: 1500 };
   const over = (p.platforms ?? []).filter((x) => (p.body ?? "").length > limits[x]);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [formError, setFormError] = useState("");
+  async function uploadMedia(file?: File) {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) { setFormError("Upload a JPG, PNG, WebP or GIF image. For video, use a direct HTTPS video URL."); return; }
+    if (file.size > 3 * 1024 * 1024) { setFormError("Image must be 3 MB or smaller."); return; }
+    setUploading(true); setFormError("");
+    try {
+      const fd = new FormData(); fd.append("file", file);
+      const response = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.url) throw new Error(result.error || "Image upload failed.");
+      set("media_url", result.url);
+    } catch (e) { setFormError((e as Error).message); }
+    finally { setUploading(false); }
+  }
   async function save(submit = false) {
-    const r = (await run({ action: "savePost", id: p.id, title: p.title, body: p.body, platforms: p.platforms, scheduled_at: p.scheduled_at || null, media_url: p.media_url, campaign: p.campaign, notes: p.notes }, submit ? "Saved" : "Saved ✓")) as { id?: number } | null;
-    if (r?.id && submit) await run({ action: "transition", id: r.id, to: "pending" }, "Submitted for review ✓");
-    if (r?.id) setPost(null);
+    setFormError("");
+    if (!(p.body ?? "").trim()) { setFormError("Add post text before saving."); return; }
+    if (submit && !(p.platforms ?? []).length) { setFormError("Select at least one platform before submitting for review."); return; }
+    if (over.length) { setFormError("Shorten the post text to fit: " + over.map((x) => PLAT[x]).join(", ") + "."); return; }
+    if (p.media_url && !/^(https:\/\/|\/api\/img\/[a-f0-9]{16}$)/.test(p.media_url)) { setFormError("Media must be a secure HTTPS link or an uploaded NEAS image."); return; }
+    setSaving(true);
+    try {
+      const r = (await run({ action: "savePost", id: p.id, title: p.title, body: p.body, platforms: p.platforms, scheduled_at: p.scheduled_at || null, media_url: p.media_url, campaign: p.campaign, notes: p.notes }, "Draft saved ✓")) as { id?: number } | null;
+      if (r?.id && submit) {
+        const moved = await run({ action: "transition", id: r.id, to: "pending" }, "Submitted for review ✓");
+        if (!moved) return;
+      }
+      if (r?.id) setPost(null);
+    } finally { setSaving(false); }
   }
   return <>
     <H t={p.id ? "Edit post" : "Compose post"} sub="Write once, tailor per platform. Posts follow Draft → Pending review → Approved → Scheduled → Published.">
@@ -233,13 +262,17 @@ function Compose({ s, can, post, setPost, run }: { s: State; can: Can; post: Par
         <div className="mk-mini">{(p.body ?? "").length} characters{over.length > 0 && <span className="mk-warn"> · too long for {over.map((x) => PLAT[x]).join(", ")}</span>}</div>
         <div className="mk-f">Platforms<div className="mk-row">{Object.entries(PLAT).map(([id, name]) => <label key={id} className={"mk-chip" + ((p.platforms ?? []).includes(id) ? " on" : "")}><input type="checkbox" disabled={locked} checked={(p.platforms ?? []).includes(id)} onChange={(e) => set("platforms", e.target.checked ? [...(p.platforms ?? []), id] : (p.platforms ?? []).filter((x) => x !== id))} />{name}</label>)}</div></div>
         <div className="mk-grid2">
-          <label className="mk-f">Publish date &amp; time (PH)<input type="datetime-local" disabled={locked} value={toLocalInput(p.scheduled_at ?? null)} onChange={(e) => set("scheduled_at", e.target.value ? new Date(e.target.value).toISOString() : null)} /></label>
+          <label className="mk-f">Publish date &amp; time (Asia/Manila)<input type="datetime-local" disabled={locked} value={toLocalInput(p.scheduled_at ?? null)} onChange={(e) => set("scheduled_at", fromPhInput(e.target.value))} /><span className="mk-mini">Times are saved in Philippine time (UTC+8), regardless of your computer time zone.</span></label>
           <label className="mk-f">Campaign<input value={p.campaign ?? ""} disabled={locked} onChange={(e) => set("campaign", e.target.value)} placeholder="e.g. Q4 Wind Services" /></label>
         </div>
-        <label className="mk-f">Image / video link<input value={p.media_url ?? ""} disabled={locked} onChange={(e) => set("media_url", e.target.value)} placeholder="https://…" /></label>
-        {p.media_url && /^https?:|^\/api\/img\//.test(p.media_url) && <img src={p.media_url} alt="" className="mk-prev" onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />}
+        <label className="mk-f">Upload image<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={locked || uploading || saving} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) void uploadMedia(file); }} /><span className="mk-mini">JPG, PNG, WebP or GIF · maximum 3 MB. Uploaded images are stored in the NEAS media database.</span></label>
+        {uploading && <div className="mk-note">Uploading image…</div>}
+        <label className="mk-f">Or paste an image / video URL<input value={p.media_url ?? ""} disabled={locked} onChange={(e) => set("media_url", e.target.value)} placeholder="https://… or uploaded NEAS image" /></label>
+        {p.media_url && (/^\/api\/img\//.test(p.media_url) || /\.(png|jpe?g|gif|webp)(\?.*)?$/i.test(p.media_url)) && <img src={p.media_url} alt="Post media preview" className="mk-prev" onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />}
+        {p.media_url && /\.(mp4|webm|ogg)(\?.*)?$/i.test(p.media_url) && <video src={p.media_url} controls playsInline className="mk-prev" />}
+        {formError && <div className="mk-note" role="alert">{formError}</div>}
         <label className="mk-f">Internal notes<textarea rows={2} value={p.notes ?? ""} disabled={locked} onChange={(e) => set("notes", e.target.value)} /></label>
-        {!locked && <div className="mk-row"><button type="button" className="mk-btn ghost" onClick={() => save(false)}>Save draft</button>{(!p.id || p.status === "draft" || p.status === "failed") && <button type="button" className="mk-btn" onClick={() => save(true)}>Save &amp; submit for review</button>}</div>}
+        {!locked && <div className="mk-row"><button type="button" className="mk-btn ghost" disabled={saving || uploading} onClick={() => save(false)}>{saving ? "Saving…" : "Save draft"}</button>{(!p.id || p.status === "draft" || p.status === "failed") && <button type="button" className="mk-btn" disabled={saving || uploading} onClick={() => save(true)}>{saving ? "Saving…" : "Save &amp; submit for review"}</button>}</div>}
         {p.id && <div style={{ marginTop: 12 }}><PostActions p={p as Post} can={can} run={async (b, m) => { const r = await run(b, m); setPost(null); return r; }} />{can("manager") && <button type="button" className="mk-btn sm ghost danger" style={{ marginTop: 8 }} onClick={() => { if (confirm("Delete this post?")) run({ action: "deletePost", id: p.id }, "Deleted").then(() => setPost(null)); }}>Delete post</button>}</div>}
         {p.id && (s.results ?? []).some((r) => r.post_id === p.id) && <><div className="mk-label" style={{ marginTop: 16 }}>Publishing results</div>{(s.results ?? []).filter((r) => r.post_id === p.id).map((r, i) => <div key={i} className="mk-log">{r.ok ? "✅" : "❌"} <b>{PLAT[r.platform] ?? r.platform}</b> · {fmt(r.at)}{r.error && <div className="mk-warn">{r.error}</div>}</div>)}</>}
         {history.length > 0 && <><div className="mk-label" style={{ marginTop: 16 }}>Audit trail</div>{history.map((a) => <div key={a.id} className="mk-log"><b>{a.action}</b> · {a.who} · {fmt(a.at)}{a.detail && <div className="mk-mini">{a.detail}</div>}</div>)}</>}
