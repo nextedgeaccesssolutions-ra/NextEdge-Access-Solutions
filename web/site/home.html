@@ -1071,8 +1071,10 @@ var CATALOG=[{"id": "p001", "cat": "Helmets", "code": "6X945", "name": "Work She
 var BANK={name:'NextEdge Access Solutions. NEAS OPC',acct:'0000078251151',swift:'SETCPHMMXXX',bank:'Security Bank Corporation'};
 var ORDER_EMAIL='sales@nextedge-access-solutions.com';
 var markup=DEFAULT_MARKUP, overrides={}, admin=false, db=null, cat='All', q='', cart={}, qty={}, wish={};
+try{cart=JSON.parse(localStorage.getItem('neasCart')||'{}')}catch(e){cart={}}
 try{wish=JSON.parse(localStorage.getItem('neasWish')||'{}')}catch(e){}
 var $=function(id){return document.getElementById(id)};
+function saveCart(){try{localStorage.setItem('neasCart',JSON.stringify(cart))}catch(e){}}
 var peso=function(n){return '₱'+Math.round(n).toLocaleString('en-PH')};
 var esc=function(s){var d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML};
 function price(p){if(p.live!=null)return p.live;var o=overrides[p.id];return (o!=null&&o!=='')?Number(o):Math.ceil(p.dealer*(1+markup/100)/5)*5;}
@@ -1103,7 +1105,7 @@ function render(){
   });
 }
 function totals(){var n=0,t=0;Object.keys(cart).forEach(function(id){n+=cart[id];t+=cart[id]*price(byId(id))});return {n:n,t:t}}
-function renderCart(){var x=totals();$('store-quote').hidden=!x.n;$('sq-count').textContent=x.n;$('sq-total').textContent=peso(x.t);}
+function renderCart(){var x=totals();$('store-quote').hidden=!x.n;$('sq-count').textContent=x.n;$('sq-total').textContent=peso(x.t);saveCart();}
 $('sq-clear').onclick=function(){cart={};renderCart();render()};
 $('sq-send').onclick=function(){openCheckout()};
 $('store-q').oninput=function(e){q=e.target.value.trim().toLowerCase();render()};
@@ -1123,35 +1125,7 @@ function openSpec(p){
   bankHtml()+'<div class="sp-btns"><button type="button" class="sp-buy" id="sm-buy">BUY NOW</button><button type="button" class="sp-cart" id="sm-add">ADD TO CART</button></div>');
   wireCopy();if($('sm-share'))$('sm-share').onclick=function(){shareP(p)};$('sm-buy').onclick=function(){cart={};cart[p.id]=1;renderCart();render();openCheckout()};$('sm-add').onclick=function(){addToCart(p.id,1);closeModal()};
 }
-function openCheckout(){
-  var x=totals();if(!x.n)return;
-  var ref='NEAS-'+new Date().toISOString().slice(2,10).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
-  var rows=Object.keys(cart).map(function(id){var p=byId(id);return '<tr><td>'+esc(p.name)+(p.code?'<small>'+esc(p.code)+'</small>':'')+'</td><td>'+cart[id]+'</td><td>'+peso(cart[id]*price(p))+'</td></tr>'}).join('');
-  openModal('<button type="button" class="sm-close" aria-label="Close">×</button><h3>Checkout</h3><div class="sm-ref">Order reference: <b>'+ref+'</b></div>'+
-   '<table class="sm-order"><tr><th>Item</th><th>Qty</th><th>Amount</th></tr>'+rows+'<tr class="sm-tot"><td>Total</td><td>'+x.n+'</td><td>'+peso(x.t)+'</td></tr></table>'+
-   bankHtml()+'<ol class="sm-steps"><li>Transfer the total to the account above. Use <b>'+ref+'</b> as the reference.</li><li>Fill in your details and send the order.</li><li>Email or Viber your deposit slip; we confirm stock and delivery.</li></ol>'+
-   '<form id="sm-form" class="sm-form"><input name="name" placeholder="Full name / Company" required><input name="phone" placeholder="Mobile number" required><input name="email" type="email" placeholder="Email"><textarea name="addr" placeholder="Delivery address" rows="2" required></textarea><label class="sm-slip"><span>📎 Upload payment slip <small>(photo or PDF of your deposit/transfer receipt)</small></span><input type="file" name="slip" accept="image/*,application/pdf"></label><div class="sm-slip-prev" id="sm-slip-prev"></div>'+
-   '<button type="submit" class="sp-buy">SEND ORDER</button></form><p class="sm-fine">Prices subject to stock confirmation. Payment is verified manually by NEAS before release.</p>');
-  wireCopy();
-  var slipIn=MB.querySelector('input[name=slip]');slipIn.onchange=function(){var fl=slipIn.files[0],pv=$('sm-slip-prev');pv.innerHTML='';if(!fl)return;if(fl.size>10*1024*1024){pv.textContent='File is over 10 MB — please choose a smaller photo.';slipIn.value='';return}if(/^image\//.test(fl.type)){var im=document.createElement('img');im.src=URL.createObjectURL(fl);pv.appendChild(im)}var t=document.createElement('span');t.textContent='✓ '+fl.name;pv.appendChild(t)};
-  $('sm-form').onsubmit=function(e){e.preventDefault();var f=e.target;var slip=slipIn.files[0];
-    var lines=Object.keys(cart).map(function(id){var p=byId(id);return '- '+cart[id]+' x '+p.name+(p.code?' ('+p.code+')':'')+' = '+peso(cart[id]*price(p))});
-    var body='Order reference: '+ref+'\n\n'+lines.join('\n')+'\nTOTAL: '+peso(x.t)+'\n\nPayment: Bank transfer to '+BANK.bank+' '+BANK.acct+'\n\nName: '+f.name.value+'\nMobile: '+f.phone.value+'\nEmail: '+f.email.value+'\nDelivery address: '+f.addr.value;
-    body+='\nPayment slip: '+(slip?'attached ('+slip.name+')':'to follow');
-    var done=function(how){MB.querySelector('.sm-form').outerHTML='<div class="sm-done">✓ Order '+how+'. Reference <b>'+ref+'</b>.'+(slip&&how!=='shared'?'<br><b>Please attach your payment slip ('+esc(slip.name)+') to that email before sending</b> — browsers cannot attach files automatically.':'')+'<br>You can also send the slip by Viber to +63 991 426 5886 or email '+ORDER_EMAIL+'.</div>'};
-    if(slip&&navigator.canShare&&navigator.canShare({files:[slip]})){navigator.share({files:[slip],title:'Online order '+ref,text:'To: '+ORDER_EMAIL+'\n\n'+body}).then(function(){done('shared')},function(){location.href='mailto:'+ORDER_EMAIL+'?subject='+encodeURIComponent('Online order '+ref)+'&body='+encodeURIComponent(body);done('opened in your email app')});return}
-    location.href='mailto:'+ORDER_EMAIL+'?subject='+encodeURIComponent('Online order '+ref)+'&body='+encodeURIComponent(body);done('opened in your email app');
-  };
-}
-function setStatus(t){$('store-admin-status').textContent=t}
-function editPrice(p){
-  var cur=overrides[p.id]!=null?overrides[p.id]:'';
-  var v=prompt('Price for '+p.name+' (₱). Leave blank to use dealer + '+markup+'% markup.',cur);
-  if(v===null)return;v=v.replace(/[₱,\s]/g,'');
-  if(v!==''&&isNaN(Number(v))){setStatus('Not a number');return}
-  setStatus('Saving…');
-  db.doc('prices/'+p.id).set({price:v===''?null:Number(v)}).then(function(){setStatus('Saved ✓')},function(e){setStatus('Not saved: '+(e&&e.code||'error'))});
-}
+function openCheckout(){var x=totals();if(!x.n)return;saveCart();location.href='/store';}
 renderCats();render();
 function shareP(p){var u=location.origin+'/store/p/'+encodeURIComponent(p.id),t=p.name+' — '+peso(price(p))+' | NEAS Online Store',e=encodeURIComponent;
   if(navigator.share&&matchMedia('(pointer:coarse)').matches){navigator.share({title:t,text:t,url:u}).catch(function(){});return}
@@ -1160,26 +1134,9 @@ function shareP(p){var u=location.origin+'/store/p/'+encodeURIComponent(p.id),t=
   $('sm-copylink').onclick=function(){(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){$('sm-copylink').textContent='Copied ✓'},function(){prompt('Copy link:',u)})};}
 function loadLive(){fetch('/api/products',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(d){var a=d&&(d.products||d.data||d);if(!Array.isArray(a)||!a.length)return;
   var seen={},keep=[];a.slice().sort(function(x,y){return (y.id[0]==='s')-(x.id[0]==='s')||(!!y.image)-(!!x.image)}).forEach(function(x){var k=(x.name+'|'+(x.code||'')).toLowerCase().replace(/\s+/g,' ');if(!seen[k]){seen[k]=1;keep.push(x)}});a=a.filter(function(x){return keep.indexOf(x)>-1});CATALOG.length=0;a.forEach(function(x){CATALOG.push({id:x.id,cat:x.category||'Other',code:x.code||'',name:x.name,dealer:0,live:Number(x.price),image:x.image||'',desc:x.description||'',features:x.features||'',specs:/^(https?:\/\/|\/)/i.test(x.specs_url||'')?x.specs_url:''})});
-  cats=['All','♥ Wishlist'].concat(CATALOG.map(function(p){return p.cat}).filter(function(c,i,a){return a.indexOf(c)===i}));cart={};renderCats();render();renderCart();}).catch(function(){})}
+  cats=['All','♥ Wishlist'].concat(CATALOG.map(function(p){return p.cat}).filter(function(c,i,a){return a.indexOf(c)===i}));var validCart={};CATALOG.forEach(function(p){var n=Math.floor(Number(cart[p.id]));if(n>0)validCart[p.id]=Math.min(n,99)});cart=validCart;renderCats();render();renderCart();}).catch(function(){})}
 loadLive();
-if(window.claude&&claude.use){
-  claude.use('db').then(function(d){ if(!d)return; db=d;
-    db.doc('store/settings').onSnapshot(function(s){var m=s.exists&&s.data().markup;if(typeof m==='number'){markup=m;$('store-markup').value=m}render();renderCart()});
-    db.collection('prices').onSnapshot(function(s){overrides={};s.docs.forEach(function(x){var v=x.data().price;if(v!=null)overrides[x.id]=v});render();renderCart()});
-    claude.use('user').then(function(u){ if(!u)return; u.canEdit().then(function(ok){ if(!ok)return; admin=true;$('store-admin').hidden=false;$('store-markup').value=markup;render();
-      $('store-markup').onchange=function(e){var m=Number(e.target.value);if(isNaN(m)||m<0)return;setStatus('Saving…');db.doc('store/settings').set({markup:m}).then(function(){setStatus('Saved ✓')},function(e){setStatus('Not saved: '+(e&&e.code||'error'))})};
-      $('store-pricelist').onclick=openPriceList;
-    })});
-  });
-}
-function openPriceList(){
-  var rows=CATALOG.map(function(p){var o=overrides[p.id];return '<tr data-id="'+p.id+'"><td>'+esc(p.name)+'<small>'+esc(p.code||'')+' · '+esc(p.cat)+'</small></td><td>'+peso(p.dealer)+'</td><td><input type="number" min="0" step="5" value="'+(o!=null&&o!==''?o:'')+'" placeholder="'+Math.ceil(p.dealer*(1+markup/100)/5)*5+'"></td></tr>'}).join('');
-  openModal('<button type="button" class="sm-close" aria-label="Close">×</button><h3>Admin · Price List</h3><p class="sm-fine">Selling price per item. Leave blank to use dealer + '+markup+'% markup (shown in grey). Only admins see this.</p><input type="search" id="pl-q" class="pl-q" placeholder="Filter…"><div class="pl-wrap"><table class="sm-order pl"><tr><th>Item</th><th>Dealer</th><th>Selling ₱</th></tr>'+rows+'</table></div><div class="pl-foot"><span id="pl-status"></span><button type="button" class="sp-buy" id="pl-save">SAVE CHANGES</button></div>');
-  $('pl-q').oninput=function(e){var v=e.target.value.toLowerCase();[].forEach.call(MB.querySelectorAll('.pl tr[data-id]'),function(r){r.style.display=r.textContent.toLowerCase().indexOf(v)>-1?'':'none'})};
-  $('pl-save').onclick=function(){var ch=[];[].forEach.call(MB.querySelectorAll('.pl tr[data-id]'),function(r){var id=r.dataset.id,v=r.querySelector('input').value.trim(),cur=overrides[id]!=null?String(overrides[id]):'';if(v!==cur)ch.push([id,v===''?null:Number(v)])});
-    if(!ch.length){$('pl-status').textContent='No changes';return}var i=0;$('pl-status').textContent='Saving 0/'+ch.length+'…';
-    (function next(){if(i>=ch.length){$('pl-status').textContent='Saved '+ch.length+' price(s) ✓';return}var c=ch[i++];db.doc('prices/'+c[0]).set({price:c[1]}).then(function(){$('pl-status').textContent='Saving '+i+'/'+ch.length+'…';next()},function(e){$('pl-status').textContent='Stopped at '+i+': '+(e&&e.code||'error')})})();};
-}
+/* Product pricing is managed in the authenticated NEAS Admin Portal. */
 /* show store only from menu */
 var ST=$('store');function showStore(){ST.classList.add('open');}
 [].forEach.call(document.querySelectorAll('a[href="#store"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();showStore();ST.scrollIntoView({behavior:'smooth'})})});
@@ -1205,7 +1162,7 @@ var bar=document.getElementById('store-admin'),ov=document.getElementById('admin
 if(!bar||!ov)return;
 document.getElementById('ap-slot').appendChild(bar);
 function isAdmin(){return !bar.hidden}
-var gate=document.createElement('div');gate.className='ap-gate';gate.hidden=true;gate.innerHTML='<b>Admins only.</b> This area is for NEAS staff. Sign in to claude.ai with the NEAS admin account to manage prices.';
+var gate=document.createElement('div');gate.className='ap-gate';gate.hidden=true;gate.innerHTML='<b>Admins only.</b> Manage catalogue and prices in the secure <a href="/admin">NEAS Admin Portal</a>.';
 document.getElementById('ap-slot').before(gate);
 function open(e){if(e)e.preventDefault();var a=isAdmin();bar.parentNode.hidden=!a;gate.hidden=a;document.getElementById('ap-title').textContent=a?'Store prices':'Admin log in';ov.hidden=false;document.body.style.overflow='hidden';}
 function close(){ov.hidden=true;document.body.style.overflow='';}
