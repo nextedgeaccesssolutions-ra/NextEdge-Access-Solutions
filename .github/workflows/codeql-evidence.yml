@@ -10,10 +10,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: neas-codeql-evidence-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   analyze:
     name: Analyze JavaScript and TypeScript
@@ -37,7 +33,7 @@ jobs:
           output: results
           upload: never
 
-      - name: Summarize rate-limiting findings
+      - name: Summarize all findings
         shell: bash
         run: |
           node <<'NODE'
@@ -57,11 +53,11 @@ jobs:
             result.ruleId === "js/missing-rate-limiting" ||
             /missing rate limiting/i.test(result.message?.text || "")
           );
-          const details = missing.map((result) => {
+          const details = results.map((result) => {
             const location = result.locations?.[0]?.physicalLocation;
             const uri = location?.artifactLocation?.uri || "unknown";
             const line = location?.region?.startLine || "?";
-            return "- " + uri + ":" + line + " — " + (result.message?.text || result.ruleId);
+            return "- [" + (result.level || "unknown") + "] " + result.ruleId + " " + uri + ":" + line + " — " + (result.message?.text || "");
           });
           const summary = [
             "## NEAS CodeQL evidence",
