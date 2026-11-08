@@ -9,6 +9,7 @@ import { loadInsights } from "@/lib/insights";
 import { autoSettings, sendMail, type AutoSettings } from "@/lib/notify";
 import { notifyApproval } from "@/lib/notify";
 import { bad, ok } from "@/lib/http";
+import { consumeRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { getSetting, setSetting } from "@/lib/settings";
 import {
   getMkUser, can, TRANSITIONS, STATUSES, PLATFORMS, ROLES, logActivity, generate, platformStatus,
@@ -18,12 +19,6 @@ import {
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const aiHits = new Map<number, number[]>();
-function aiAllowed(uid: number) {
-  const now = Date.now(), w = (aiHits.get(uid) ?? []).filter((t) => now - t < 10 * 60_000);
-  if (w.length >= 30) return false;
-  w.push(now); aiHits.set(uid, w); return true;
-}
 
 async function loadState(u: MkUser) {
   await loadConfig();
@@ -146,7 +141,8 @@ export async function POST(req: Request) {
     }
     case "ai": {
       if (!need("editor")) return deny();
-      if (!aiAllowed(u.id)) return bad("Too many AI requests. Wait a few minutes.", 429);
+      const aiLimit = await consumeRateLimit("marketing-ai-user", String(u.id), 30, 10 * 60_000);
+      if (!aiLimit.allowed) return rateLimitResponse(aiLimit, "Too many AI requests. Wait a few minutes.");
       const topic = txt(b.topic, 6000).trim();
       if (!topic) return bad("Describe the topic first.");
       const brand = { ...DEFAULT_BRAND, ...(await getSetting<Brand>(brandKey(u.ws), DEFAULT_BRAND)) };
