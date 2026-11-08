@@ -8,6 +8,7 @@ import { loadInbox, sendReply } from "@/lib/inbox";
 import { inboxMetaKey } from "@/lib/inbox-meta";
 import { loadInsights } from "@/lib/insights";
 import { fetchPublicFeed, validatePublicFeedUrl } from "@/lib/safe-feed";
+import { stripFeedMarkup } from "@/lib/feed-text";
 import { autoSettings, sendMail, type AutoSettings } from "@/lib/notify";
 import { notifyApproval } from "@/lib/notify";
 import { bad, ok } from "@/lib/http";
@@ -209,12 +210,11 @@ export async function POST(req: Request) {
       if (!f) return bad("Feed not found.", 404);
       try {
         const xml = await fetchPublicFeed(f.url);
-        const strip = (s: string) => s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
         const items = [...xml.matchAll(/<(item|entry)\b[\s\S]*?<\/\1>/g)].slice(0, 25).map((m) => {
           const x = m[0];
-          const title = strip(x.match(/<title[^>]*>([\s\S]*?)<\/title>/)?.[1] ?? "");
-          const link = x.match(/<link[^>]*href="([^"]+)"/)?.[1] ?? strip(x.match(/<link[^>]*>([\s\S]*?)<\/link>/)?.[1] ?? "");
-          const summary = strip(x.match(/<(description|summary|content)[^>]*>([\s\S]*?)<\/\1>/)?.[2] ?? "").slice(0, 400);
+          const title = stripFeedMarkup(x.match(/<title[^>]*>([\s\S]*?)<\/title>/)?.[1] ?? "");
+          const link = x.match(/<link[^>]*href="([^"]+)"/)?.[1] ?? stripFeedMarkup(x.match(/<link[^>]*>([\s\S]*?)<\/link>/)?.[1] ?? "");
+          const summary = stripFeedMarkup(x.match(/<(description|summary|content)[^>]*>([\s\S]*?)<\/\1>/)?.[2] ?? "").slice(0, 400);
           return { title, link: /^https?:\/\//.test(link) ? link : "", summary };
         }).filter((i) => i.title);
         return ok({ items });

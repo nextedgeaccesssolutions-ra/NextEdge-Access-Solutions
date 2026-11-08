@@ -19,33 +19,37 @@ const TRIM_TARGET_BYTES = Math.floor(MAX_LOG_SIZE_BYTES * 0.6); // Trim to 60% t
 type LogSource = "browserConsole" | "networkRequests" | "sessionReplay";
 
 function ensureLogDir() {
-  if (!fs.existsSync(LOG_DIR)) {
-    fs.mkdirSync(LOG_DIR, { recursive: true });
-  }
+  // mkdir with recursive=true is idempotent; avoid an exists-then-create race.
+  fs.mkdirSync(LOG_DIR, { recursive: true });
 }
 
 function trimLogFile(logPath: string, maxSize: number) {
+  let fd: number | undefined;
   try {
-    if (!fs.existsSync(logPath) || fs.statSync(logPath).size <= maxSize) {
-      return;
-    }
+    // Open once and operate on the same file descriptor to avoid a path
+    // check/read/write time-of-check-to-use race.
+    fd = fs.openSync(logPath, "r+");
+    const contents = fs.readFileSync(fd, "utf-8");
+    if (Buffer.byteLength(contents, "utf-8") <= maxSize) return;
 
-    const lines = fs.readFileSync(logPath, "utf-8").split("\n");
+    const lines = contents.split("\n");
     const keptLines: string[] = [];
     let keptBytes = 0;
-
-    // Keep newest lines (from end) that fit within 60% of maxSize
     const targetSize = TRIM_TARGET_BYTES;
     for (let i = lines.length - 1; i >= 0; i--) {
-      const lineBytes = Buffer.byteLength(`${lines[i]}\n`, "utf-8");
+      const lineBytes = Buffer.byteLength(lines[i] + "\n", "utf-8");
       if (keptBytes + lineBytes > targetSize) break;
       keptLines.unshift(lines[i]);
       keptBytes += lineBytes;
     }
 
-    fs.writeFileSync(logPath, keptLines.join("\n"), "utf-8");
+    const output = Buffer.from(keptLines.join("\n"), "utf-8");
+    fs.ftruncateSync(fd, 0);
+    fs.writeSync(fd, output, 0, output.length, 0);
   } catch {
     /* ignore trim errors */
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
   }
 }
 
