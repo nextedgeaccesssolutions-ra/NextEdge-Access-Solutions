@@ -3,8 +3,10 @@ import { sql, listProducts } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { bad, ok, str, BANK } from "@/lib/http";
 import { notifyNewOrder } from "@/lib/notify";
+import { clientIp, consumeRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
+const PAYMENT_SLIP_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"]);
 
 export async function GET() {
   const user = await getUser();
@@ -14,12 +16,22 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const ipLimit = await consumeRateLimit("orders-ip", clientIp(req), 20, 60 * 60_000);
+  if (!ipLimit.allowed) return rateLimitResponse(ipLimit);
+
   const user = await getUser();
   if (!user) return bad("Please log in to place an order.", 401);
+  const userLimit = await consumeRateLimit("orders-user", String(user.id), 10, 60 * 60_000);
+  if (!userLimit.allowed) return rateLimitResponse(userLimit);
+
   const isMultipart = req.headers.get("content-type")?.includes("multipart/form-data");
-  const form = isMultipart ? await req.formData() : null;
+  const form = isMultipart ? await req.formData().catch(() => null) : null;
+  if (isMultipart && !form) return bad("The order form data could not be read.");
   const b = form ? Object.fromEntries(form.entries()) : await req.json().catch(() => ({}));
-  const items = form ? JSON.parse(String(form.get("items") || "[]")) : b.items;
+  let items: unknown;
+  try { items = form ? JSON.parse(String(form.get("items") || "[]")) : b.items; }
+  catch { return bad("Your cart data is invalid."); }
+
   const name = str(b.deliveryName, 160), phone = str(b.deliveryPhone, 40), address = str(b.deliveryAddress, 600);
   const email = str(b.deliveryEmail, 320)?.toLowerCase() ?? null;
   const notes = typeof b.notes === "string" ? b.notes.trim().slice(0, 1000) : null;
@@ -28,14 +40,14 @@ export async function POST(req: Request) {
   if (paymentMethod !== "bank_transfer") return bad("Online card payment is not available yet.");
   const slip = form?.get("paymentSlip");
   if (!(slip instanceof File) || !slip.size) return bad("Upload your payment slip before sending the order.");
-  if (slip.size > 5 * 1024 * 1024 || !(slip.type.startsWith("image/") || slip.type === "application/pdf")) return bad("Payment slip must be an image or PDF no larger than 5 MB.");
+  if (slip.size > 5 * 1024 * 1024 || !PAYMENT_SLIP_TYPES.has(slip.type)) return bad("Payment slip must be JPG, PNG, WebP, GIF or PDF no larger than 5 MB.");
   const slipData = `data:${slip.type};base64,${Buffer.from(await slip.arrayBuffer()).toString("base64")}`;
   if (!Array.isArray(items) || !items.length || items.length > 100) return bad("Your cart is empty.");
   const catalog = new Map((await listProducts()).map((p) => [p.id, p]));
   const lines: { id: string; name: string; code: string; price: number; qty: number }[] = [];
   for (const it of items) {
-    const p = catalog.get(String(it?.id));
-    const qty = Number(it?.quantity);
+    const p = catalog.get(String((it as { id?: unknown })?.id));
+    const qty = Number((it as { quantity?: unknown })?.quantity);
     if (!p || !Number.isInteger(qty) || qty < 1 || qty > 999) return bad("An item in your cart is no longer available. Please refresh.");
     lines.push({ id: p.id, name: p.name, code: p.code, price: p.price, qty });
   }
