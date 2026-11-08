@@ -54,7 +54,7 @@ export async function consumeRateLimit(
       ELSE jsonb_set(
         settings.value::jsonb,
         '{count}',
-        to_jsonb(LEAST(\${limit} + 1, COALESCE((settings.value::jsonb ->> 'count')::integer, 0) + 1)),
+        to_jsonb(LEAST(${limit} + 1, COALESCE((settings.value::jsonb ->> 'count')::integer, 0) + 1)),
         true
       )::text
     END
