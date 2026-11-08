@@ -39,6 +39,6 @@ jobs:
         run: npm ci
         working-directory: web
 
-      - name: Build application without database access
-        run: npm run build
+      - name: Build application without database access (no migrations)
+        run: npm run build:app
         working-directory: web
