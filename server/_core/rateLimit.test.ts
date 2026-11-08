@@ -16,6 +16,7 @@ async function startLimitedServer(limit: number) {
       limit,
       standardHeaders: "draft-8",
       legacyHeaders: false,
+      validate: { xForwardedForHeader: false },
     }),
     (_req, res) => res.status(204).end(),
   );
