@@ -1,9 +1,9 @@
 import { sql } from "@/lib/db";
 import { originOf } from "@/lib/reset";
 import { metaReady, linkedinReady } from "@/lib/social";
-import { publishPost, cronToken } from "@/lib/publish";
+import { publishPost } from "@/lib/publish";
 import { googleReady, tiktokReady } from "@/lib/social-video";
-import { configStatus, saveConfig } from "@/lib/config";
+import { configStatus, loadConfig, saveConfig } from "@/lib/config";
 import { loadInbox, sendReply } from "@/lib/inbox";
 import { loadInsights } from "@/lib/insights";
 import { autoSettings, sendMail, type AutoSettings } from "@/lib/notify";
@@ -26,6 +26,7 @@ function aiAllowed(uid: number) {
 }
 
 async function loadState(u: MkUser) {
+  await loadConfig();
   const [posts, activity, links, feeds, team, brand, orders, counts] = await Promise.all([
     sql`select p.*, u.name as author from mk_posts p left join users u on u.id = p.created_by where ${inWs(u.ws)} order by coalesce(p.scheduled_at, p.updated_at) desc limit 1000`,
     sql`select a.id, a.post_id, a.action, a.detail, a.created_at, u.name as who from mk_activity a left join users u on u.id = a.user_id where ${inWs(u.ws)} order by a.id desc limit 300`,
@@ -47,14 +48,14 @@ async function loadState(u: MkUser) {
     platforms: platformStatus(),
     accounts: (await sql`select id, platform, name, status, last_error, expires_at, updated_at from mk_social_accounts where ${inWs(u.ws)} order by platform, name`.catch(() => [])).map((a) => ({ id: a.id, platform: a.platform, name: a.name, status: a.status, error: a.last_error ?? "", expires_at: a.expires_at ? new Date(a.expires_at).toISOString() : null })),
     results: (await sql`select post_id, platform, ok, remote_id, error, created_at from mk_post_results where post_id in (select id from mk_posts where ${inWs(u.ws)}) order by id desc limit 500`.catch(() => [])).map((r) => ({ post_id: r.post_id, platform: r.platform, ok: r.ok, remote_id: r.remote_id ?? "", error: r.error ?? "", at: new Date(r.created_at).toISOString() })),
-    connectReady: { facebook: metaReady(), linkedin: linkedinReady(), google: googleReady(), tiktok: tiktokReady() },
+    connectReady: { facebook: metaReady(), linkedin: linkedinReady(), linkedinPages: !!(process.env.LINKEDIN_PAGES_CLIENT_ID && process.env.LINKEDIN_PAGES_CLIENT_SECRET), google: googleReady(), tiktok: tiktokReady() },
     automation: await autoSettings(),
     reach7: await getSetting<{ fetchedAt?: string; pages?: { reached: number | null; views: number | null }[] }>(u.ws == null ? "mk_insights_7" : `mk_insights_7_ws${u.ws}`, {}).then((r) => (r.pages?.length ? { fetchedAt: r.fetchedAt, reached: r.pages.reduce((a, p) => a + (p.reached ?? 0), 0), views: r.pages.reduce((a, p) => a + (p.views ?? 0), 0) } : null)),
     emailReady: !!process.env.RESEND_API_KEY,
     waReady: !u.tenant && !!(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID),
     emailLog: (await sql`select recipient, subject, kind, ok, error, created_at from mk_email_log where ${!u.tenant} order by id desc limit 40`.catch(() => [])).map((e) => ({ to: e.recipient, subject: e.subject, kind: e.kind, ok: e.ok, error: e.error ?? "", at: new Date(e.created_at).toISOString() })),
     media: (await sql`select id, url, title, width, height, created_at from mk_media where ${inWs(u.ws)} order by id desc limit 200`.catch(() => [])).map((m) => ({ id: m.id, url: m.url, title: m.title, width: m.width, height: m.height, at: new Date(m.created_at).toISOString() })),
-    scheduler: { url: u.role === "admin" && !u.tenant ? `${process.env.SITE_URL?.replace(/\/$/, "") || "https://www.nextedge-access-solutions.com"}/api/cron/publish?token=${cronToken()}` : "", hasCronSecret: !!process.env.CRON_SECRET, last: await getSetting<{ at?: string; published?: number; failed?: number }>("mk_cron_last", {}) },
+    scheduler: { url: u.role === "admin" && !u.tenant ? `${process.env.SITE_URL?.replace(/\/$/, "") || "https://www.nextedge-access-solutions.com"}/api/cron/publish` : "", hasCronSecret: !!process.env.CRON_SECRET, last: await getSetting<{ at?: string; published?: number; failed?: number }>("mk_cron_last", {}) },
     tenant: u.tenant,
     dailyLimit: u.tenant ? memberLimit() : null,
     publishedToday: u.tenant ? (await sql`select count(distinct r.post_id)::int n from mk_post_results r join mk_posts p on p.id = r.post_id where p.ws = ${u.ws} and r.ok and r.created_at >= (date_trunc('day', now() at time zone 'Asia/Manila') at time zone 'Asia/Manila')`)[0].n : null,
