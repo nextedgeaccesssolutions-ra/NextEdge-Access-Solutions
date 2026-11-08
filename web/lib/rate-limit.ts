@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
 import { sql } from "./db";
 
@@ -13,7 +13,7 @@ export type RateLimitResult = {
   retryAfter: number;
 };
 
-const digest = (value: string) => createHash("sha256").update(value).digest("hex");
+const digest = (value: string) => createHmac("sha256", process.env.SESSION_SECRET || process.env.DATABASE_URL || process.env.POSTGRES_URL || "neas-rate-limit-local").update(value).digest("hex");
 
 /**
  * Vercel supplies x-real-ip from its edge and overwrites the forwarded client
@@ -54,7 +54,7 @@ export async function consumeRateLimit(
       ELSE jsonb_set(
         settings.value::jsonb,
         '{count}',
-        to_jsonb(COALESCE((settings.value::jsonb ->> 'count')::integer, 0) + 1),
+        to_jsonb(LEAST(\${limit} + 1, COALESCE((settings.value::jsonb ->> 'count')::integer, 0) + 1)),
         true
       )::text
     END
