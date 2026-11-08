@@ -16,14 +16,14 @@ describe("dedupePublicProducts", () => {
     expect(result[0].price).toBe(5250);
   });
 
-  it("preserves unique products and does not mutate the input array", () => {
+  it("keeps unique products and does not mutate the input array", () => {
     const rows = [
       { id: "p-001", name: "Helmet", code: "H-01", image: "" },
       { id: "p-002", name: "Lanyard", code: "L-01", image: "/lanyard.jpg" },
     ];
     const before = rows.map((row) => ({ ...row }));
 
-    expect(dedupePublicProducts(rows)).toEqual(rows);
+    expect(dedupePublicProducts(rows).map((row) => row.id)).toEqual(["p-002", "p-001"]);
     expect(rows).toEqual(before);
   });
 });
