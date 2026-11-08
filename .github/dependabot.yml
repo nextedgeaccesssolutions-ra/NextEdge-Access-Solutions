@@ -1,25 +1,25 @@
 version: 2
 updates:
   # Dependabot uses the npm ecosystem adapter for pnpm-lock.yaml.
-  # Keep security updates enabled, but do not group unrelated dependencies:
-  # separate updates let Dependabot isolate compatibility conflicts.
+  # Group security fixes separately for production and development dependencies.
+  # Include every SemVer level so major security fixes are not left ungrouped.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
     groups:
-      production-security-patches:
+      production-security-fixes:
         applies-to: security-updates
         dependency-type: production
         update-types:
           - "patch"
           - "minor"
-      development-security-patches:
+          - "major"
+      development-security-fixes:
         applies-to: security-updates
         dependency-type: development
         update-types:
           - "patch"
           - "minor"
-    # Do not ignore major security updates; they must remain visible as PRs
-    # for a deliberate compatibility review, rather than being suppressed.
+          - "major"
