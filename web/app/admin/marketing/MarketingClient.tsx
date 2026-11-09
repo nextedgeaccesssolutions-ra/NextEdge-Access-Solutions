@@ -768,7 +768,8 @@ function Studio({ s, can, run, openCompose }: { s: State; can: Can; run: Run; op
   const [cta, setCta] = useState("WhatsApp +63 991 426 5886"); const [useLogo, setUseLogo] = useState(true);
   const [img, setImg] = useState<HTMLImageElement | null>(null); const [logo, setLogo] = useState<HTMLImageElement | null>(null);
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false); const [topic, setTopic] = useState("");
-  const ref = useRef<HTMLCanvasElement>(null);\n  const runAction: Run = run;
+  const ref = useRef<HTMLCanvasElement>(null);
+  const runAction: Run = run;
   const [, W, GH] = SIZES[size];
   useEffect(() => { const l = new Image(); l.onload = () => setLogo(l); l.onerror = () => setLogo(null); l.src = s.studioLogo || "/img/logo.png"; }, [s.studioLogo]);
   useEffect(() => { if (ref.current) drawGraphic(ref.current, { W, H: GH, tpl, head, sub, cta, logo: useLogo }, img, logo); }, [W, GH, tpl, head, sub, cta, useLogo, img, logo]);
