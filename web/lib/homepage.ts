@@ -8,6 +8,8 @@ let cached: string | null = null;
 export async function renderHomepage(): Promise<string> {
   cached ??= await readFile(path.join(process.cwd(), "site", "home.html"), "utf8");
   let html = cached;
+  // The static homepage is served through a route handler; declare Philippine English explicitly.
+  html = html.replace(/<html(?:\s[^>]*)?>/i, '<html lang="en-PH">');
   const [seo, social, biz] = await Promise.all([
     getSetting<Seo>("seo", DEFAULT_SEO), getSetting<Social>("social", DEFAULT_SOCIAL), getSetting<Business>("business", DEFAULT_BUSINESS),
   ]);
