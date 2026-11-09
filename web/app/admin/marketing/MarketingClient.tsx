@@ -769,6 +769,33 @@ function Studio({ s, can, run, openCompose }: { s: State; can: Can; run: Run; op
   const [img, setImg] = useState<HTMLImageElement | null>(null); const [logo, setLogo] = useState<HTMLImageElement | null>(null);
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false); const [topic, setTopic] = useState("");
   const ref = useRef<HTMLCanvasElement>(null);
+  async function uploadLogo(f?: File) {
+    if (!f) return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(f.type)) {
+      setMsg("Choose a JPG, PNG, WebP or GIF logo.");
+      return;
+    }
+    if (f.size > 3 * 1024 * 1024) {
+      setMsg("Logo must be 3 MB or smaller.");
+      return;
+    }
+    setBusy(true);
+    setMsg("Uploading logo…");
+    try {
+      const fd = new FormData();
+      fd.append("file", f);
+      const response = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.url) throw new Error(result.error || "Logo upload failed.");
+      const saved = await runAction({ action: "saveStudioLogo", url: result.url }, "Creative Studio logo updated ✓");
+      if (!saved) throw new Error("The logo uploaded, but it could not be saved to your workspace settings.");
+      setMsg("Logo updated and saved for this workspace.");
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   const runAction: Run = run;
   const [, W, GH] = SIZES[size];
   useEffect(() => { const l = new Image(); l.onload = () => setLogo(l); l.onerror = () => setLogo(null); l.src = s.studioLogo || "/img/logo.png"; }, [s.studioLogo]);
