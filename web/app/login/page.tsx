@@ -1,6 +1,6 @@
 import AuthForm from "@/components/AuthForm";
 import { enabled } from "@/lib/oauth";
-export const metadata = { title: "Log in — NEAS Online Store" };
+export const metadata = { title: "Log in — NEAS Online Store", description: "Sign in to your NextEdge Access Solutions customer account to manage your profile and track PPE and equipment orders.", robots: { index: false, follow: true } };
 export default async function Login({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
   const { next, error } = await searchParams;
   const social = { google: enabled("google"), facebook: enabled("facebook") };

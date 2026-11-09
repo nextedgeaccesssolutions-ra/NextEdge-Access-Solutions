@@ -1,5 +1,5 @@
 import ResetForm from "./ResetForm";
-export const metadata = { title: "Set a new password — NEAS", robots: { index: false } };
+export const metadata = { title: "Set a New Password — NEAS", description: "Securely set a new password for your NextEdge Access Solutions customer account.", robots: { index: false, follow: false } };
 export default async function Reset({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
   const { token } = await searchParams;
   return <div className="wrap" style={{ padding: "50px 20px", maxWidth: 480 }}>
