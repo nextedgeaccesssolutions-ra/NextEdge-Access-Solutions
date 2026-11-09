@@ -2,13 +2,21 @@ import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
 import { createSession } from "@/lib/auth";
 import { bad, ok, str } from "@/lib/http";
+import { clientIp, consumeRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 const DUMMY_HASH = bcrypt.hashSync("not-a-real-password", 12);
 
 export async function POST(req: Request) {
+  const ipLimit = await consumeRateLimit("auth-login-ip", clientIp(req), 30, 15 * 60_000);
+  if (!ipLimit.allowed) return rateLimitResponse(ipLimit);
+
   const b = await req.json().catch(() => ({}));
   const email = str(b.email, 320)?.toLowerCase();
   const password = typeof b.password === "string" ? b.password : "";
+  if (email) {
+    const emailLimit = await consumeRateLimit("auth-login-email", email, 8, 15 * 60_000);
+    if (!emailLimit.allowed) return rateLimitResponse(emailLimit);
+  }
   if (!email || !password) return bad("Enter your email and password.");
   const rows = await sql`select id, password_hash, role from users where email = ${email}`;
   const u = rows[0];

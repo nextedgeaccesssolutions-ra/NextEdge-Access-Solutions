@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { listProducts } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { BANK } from "@/lib/http";
@@ -5,7 +6,18 @@ import StoreClient from "./StoreClient";
 import catalog from "../../scripts/catalog.json";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Online Store — NEAS" };
+export const metadata: Metadata = {
+  title: "Online Store — NEAS",
+  description: "Shop genuine rope access, PPE and working-at-height safety equipment from NEAS Philippines. Browse certified helmets, harnesses, ropes and accessories, with bank-transfer checkout.",
+  alternates: { canonical: "/store" },
+  openGraph: {
+    type: "website",
+    title: "Online Store — NEAS",
+    description: "Shop genuine rope access, PPE and working-at-height safety equipment from NEAS Philippines.",
+    url: "/store",
+    images: ["/img/hero-city.jpg"],
+  },
+};
 
 export default async function Store() {
   const [products, user] = await Promise.all([

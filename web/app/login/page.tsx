@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import AuthForm from "@/components/AuthForm";
 import { enabled } from "@/lib/oauth";
-export const metadata = { title: "Log in — NEAS Online Store" };
+
+export const metadata: Metadata = {
+  title: "Log in — NEAS Online Store",
+  description: "Sign in to your NEAS customer account to track orders and complete checkout.",
+  robots: { index: false, follow: false },
+};
+
 export default async function Login({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
   const { next, error } = await searchParams;
   const social = { google: enabled("google"), facebook: enabled("facebook") };

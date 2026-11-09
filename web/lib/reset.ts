@@ -15,13 +15,26 @@ export async function createResetLink(userId: number, origin: string, hours = 1)
 export async function useResetToken(token: string, password: string): Promise<{ ok: true; role: string } | { error: string }> {
   if (!/^[A-Za-z0-9_-]{30,100}$/.test(token)) return { error: "This reset link is invalid." };
   if (password.length < 8 || password.length > 200) return { error: "Password must be at least 8 characters." };
-  const r = (await sql`select r.user_id, r.expires_at, r.used_at, u.role from password_resets r join users u on u.id = r.user_id where r.token_hash = ${hash(token)}`)[0];
-  if (!r || r.used_at) return { error: "This reset link was already used or is invalid. Request a new one." };
-  if (new Date(r.expires_at) < new Date()) return { error: "This reset link has expired. Request a new one." };
-  const ph = await bcrypt.hash(password, 12);
-  await sql`update users set password_hash = ${ph} where id = ${r.user_id}`;
-  await sql`update password_resets set used_at = now() where user_id = ${r.user_id} and used_at is null`;
-  return { ok: true, role: r.role };
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  const user = await sql.begin(async (tx) => {
+    const [claimed] = await tx`
+      update password_resets
+      set used_at = now()
+      where token_hash = ${hash(token)} and used_at is null and expires_at > now()
+      returning user_id
+    `;
+    if (!claimed) return null;
+
+    const [updated] = await tx`update users set password_hash = ${passwordHash} where id = ${claimed.user_id} returning role`;
+    if (!updated) return null;
+
+    await tx`update password_resets set used_at = now() where user_id = ${claimed.user_id} and used_at is null`;
+    return updated as { role: string };
+  });
+
+  if (!user) return { error: "This reset link was already used, expired or is invalid. Request a new one." };
+  return { ok: true, role: user.role };
 }
 
 const DEFAULT_FROM = "NEAS <no-reply@nextedge-access-solutions.com>";
