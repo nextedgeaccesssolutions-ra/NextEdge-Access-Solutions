@@ -134,7 +134,7 @@ export async function applyRows(rows: SheetRow[], hideMissing: boolean) {
     const matchedIds: string[] = [];
     let added = 0, updated = 0;
     for (const [i, p] of rows.entries()) {
-      const existingId = p.code ? byCode.get(p.code.trim().toLowerCase()) : undefined;
+      const existingId = p.code ? byCode.get(p.code.trim().toLowerCase()) : byName.get(p.name.trim().toLowerCase());
       const id = existingId ?? p.id;
       if (existingId) updated++; else added++;
       matchedIds.push(id);
