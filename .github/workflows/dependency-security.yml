@@ -1,0 +1,59 @@
+name: NEAS Dependency Security
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/dependency-security.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neas-dependency-security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Full pnpm audit, tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # Read the exact pinned pnpm version from packageManager before cache setup.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install exactly from lockfile
+        run: pnpm install --frozen-lockfile
+      - name: Capture full dependency audit report
+        id: audit
+        continue-on-error: true
+        run: pnpm audit --audit-level high --json > pnpm-audit.json
+      - name: Upload dependency audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neas-pnpm-audit-report
+          path: pnpm-audit.json
+          if-no-files-found: warn
+      - name: Enforce high and critical advisory gate
+        if: steps.audit.outcome == 'failure'
+        run: |
+          echo "Full dependency audit found high or critical advisories. Download the neas-pnpm-audit-report artifact to inspect the report."
+          exit 1
+      - name: Type check
+        run: pnpm check
+      - name: Unit tests
+        run: pnpm test -- --reporter=dot
+      - name: Build Vite and Express application
+        run: pnpm build

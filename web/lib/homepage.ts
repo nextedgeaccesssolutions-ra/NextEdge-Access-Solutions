@@ -8,6 +8,8 @@ let cached: string | null = null;
 export async function renderHomepage(): Promise<string> {
   cached ??= await readFile(path.join(process.cwd(), "site", "home.html"), "utf8");
   let html = cached;
+  // The static homepage is served through a route handler; declare Philippine English explicitly.
+  html = html.replace(/<html(?:\s[^>]*)?>/i, '<html lang="en-PH">');
   const [seo, social, biz] = await Promise.all([
     getSetting<Seo>("seo", DEFAULT_SEO), getSetting<Social>("social", DEFAULT_SOCIAL), getSetting<Business>("business", DEFAULT_BUSINESS),
   ]);
@@ -24,6 +26,7 @@ export async function renderHomepage(): Promise<string> {
   const ld = {
     "@context": "https://schema.org", "@type": "LocalBusiness", name: biz.name, url: seo.canonical, image: ogImage,
     logo: (biz.logo || "/img/logo.png").startsWith("/") ? origin + (biz.logo || "/img/logo.png") : biz.logo, telephone: biz.phone, email: biz.email, description: seo.description,
+    areaServed: { "@type": "Country", name: "Philippines" },
     ...(biz.street || biz.city ? { address: { "@type": "PostalAddress", streetAddress: biz.street, addressLocality: biz.city, addressRegion: biz.region, postalCode: biz.postal, addressCountry: biz.country } } : {}),
     ...(biz.hours ? { openingHours: biz.hours } : {}),
     ...(social.googleMaps ? { hasMap: social.googleMaps } : {}),
@@ -34,6 +37,7 @@ export async function renderHomepage(): Promise<string> {
     `<meta name="description" content="${esc(seo.description)}">`,
     seo.keywords && `<meta name="keywords" content="${esc(seo.keywords)}">`,
     `<link rel="canonical" href="${esc(seo.canonical)}">`,
+    `<link rel="alternate" hreflang="en-PH" href="${esc(seo.canonical)}">`,
     `<meta name="robots" content="${seo.robotsIndex ? "index,follow" : "noindex,nofollow"}">`,
     `<meta property="og:type" content="website"><meta property="og:site_name" content="${esc(biz.name)}">`,
     `<meta property="og:title" content="${esc(seo.title)}"><meta property="og:description" content="${esc(seo.description)}">`,
@@ -58,6 +62,12 @@ export async function renderHomepage(): Promise<string> {
     social.x && `<a class="side-social" href="${esc(social.x)}" target="_blank" rel="noopener" title="X"><b style="font:700 15px/1 Arial">𝕏</b></a>`,
   ].filter(Boolean).join("");
   if (extra) html = html.replace(/(<a class="side-social"[^>]*title="TikTok"[\s\S]*?<\/a>)/, `$1${extra}`);
+  // Give icon-only social links a crawlable text label and an accessible name.
+  html = html.replace(/(<a\b[^>]*class="side-social"[^>]*title="([^"]+)"[^>]*>)([\s\S]*?)(<\/a>)/g, (_match, open, label, inner, close) => {
+    const namedOpen = /aria-label=/.test(open) ? open : open.replace(/>$/, ` aria-label="${esc(label)}">`);
+    const hiddenLabel = `<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">${esc(label)}</span>`;
+    return namedOpen + inner + hiddenLabel + close;
+  });
   if (social.googleReview) html = html.replace('<div class="footer-bottom">', `<div style="text-align:center;margin:0 0 14px"><a href="${esc(social.googleReview)}" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:999px;padding:8px 16px;font-weight:700;font-size:13px;text-decoration:none">⭐ Review us on Google</a></div><div class="footer-bottom">`);
   return html;
 }
