@@ -768,7 +768,7 @@ function Studio({ s, can, run, openCompose }: { s: State; can: Can; run: Run; op
   const [cta, setCta] = useState("WhatsApp +63 991 426 5886"); const [useLogo, setUseLogo] = useState(true);
   const [img, setImg] = useState<HTMLImageElement | null>(null); const [logo, setLogo] = useState<HTMLImageElement | null>(null);
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false); const [topic, setTopic] = useState("");
-  const ref = useRef<HTMLCanvasElement>(null);
+  const ref = useRef<HTMLCanvasElement>(null);\n  const runAction: Run = run;
   const [, W, GH] = SIZES[size];
   useEffect(() => { const l = new Image(); l.onload = () => setLogo(l); l.onerror = () => setLogo(null); l.src = s.studioLogo || "/img/logo.png"; }, [s.studioLogo]);
   useEffect(() => { if (ref.current) drawGraphic(ref.current, { W, H: GH, tpl, head, sub, cta, logo: useLogo }, img, logo); }, [W, GH, tpl, head, sub, cta, useLogo, img, logo]);
@@ -823,7 +823,7 @@ function Studio({ s, can, run, openCompose }: { s: State; can: Can; run: Run; op
           <label className="mk-btn sm ghost" style={{ cursor: busy ? "wait" : "pointer" }}>
             Upload logo<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; void uploadLogo(f); e.currentTarget.value = ""; }} />
           </label>
-          {s.studioLogo && <button type="button" className="mk-btn sm ghost" disabled={busy} onClick={() => void run({ action: "saveStudioLogo", url: "" }, "Default NEAS logo restored ✓")}>Use default logo</button>}
+          {s.studioLogo && <button type="button" className="mk-btn sm ghost" disabled={busy} onClick={() => void runAction({ action: "saveStudioLogo", url: "" }, "Default NEAS logo restored ✓")}>Use default logo</button>}
         </div>}
 
         <div className="mk-label">✦ Headline from AI</div>
