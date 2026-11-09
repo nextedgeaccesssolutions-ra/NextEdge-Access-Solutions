@@ -12,8 +12,8 @@ export type Business = { name: string; phone: string; email: string; street: str
 
 export const DEFAULT_SEO: Seo = {
   title: "NEAS — IRATA Rope Access & Height Safety, Philippines",
-  description: "IRATA-certified rope access, NDT inspection, facade, telecom, met mast and wind turbine services, plus certified PPE supply. Serving the Philippines and Asia.",
-  keywords: "rope access Philippines, IRATA, NDT inspection, facade cleaning, wind turbine blade repair, met mast, telecom tower, PPE supplier, Skylotec, NEAS",
+  description: "Rope access, NDT inspection, façade, telecom, met mast and wind turbine services, plus PPE supply. Supporting industrial and renewable-energy projects across the Philippines.",
+  keywords: "rope access Philippines, IRATA rope access, NDT inspection Philippines, facade cleaning, wind turbine blade repair, met mast installation, telecom tower maintenance, PPE supplier, NEAS",
   ogImage: "/img/hero-city.jpg", canonical: "https://www.nextedge-access-solutions.com/",
   googleVerification: "", bingVerification: "", gaMeasurementId: "", robotsIndex: true,
 };
