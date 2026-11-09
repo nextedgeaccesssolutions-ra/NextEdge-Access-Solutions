@@ -5,7 +5,7 @@ import StoreClient from "./StoreClient";
 import catalog from "../../scripts/catalog.json";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Rope Access & Height Safety Equipment Store | NEAS Philippines", description: "Shop height-safety and rope-access equipment from NEAS, including Skylotec, Singing Rock and Trestec products. Request availability and delivery across the Philippines.", alternates: { canonical: "/store" } };
+export const metadata = { title: "Rope Access & Height Safety Equipment Store | NEAS Philippines", description: "Shop height-safety and rope-access equipment from NEAS, including Skylotec, Singing Rock and Trestec products. Request availability and delivery across the Philippines.", alternates: { canonical: "https://www.nextedge-access-solutions.com/store" } };
 
 export default async function Store() {
   const [products, user] = await Promise.all([
