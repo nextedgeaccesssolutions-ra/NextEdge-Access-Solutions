@@ -37,6 +37,7 @@ export async function renderHomepage(): Promise<string> {
     `<meta name="description" content="${esc(seo.description)}">`,
     seo.keywords && `<meta name="keywords" content="${esc(seo.keywords)}">`,
     `<link rel="canonical" href="${esc(seo.canonical)}">`,
+    `<link rel="alternate" hreflang="en-PH" href="${esc(seo.canonical)}">`,
     `<meta name="robots" content="${seo.robotsIndex ? "index,follow" : "noindex,nofollow"}">`,
     `<meta property="og:type" content="website"><meta property="og:site_name" content="${esc(biz.name)}">`,
     `<meta property="og:title" content="${esc(seo.title)}"><meta property="og:description" content="${esc(seo.description)}">`,
