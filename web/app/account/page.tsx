@@ -7,7 +7,7 @@ import ChangePassword from "./ChangePassword";
 import MarketingAccess from "./MarketingAccess";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "My Account — NEAS" };
+export const metadata = { title: "My Account — NEAS", description: "Private customer account area for managing orders and account details.", robots: { index: false, follow: false } };
 const peso = (n: number) => "₱" + Math.round(n).toLocaleString("en-PH");
 const label: Record<string, string> = { awaiting_payment: "Awaiting payment", paid: "Paid", processing: "Processing", shipped: "Shipped", completed: "Completed", cancelled: "Cancelled" };
 

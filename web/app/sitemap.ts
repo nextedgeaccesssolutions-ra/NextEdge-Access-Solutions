@@ -5,7 +5,11 @@ export const dynamic = "force-dynamic";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const seo = await getSetting<Seo>("seo", DEFAULT_SEO);
   const origin = (() => { try { return new URL(seo.canonical).origin; } catch { return "https://www.nextedge-access-solutions.com"; } })();
-  const now = new Date();
-  return [{ url: `${origin}/`, lastModified: now, priority: 1 }, { url: `${origin}/store`, lastModified: now, priority: 0.9 }, { url: `${origin}/login`, lastModified: now, priority: 0.3 }, { url: `${origin}/privacy-policy`, lastModified: now, priority: 0.3 },
-    ...(await listProducts().catch(() => [])).map((p) => ({ url: `${origin}/store/p/${p.id}`, lastModified: now, priority: 0.7 }))];
+  // Keep the sitemap limited to public, indexable destinations. Authentication and account routes are intentionally excluded.
+  return [
+    { url: `${origin}/`, priority: 1 },
+    { url: `${origin}/store`, priority: 0.9 },
+    { url: `${origin}/privacy-policy`, priority: 0.3 },
+    ...(await listProducts().catch(() => [])).map((p) => ({ url: `${origin}/store/p/${p.id}`, priority: 0.7 })),
+  ];
 }

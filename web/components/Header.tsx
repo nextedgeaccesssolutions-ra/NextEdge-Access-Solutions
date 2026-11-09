@@ -17,7 +17,7 @@ export default async function Header() {
   return (
     <header className="hdr">
       <div className="wrap hdr-in">
-        <a href="/" className="brand"><img src="/img/logo.png" alt="NEAS logo" /><div><b>NEXTEDGE</b><span>Access Solutions · OPC</span></div></a>
+        <a href="/" className="brand" aria-label="NextEdge Access Solutions homepage"><img src="/img/logo.png" alt="" /><span style={{ position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0, 0, 0, 0)", whiteSpace: "nowrap", border: 0 }}>NextEdge Access Solutions homepage</span><div><b>NEXTEDGE</b><span>Access Solutions · OPC</span></div></a>
         <nav className="nav nav-desktop" aria-label="Main">{links}</nav>
         <MobileMenu>{links}</MobileMenu>
       </div>
