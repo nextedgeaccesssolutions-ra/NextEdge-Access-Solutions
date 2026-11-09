@@ -49,7 +49,7 @@ export default function StoreClient({ products, user, bank }: { products: P[]; u
   }
 
   return <>
-    <div className="sbar">
+    <div id="store-products" className="sbar">
       <input className="input" type="search" placeholder="Search item or code…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search products" />
       <div className="cats">{cats.map((c) => <button key={c} type="button" className={c === cat ? "on" : ""} onClick={() => setCat(c)}>{c}</button>)}</div>
     </div>
