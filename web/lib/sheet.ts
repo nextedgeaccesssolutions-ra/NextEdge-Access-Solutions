@@ -45,7 +45,11 @@ const CATS: Record<string, string> = { HELMET: "Helmets", "SUSPENSION HARNESS": 
 
 function findHeader(headers: string[], candidates: string[]) {
   const normalized = headers.map(key);
-  return normalized.findIndex((h) => candidates.some((c) => h === c || h.includes(c)));
+  for (const candidate of candidates) {
+    const index = normalized.findIndex((h) => h === candidate || h.includes(candidate));
+    if (index >= 0) return index;
+  }
+  return -1;
 }
 
 /** Reads KH Trading-style sheets with common supplier header aliases and optional second-row subheaders. */
