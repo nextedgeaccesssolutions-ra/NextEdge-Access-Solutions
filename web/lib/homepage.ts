@@ -26,6 +26,7 @@ export async function renderHomepage(): Promise<string> {
   const ld = {
     "@context": "https://schema.org", "@type": "LocalBusiness", name: biz.name, url: seo.canonical, image: ogImage,
     logo: (biz.logo || "/img/logo.png").startsWith("/") ? origin + (biz.logo || "/img/logo.png") : biz.logo, telephone: biz.phone, email: biz.email, description: seo.description,
+    areaServed: { "@type": "Country", name: "Philippines" },
     ...(biz.street || biz.city ? { address: { "@type": "PostalAddress", streetAddress: biz.street, addressLocality: biz.city, addressRegion: biz.region, postalCode: biz.postal, addressCountry: biz.country } } : {}),
     ...(biz.hours ? { openingHours: biz.hours } : {}),
     ...(social.googleMaps ? { hasMap: social.googleMaps } : {}),
