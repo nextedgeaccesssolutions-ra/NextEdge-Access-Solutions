@@ -125,7 +125,7 @@ export function fingerprintCsv(text: string) {
 
 export async function applyRows(rows: SheetRow[], hideMissing: boolean) {
   return sql.begin(async (tx) => {
-    const existing = await tx\`select id, code, active from products\`;
+    const existing = await tx`select id, code, active from products`;
     const byCode = new Map<string, string>();
     for (const p of existing) {
       const code = String(p.code ?? "").trim().toLowerCase();
@@ -142,13 +142,13 @@ export async function applyRows(rows: SheetRow[], hideMissing: boolean) {
       const id = existingId ?? p.id;
       if (existingId) updated++; else added++;
       matchedIds.push(id);
-      await tx\`insert into products (id, category, code, name, dealer_price, sheet_price, image_url, active, sort)
-        values (\${id}, \${p.category}, \${p.code}, \${p.name}, \${p.dealer}, \${p.sell}, \${p.image || null}, true, \${i})
-        on conflict (id) do update set category = excluded.category, code = excluded.code, name = excluded.name, dealer_price = excluded.dealer_price, sheet_price = excluded.sheet_price, image_url = coalesce(excluded.image_url, products.image_url), active = true, sort = excluded.sort\`;
+      await tx`insert into products (id, category, code, name, dealer_price, sheet_price, image_url, active, sort)
+        values (${id}, ${p.category}, ${p.code}, ${p.name}, ${p.dealer}, ${p.sell}, ${p.image || null}, true, ${i})
+        on conflict (id) do update set category = excluded.category, code = excluded.code, name = excluded.name, dealer_price = excluded.dealer_price, sheet_price = excluded.sheet_price, image_url = coalesce(excluded.image_url, products.image_url), active = true, sort = excluded.sort`;
     }
     let hidden = 0;
     if (hideMissing) {
-      const result = await tx\`update products set active = false where active and id not in \${tx(matchedIds)} returning id\`;
+      const result = await tx`update products set active = false where active and id not in ${tx(matchedIds)} returning id`;
       hidden = result.length;
     }
     return { added, updated, hidden, total: rows.length };
