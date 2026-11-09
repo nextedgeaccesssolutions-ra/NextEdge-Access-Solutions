@@ -125,11 +125,14 @@ export function fingerprintCsv(text: string) {
 
 export async function applyRows(rows: SheetRow[], hideMissing: boolean) {
   return sql.begin(async (tx) => {
-    const existing = await tx`select id, code, active from products`;
+    const existing = await tx`select id, code, name, active from products`;
     const byCode = new Map<string, string>();
+    const byName = new Map<string, string>();
     for (const p of existing) {
       const code = String(p.code ?? "").trim().toLowerCase();
+      const name = String(p.name ?? "").trim().toLowerCase();
       if (code && !byCode.has(code)) byCode.set(code, String(p.id));
+      if (name && !byName.has(name)) byName.set(name, String(p.id));
     }
     const activeCount = existing.filter((p) => p.active).length;
     if (hideMissing && rows.length < Math.max(10, Math.ceil(activeCount * 0.7))) {
