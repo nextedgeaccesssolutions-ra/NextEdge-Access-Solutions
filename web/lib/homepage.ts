@@ -63,7 +63,7 @@ export async function renderHomepage(): Promise<string> {
   ].filter(Boolean).join("");
   if (extra) html = html.replace(/(<a class="side-social"[^>]*title="TikTok"[\s\S]*?<\/a>)/, `$1${extra}`);
   // Give icon-only social links a crawlable text label and an accessible name.
-  html = html.replace(/(<a\\b[^>]*class="side-social"[^>]*title="([^"]+)"[^>]*>)([\\s\\S]*?)(<\\/a>)/g, (_match, open, label, inner, close) => {
+  html = html.replace(/(<a\b[^>]*class="side-social"[^>]*title="([^"]+)"[^>]*>)([\s\S]*?)(<\/a>)/g, (_match, open, label, inner, close) => {
     const namedOpen = /aria-label=/.test(open) ? open : open.replace(/>$/, ` aria-label="${esc(label)}">`);
     const hiddenLabel = `<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">${esc(label)}</span>`;
     return namedOpen + inner + hiddenLabel + close;
