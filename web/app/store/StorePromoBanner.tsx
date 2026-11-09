@@ -1,4 +1,5 @@
 import Link from "next/link";
+import "./StorePromoBanner.css";
 
 export default function StorePromoBanner() {
   return (
