@@ -17,6 +17,7 @@ type State = {
   results?: { post_id: number; platform: string; ok: boolean; remote_id: string; error: string; at: string }[];
   connectReady?: { facebook: boolean; linkedin: boolean; linkedinPages?: boolean; google?: boolean; tiktok?: boolean };
   media?: { id: number; url: string; title: string; width: number | null; height: number | null; at: string }[];
+  studioLogo?: string;
   automation?: { orderAlert: boolean; orderConfirm: boolean; orderStatus: boolean; approval: boolean; publishFail: boolean; alertEmail: string };
   emailReady?: boolean;
   emailLog?: { to: string; subject: string; kind: string; ok: boolean; error: string; at: string }[];
@@ -362,6 +363,22 @@ function Inbox({ s, go, can }: { s: State; go: (m: Mod) => void; can: Can }) {
   async function meta(patch: { status?: string; assignedTo?: number | null; note?: string }) {
     if (!t) return; const body = { action: "inboxMeta", key: t.key, status: patch.status ?? t.status ?? "open", assignedTo: "assignedTo" in patch ? patch.assignedTo : t.assignedTo ?? null, note: patch.note ?? t.note ?? "" };
     try { await call(body); setData((d) => d && { ...d, threads: d.threads.map((x) => x.key === t.key ? { ...x, status: body.status, assignedTo: body.assignedTo ?? null, note: body.note } : x) }); setMsg("Saved ✓"); } catch (e) { setMsg((e as Error).message); }
+  }
+  async function uploadLogo(f?: File) {
+    if (!f) return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(f.type)) { setMsg("Choose a JPG, PNG, WebP or GIF logo."); return; }
+    if (f.size > 3 * 1024 * 1024) { setMsg("Logo must be 3 MB or smaller."); return; }
+    setBusy(true); setMsg("Uploading logo…");
+    try {
+      const fd = new FormData(); fd.append("file", f);
+      const response = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.url) throw new Error(result.error || "Logo upload failed.");
+      const saved = await run({ action: "saveStudioLogo", url: result.url }, "Creative Studio logo updated ✓");
+      if (!saved) throw new Error("The logo uploaded, but it could not be saved to your workspace settings.");
+      setMsg("Logo updated and saved for this workspace.");
+    } catch (e) { setMsg((e as Error).message); }
+    finally { setBusy(false); }
   }
   async function suggest() {
     if (!t) return; setBusy(true); setMsg("");
@@ -753,7 +770,7 @@ function Studio({ s, can, run, openCompose }: { s: State; can: Can; run: Run; op
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false); const [topic, setTopic] = useState("");
   const ref = useRef<HTMLCanvasElement>(null);
   const [, W, GH] = SIZES[size];
-  useEffect(() => { const l = new Image(); l.onload = () => setLogo(l); l.src = "/img/logo.png"; }, []);
+  useEffect(() => { const l = new Image(); l.onload = () => setLogo(l); l.onerror = () => setLogo(null); l.src = s.studioLogo || "/img/logo.png"; }, [s.studioLogo]);
   useEffect(() => { if (ref.current) drawGraphic(ref.current, { W, H: GH, tpl, head, sub, cta, logo: useLogo }, img, logo); }, [W, GH, tpl, head, sub, cta, useLogo, img, logo]);
   const loadFile = (f?: File) => { if (!f) return; if (!/^image\//.test(f.type)) { setMsg("Choose a JPG or PNG photo."); return; } const im = new Image(); im.onload = () => setImg(im); im.src = URL.createObjectURL(f); };
   const pickExisting = (url: string) => { const im = new Image(); im.onload = () => setImg(im); im.onerror = () => setMsg("That image can't be used here."); im.src = url; };
@@ -802,6 +819,13 @@ function Studio({ s, can, run, openCompose }: { s: State; can: Can; run: Run; op
         <label className="mk-f">Supporting line<input value={sub} onChange={(e) => setSub(e.target.value)} /></label>
         <label className="mk-f">Button text<input value={cta} onChange={(e) => setCta(e.target.value)} placeholder="Leave empty to hide" /></label>
         <label className="mk-chip on" style={{ marginBottom: 12 }}><input type="checkbox" checked={useLogo} onChange={(e) => setUseLogo(e.target.checked)} style={{ display: "inline" }} /> Show NEAS logo</label>
+        {can("admin") && <div className="mk-row" style={{ gap: 8, marginBottom: 12 }}>
+          <label className="mk-btn sm ghost" style={{ cursor: busy ? "wait" : "pointer" }}>
+            Upload logo<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; void uploadLogo(f); e.currentTarget.value = ""; }} />
+          </label>
+          {s.studioLogo && <button type="button" className="mk-btn sm ghost" disabled={busy} onClick={() => void run({ action: "saveStudioLogo", url: "" }, "Default NEAS logo restored ✓")}>Use default logo</button>}
+        </div>}
+
         <div className="mk-label">✦ Headline from AI</div>
         <div className="mk-row"><input className="mk-sel" style={{ flex: 1, minWidth: 0 }} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. wind turbine blade inspection in Ilocos" /><button type="button" className="mk-btn sm" disabled={busy || !s.aiReady} onClick={suggest}>Suggest</button></div>
         {!s.aiReady && <p className="mk-mini">Add GEMINI_API_KEY to use AI headlines.</p>}
