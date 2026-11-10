@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadConfig } from "@/lib/config";
 import { sendMail } from "@/lib/notify";
+import { rateLimitRequest } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -189,6 +190,25 @@ Philippines:
 
 type Msg = { role: "user" | "assistant"; content: string };
 
+const MAX_TURNS = 12, MAX_CHARS = 2_000;
+const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+const clean = (v: unknown, max: number) => typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max) : "";
+
+/** Keeps only well-formed turns, caps size, and makes the history start and end with the visitor
+ *  so a forged "assistant" turn can't be the last word the model sees. */
+function sanitize(raw: unknown): Msg[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Msg[] = raw.slice(-MAX_TURNS).flatMap((m) => {
+    if (!m || typeof m !== "object") return [];
+    const { role, content } = m as Record<string, unknown>;
+    if (role !== "user" && role !== "assistant") return [];
+    const text = typeof content === "string" ? content.replace(/\u0000/g, "").trim().slice(0, MAX_CHARS) : "";
+    return text ? [{ role, content: text } as Msg] : [];
+  });
+  while (out.length && out[0].role !== "user") out.shift();
+  return out.length && out[out.length - 1].role === "user" ? out : [];
+}
+
 async function askGemini(messages: Msg[], apiKey: string): Promise<string> {
   const contents = messages.map((m) => ({
     role: m.role === "assistant" ? "model" : "user",
@@ -227,34 +247,45 @@ async function askGemini(messages: Msg[], apiKey: string): Promise<string> {
 export async function POST(req: NextRequest) {
   try {
     await loadConfig().catch(() => {});
-    const { messages, sendInquiry, name, email, phone } = await req.json() as {
-      messages?: Msg[]; sendInquiry?: boolean; name?: string; email?: string; phone?: string;
-    };
+    if (Number(req.headers.get("content-length") || 0) > 64 * 1024) return NextResponse.json({ error: "Message too large." }, { status: 413 });
+    const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const sendInquiry = body.sendInquiry === true;
 
     // Send inquiry email
     if (sendInquiry) {
-      const chatLog = (messages ?? []).map((m) => `${m.role === "user" ? "Customer" : "AI"}: ${m.content}`).join("\n\n");
-      await sendMail(
-        "info.nextedgeaccesssolutions@gmail.com",
-        `New Website Inquiry from ${name || "Website Visitor"}`,
+      const limited = rateLimitRequest(req, "chatbot-inquiry", 3, 15 * 60_000);
+      if (limited) return limited;
+      const name = clean(body.name, 120), email = clean(body.email, 320).toLowerCase(), phone = clean(body.phone, 40);
+      if (!name && !email && !phone) return NextResponse.json({ error: "Please add your name, email or phone." }, { status: 400 });
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
+      const log = (Array.isArray(body.messages) ? body.messages : []).slice(-20).flatMap((m) => {
+        const r = m as Record<string, unknown>;
+        return typeof r?.content === "string" ? [`${r.role === "user" ? "Customer" : "AI"}: ${r.content.slice(0, MAX_CHARS)}`] : [];
+      }).join("\n\n");
+      const sent = await sendMail(
+        "sales@nextedge-access-solutions.com",
+        `Chatbot enquiry: ${name || "Website visitor"}`,
         `<div style="font-family:sans-serif;max-width:600px">
-          <h2 style="color:#f97316">New Inquiry – NEAS Website Chatbot</h2>
-          <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
-            <tr><td style="padding:8px;font-weight:600;color:#475569">Name:</td><td style="padding:8px">${name || "Not provided"}</td></tr>
-            <tr style="background:#f8fafc"><td style="padding:8px;font-weight:600;color:#475569">Email:</td><td style="padding:8px">${email || "Not provided"}</td></tr>
-            <tr><td style="padding:8px;font-weight:600;color:#475569">Phone:</td><td style="padding:8px">${phone || "Not provided"}</td></tr>
-          </table>
-          <h3 style="color:#0f172a">Chat Conversation:</h3>
-          <pre style="background:#f1f5f9;padding:16px;border-radius:8px;white-space:pre-wrap;font-size:13px">${chatLog}</pre>
-          <p style="color:#64748b;font-size:12px">Sent from NEAS website chatbot · nextedge-access-solutions.com</p>
+          <h2>New enquiry from the NEAS website chatbot</h2>
+          <p><b>Name:</b> ${esc(name || "Not provided")}</p>
+          <p><b>Email:</b> ${esc(email || "Not provided")}</p>
+          <p><b>Phone:</b> ${esc(phone || "Not provided")}</p>
+          <h3>Conversation</h3>
+          <pre style="background:#f1f5f9;padding:16px;white-space:pre-wrap;font-size:13px">${esc(log)}</pre>
         </div>`,
-        "chatbot_inquiry"
+        "chatbot_inquiry",
+        email || undefined,
       );
+      if (!sent) return NextResponse.json({ error: "Your enquiry could not be sent right now. Please call or WhatsApp NEAS." }, { status: 503 });
       return NextResponse.json({ ok: true, message: "Your inquiry has been sent! Our team will get back to you shortly." });
     }
 
+    const limited = rateLimitRequest(req, "chatbot-chat", 20, 10 * 60_000);
+    if (limited) return limited;
+    const messages = sanitize(body.messages);
+
     // AI response
-    if (!messages?.length) return NextResponse.json({ error: "No messages provided" }, { status: 400 });
+    if (!messages.length) return NextResponse.json({ error: "No messages provided" }, { status: 400 });
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
       // Fallback: static NEAS info without AI

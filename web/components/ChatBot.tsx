@@ -136,13 +136,19 @@ export default function ChatBot() {
     if (!contact.name && !contact.email && !contact.phone) return;
     setLoading(true);
     try {
-      await fetch("/api/chatbot", {
+      const r = await fetch("/api/chatbot", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ sendInquiry: true, messages: msgs.slice(-20), ...contact }),
       });
-      setSent(true);
-    } catch { /* ignore */ }
+      if (r.ok) setSent(true);
+      else {
+        const j = await r.json().catch(() => ({}));
+        setMsgs((m) => [...m, { role: "assistant", content: `${j.error || "Your inquiry could not be sent."} You can also call ${PHONE_PRIMARY} or email ${EMAIL}.` }]);
+      }
+    } catch {
+      setMsgs((m) => [...m, { role: "assistant", content: `Connection issue. Please call ${PHONE_PRIMARY} or email ${EMAIL}.` }]);
+    }
     setLoading(false);
   }
 
