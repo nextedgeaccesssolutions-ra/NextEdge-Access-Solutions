@@ -1,10 +1,9 @@
 version: 2
 updates:
-  # Dependabot uses the npm ecosystem adapter for pnpm-lock.yaml.
-  # Group security fixes separately for production and development dependencies.
-  # Include every SemVer level so major security fixes are not left ungrouped.
+  # web/ is the Next.js app behind the live neas-website deployment.
+  # It uses npm (web/package-lock.json), not pnpm.
   - package-ecosystem: "npm"
-    directory: "/"
+    directory: "/web"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
@@ -23,3 +22,12 @@ updates:
           - "patch"
           - "minor"
           - "major"
+
+  # Root is the neas-content-platform Vite app, which is not deployed.
+  # open-pull-requests-limit: 0 disables routine version-update PRs here
+  # while still allowing Dependabot to raise security updates.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
