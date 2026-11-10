@@ -3,21 +3,6 @@ import { loadConfig } from "@/lib/config";
 import { sendMail } from "@/lib/notify";
 import { rateLimitRequest } from "@/lib/rate-limit";
 
-// gemini-1.5-flash was shut down by Google (Sep 2025). Override with GEMINI_MODEL if needed.
-const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-3.6-flash";
-const MAX_MESSAGES = 20;
-const MAX_CHARS = 2000;
-
-const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-
-function sanitize(raw: unknown): Msg[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((m): m is Msg => !!m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-    .slice(-MAX_MESSAGES)
-    .map((m) => ({ role: m.role, content: m.content.slice(0, MAX_CHARS) }));
-}
-
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
@@ -205,12 +190,32 @@ Philippines:
 
 type Msg = { role: "user" | "assistant"; content: string };
 
+const MAX_TURNS = 12, MAX_CHARS = 2_000;
+const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+const clean = (v: unknown, max: number) => typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max) : "";
+
+/** Keeps only well-formed turns, caps size, and makes the history start and end with the visitor
+ *  so a forged "assistant" turn can't be the last word the model sees. */
+function sanitize(raw: unknown): Msg[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Msg[] = raw.slice(-MAX_TURNS).flatMap((m) => {
+    if (!m || typeof m !== "object") return [];
+    const { role, content } = m as Record<string, unknown>;
+    if (role !== "user" && role !== "assistant") return [];
+    const text = typeof content === "string" ? content.replace(/\u0000/g, "").trim().slice(0, MAX_CHARS) : "";
+    return text ? [{ role, content: text } as Msg] : [];
+  });
+  while (out.length && out[0].role !== "user") out.shift();
+  return out.length && out[out.length - 1].role === "user" ? out : [];
+}
+
 async function askGemini(messages: Msg[], apiKey: string): Promise<string> {
   const contents = messages.map((m) => ({
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.content }],
   }));
-  const model = GEMINI_MODEL;
+  // gemini-1.5-* is retired and gemini-2.5-flash is legacy; override via GEMINI_MODEL without a code change.
+  const model = process.env.GEMINI_MODEL?.trim() || "gemini-3.6-flash";
   // Web search grounding can be switched off without a code change: GEMINI_SEARCH_GROUNDING=off
   const searchEnabled = process.env.GEMINI_SEARCH_GROUNDING?.trim().toLowerCase() !== "off";
   const call = async (withSearch: boolean) => {
@@ -245,46 +250,45 @@ async function askGemini(messages: Msg[], apiKey: string): Promise<string> {
 export async function POST(req: NextRequest) {
   try {
     await loadConfig().catch(() => {});
-    const body = await req.json().catch(() => ({})) as {
-      messages?: unknown; sendInquiry?: boolean; name?: string; email?: string; phone?: string;
-    };
-    const { sendInquiry } = body;
-    const messages = sanitize(body.messages);
-    const name = String(body.name ?? "").slice(0, 120);
-    const email = String(body.email ?? "").slice(0, 200);
-    const phone = String(body.phone ?? "").slice(0, 40);
+    if (Number(req.headers.get("content-length") || 0) > 64 * 1024) return NextResponse.json({ error: "Message too large." }, { status: 413 });
+    const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const sendInquiry = body.sendInquiry === true;
 
     // Send inquiry email
     if (sendInquiry) {
-      const limited = rateLimitRequest(req, "chatbot-inquiry", 5, 60 * 60_000);
+      const limited = rateLimitRequest(req, "chatbot-inquiry", 3, 15 * 60_000);
       if (limited) return limited;
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && phone.replace(/\D/g, "").length < 7) {
-        return NextResponse.json({ error: "Please provide a valid email or phone number." }, { status: 400 });
-      }
-      const chatLog = (messages ?? []).map((m) => `${m.role === "user" ? "Customer" : "AI"}: ${m.content}`).join("\n\n");
-      await sendMail(
-        "info.nextedgeaccesssolutions@gmail.com",
-        `New Website Inquiry from ${(name || "Website Visitor").replace(/[\r\n]/g, " ")}`,
+      const name = clean(body.name, 120), email = clean(body.email, 320).toLowerCase(), phone = clean(body.phone, 40);
+      if (!name && !email && !phone) return NextResponse.json({ error: "Please add your name, email or phone." }, { status: 400 });
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
+      const log = (Array.isArray(body.messages) ? body.messages : []).slice(-20).flatMap((m) => {
+        const r = m as Record<string, unknown>;
+        return typeof r?.content === "string" ? [`${r.role === "user" ? "Customer" : "AI"}: ${r.content.slice(0, MAX_CHARS)}`] : [];
+      }).join("\n\n");
+      const sent = await sendMail(
+        "sales@nextedge-access-solutions.com",
+        `Chatbot enquiry: ${name || "Website visitor"}`,
         `<div style="font-family:sans-serif;max-width:600px">
-          <h2 style="color:#f97316">New Inquiry – NEAS Website Chatbot</h2>
-          <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
-            <tr><td style="padding:8px;font-weight:600;color:#475569">Name:</td><td style="padding:8px">${esc(name || "Not provided")}</td></tr>
-            <tr style="background:#f8fafc"><td style="padding:8px;font-weight:600;color:#475569">Email:</td><td style="padding:8px">${esc(email || "Not provided")}</td></tr>
-            <tr><td style="padding:8px;font-weight:600;color:#475569">Phone:</td><td style="padding:8px">${esc(phone || "Not provided")}</td></tr>
-          </table>
-          <h3 style="color:#0f172a">Chat Conversation:</h3>
-          <pre style="background:#f1f5f9;padding:16px;border-radius:8px;white-space:pre-wrap;font-size:13px">${esc(chatLog)}</pre>
-          <p style="color:#64748b;font-size:12px">Sent from NEAS website chatbot · nextedge-access-solutions.com</p>
+          <h2>New enquiry from the NEAS website chatbot</h2>
+          <p><b>Name:</b> ${esc(name || "Not provided")}</p>
+          <p><b>Email:</b> ${esc(email || "Not provided")}</p>
+          <p><b>Phone:</b> ${esc(phone || "Not provided")}</p>
+          <h3>Conversation</h3>
+          <pre style="background:#f1f5f9;padding:16px;white-space:pre-wrap;font-size:13px">${esc(log)}</pre>
         </div>`,
-        "chatbot_inquiry"
+        "chatbot_inquiry",
+        email || undefined,
       );
+      if (!sent) return NextResponse.json({ error: "Your enquiry could not be sent right now. Please call or WhatsApp NEAS." }, { status: 503 });
       return NextResponse.json({ ok: true, message: "Your inquiry has been sent! Our team will get back to you shortly." });
     }
 
-    // AI response
-    const limited = rateLimitRequest(req, "chatbot", 30, 10 * 60_000);
+    const limited = rateLimitRequest(req, "chatbot-chat", 20, 10 * 60_000);
     if (limited) return limited;
-    if (!messages.length || messages[messages.length - 1].role !== "user") return NextResponse.json({ error: "No messages provided" }, { status: 400 });
+    const messages = sanitize(body.messages);
+
+    // AI response
+    if (!messages.length) return NextResponse.json({ error: "No messages provided" }, { status: 400 });
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
       // Fallback: static NEAS info without AI

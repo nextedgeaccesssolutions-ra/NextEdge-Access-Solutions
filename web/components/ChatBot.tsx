@@ -144,10 +144,10 @@ export default function ChatBot() {
       if (r.ok) setSent(true);
       else {
         const j = await r.json().catch(() => ({}));
-        alert(j?.error || "Sorry, we couldn't send your inquiry. Please call (+63) 991 426 5886 or email sales@nextedge-access-solutions.com.");
+        setMsgs((m) => [...m, { role: "assistant", content: `${j.error || "Your inquiry could not be sent."} You can also call ${PHONE_PRIMARY} or email ${EMAIL}.` }]);
       }
     } catch {
-      alert("Network error. Please call (+63) 991 426 5886 or email sales@nextedge-access-solutions.com.");
+      setMsgs((m) => [...m, { role: "assistant", content: `Connection issue. Please call ${PHONE_PRIMARY} or email ${EMAIL}.` }]);
     }
     setLoading(false);
   }
