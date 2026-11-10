@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendMail = vi.fn(async () => true);
 vi.mock("@/lib/notify", () => ({ sendMail }));
+// CI's root job does not install web/ dependencies, so stand in for next/server's NextResponse.
+vi.mock("next/server", () => ({
+  NextResponse: { json: (body: unknown, init?: ResponseInit) => new Response(JSON.stringify(body), { ...init, headers: { "content-type": "application/json", ...(init?.headers ?? {}) } }) },
+}));
 vi.mock("@/lib/config", () => ({ loadConfig: async () => {} }));
 vi.mock("@/lib/rate-limit", async () => await import("../../../lib/rate-limit"));
 

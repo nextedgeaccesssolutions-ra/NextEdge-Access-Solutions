@@ -214,8 +214,10 @@ async function askGemini(messages: Msg[], apiKey: string): Promise<string> {
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.content }],
   }));
-  // gemini-1.5-* is retired; model is overridable via GEMINI_MODEL without a code change.
-  const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+  // gemini-1.5-* is retired and gemini-2.5-flash is legacy; override via GEMINI_MODEL without a code change.
+  const model = process.env.GEMINI_MODEL?.trim() || "gemini-3.6-flash";
+  // Web search grounding can be switched off without a code change: GEMINI_SEARCH_GROUNDING=off
+  const searchEnabled = process.env.GEMINI_SEARCH_GROUNDING?.trim().toLowerCase() !== "off";
   const call = async (withSearch: boolean) => {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
@@ -236,6 +238,7 @@ async function askGemini(messages: Msg[], apiKey: string): Promise<string> {
     if (!text) throw new Error("Empty Gemini response");
     return text;
   };
+  if (!searchEnabled) return call(false);
   try {
     return await call(true);
   } catch (e) {
