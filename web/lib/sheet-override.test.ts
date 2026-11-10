@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { sql } from "./db";
-import { applyRows, type SheetRow } from "./sheet";
+import type { SheetRow } from "./sheet";
+
+// Loaded lazily: importing ./db pulls in the postgres driver, which root CI
+// does not install. A top-level import fails the file even when skipped.
+let sql: typeof import("./db").sql;
+let applyRows: typeof import("./sheet").applyRows;
 
 // Integration test: needs a throwaway Postgres with the migration applied.
 //   DATABASE_URL=postgres://user@127.0.0.1:5432/db npx vitest run sheet-override
@@ -16,7 +20,11 @@ const get = async () => (await sql`select name, code, category, dealer_price, na
   category_sheet, name_override, code_override, category_override from products where id = ${ID}`)[0];
 
 describe.skipIf(!live)("sheet sync vs admin overrides", () => {
-  beforeAll(async () => { await sql`delete from products where id = ${ID}`; });
+  beforeAll(async () => {
+    ({ sql } = await import("./db"));
+    ({ applyRows } = await import("./sheet"));
+    await sql`delete from products where id = ${ID}`;
+  });
 
   it("records the sheet values on first sync and sets no override", async () => {
     await applyRows([row()], false);
