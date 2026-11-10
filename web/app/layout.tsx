@@ -5,9 +5,26 @@ import ChatBot from "@/components/ChatBot";
 import ScrollReveal from "@/components/ScrollReveal";
 
 export const metadata: Metadata = {
-  title: "NEAS Online Store — NextEdge Access Solutions",
-  description: "Certified rope access and height-safety equipment from NextEdge Access Solutions (NEAS) OPC.",
+  title: { default: "NextEdge Access Solutions (NEAS) — Rope Access & Height Safety Philippines", template: "%s | NEAS Philippines" },
+  description: "NEAS is a Philippine company providing certified rope access services, IRATA/SPRAT training, NDT inspections, and height-safety equipment. Based in Cebu, serving clients across the Philippines.",
+  keywords: ["rope access Philippines", "IRATA training Philippines", "height safety equipment", "rope access Cebu", "SPRAT training", "NDT inspection Philippines", "work at height", "PPE Philippines"],
+  authors: [{ name: "NextEdge Access Solutions (NEAS) OPC" }],
   icons: { icon: "/favicon.png" },
+  openGraph: {
+    type: "website",
+    locale: "en_PH",
+    url: "https://www.nextedge-access-solutions.com",
+    siteName: "NextEdge Access Solutions (NEAS)",
+    title: "NextEdge Access Solutions — Certified Rope Access Philippines",
+    description: "Certified rope access services, IRATA/SPRAT training, and height-safety equipment in the Philippines.",
+    images: [{ url: "/img/logo.png", width: 400, height: 400, alt: "NEAS Logo" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "NextEdge Access Solutions — Rope Access Philippines",
+    description: "Certified rope access services, training and equipment in the Philippines.",
+    images: ["/img/logo.png"],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
