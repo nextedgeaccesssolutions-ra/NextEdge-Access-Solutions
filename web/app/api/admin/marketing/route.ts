@@ -9,7 +9,7 @@ import { loadInsights } from "@/lib/insights";
 import { autoSettings, sendMail, type AutoSettings } from "@/lib/notify";
 import { notifyApproval } from "@/lib/notify";
 import { bad, ok } from "@/lib/http";
-import { getSetting, setSetting } from "@/lib/settings";
+import { getSetting, getStringSetting, setSetting } from "@/lib/settings";
 import {
   getMkUser, can, TRANSITIONS, STATUSES, PLATFORMS, ROLES, logActivity, generate, platformStatus,
   DEFAULT_BRAND, cleanUrl, inWs, brandKey, memberLimit, type Brand, type MkStatus, type MkRole, type MkUser,
@@ -45,7 +45,7 @@ async function loadState(u: MkUser) {
     feeds: feeds.map((f) => ({ id: f.id, name: f.name, url: f.url })),
     team: team.map((t) => ({ id: t.id, name: t.name, email: t.email, role: t.marketing_role })),
     brand: { ...DEFAULT_BRAND, ...brand },
-    studioLogo: await getSetting<string>(u.ws == null ? "mk_studio_logo" : `mk_studio_logo_ws${u.ws}`, ""),
+    studioLogo: await getStringSetting(u.ws == null ? "mk_studio_logo" : `mk_studio_logo_ws${u.ws}`, ""),
     platforms: platformStatus(),
     accounts: (await sql`select id, platform, name, status, last_error, expires_at, updated_at from mk_social_accounts where ${inWs(u.ws)} order by platform, name`.catch(() => [])).map((a) => ({ id: a.id, platform: a.platform, name: a.name, status: a.status, error: a.last_error ?? "", expires_at: a.expires_at ? new Date(a.expires_at).toISOString() : null })),
     results: (await sql`select post_id, platform, ok, remote_id, error, created_at from mk_post_results where post_id in (select id from mk_posts where ${inWs(u.ws)}) order by id desc limit 500`.catch(() => [])).map((r) => ({ post_id: r.post_id, platform: r.platform, ok: r.ok, remote_id: r.remote_id ?? "", error: r.error ?? "", at: new Date(r.created_at).toISOString() })),

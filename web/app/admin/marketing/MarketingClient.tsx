@@ -364,22 +364,6 @@ function Inbox({ s, go, can }: { s: State; go: (m: Mod) => void; can: Can }) {
     if (!t) return; const body = { action: "inboxMeta", key: t.key, status: patch.status ?? t.status ?? "open", assignedTo: "assignedTo" in patch ? patch.assignedTo : t.assignedTo ?? null, note: patch.note ?? t.note ?? "" };
     try { await call(body); setData((d) => d && { ...d, threads: d.threads.map((x) => x.key === t.key ? { ...x, status: body.status, assignedTo: body.assignedTo ?? null, note: body.note } : x) }); setMsg("Saved ✓"); } catch (e) { setMsg((e as Error).message); }
   }
-  async function uploadLogo(f?: File) {
-    if (!f) return;
-    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(f.type)) { setMsg("Choose a JPG, PNG, WebP or GIF logo."); return; }
-    if (f.size > 3 * 1024 * 1024) { setMsg("Logo must be 3 MB or smaller."); return; }
-    setBusy(true); setMsg("Uploading logo…");
-    try {
-      const fd = new FormData(); fd.append("file", f);
-      const response = await fetch("/api/admin/upload", { method: "POST", body: fd });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result.url) throw new Error(result.error || "Logo upload failed.");
-      const saved = await run({ action: "saveStudioLogo", url: result.url }, "Creative Studio logo updated ✓");
-      if (!saved) throw new Error("The logo uploaded, but it could not be saved to your workspace settings.");
-      setMsg("Logo updated and saved for this workspace.");
-    } catch (e) { setMsg((e as Error).message); }
-    finally { setBusy(false); }
-  }
   async function suggest() {
     if (!t) return; setBusy(true); setMsg("");
     const last = [...t.messages].reverse().find((m) => !m.mine)?.text ?? t.preview;
@@ -769,6 +753,34 @@ function Studio({ s, can, run, openCompose }: { s: State; can: Can; run: Run; op
   const [img, setImg] = useState<HTMLImageElement | null>(null); const [logo, setLogo] = useState<HTMLImageElement | null>(null);
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false); const [topic, setTopic] = useState("");
   const ref = useRef<HTMLCanvasElement>(null);
+  async function uploadLogo(f?: File) {
+    if (!f) return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(f.type)) {
+      setMsg("Choose a JPG, PNG, WebP or GIF logo.");
+      return;
+    }
+    if (f.size > 3 * 1024 * 1024) {
+      setMsg("Logo must be 3 MB or smaller.");
+      return;
+    }
+    setBusy(true);
+    setMsg("Uploading logo…");
+    try {
+      const fd = new FormData();
+      fd.append("file", f);
+      const response = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.url) throw new Error(result.error || "Logo upload failed.");
+      const saved = await runAction({ action: "saveStudioLogo", url: result.url }, "Creative Studio logo updated ✓");
+      if (!saved) throw new Error("The logo uploaded, but it could not be saved to your workspace settings.");
+      setMsg("Logo updated and saved for this workspace.");
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const runAction: Run = run;
   const [, W, GH] = SIZES[size];
   useEffect(() => { const l = new Image(); l.onload = () => setLogo(l); l.onerror = () => setLogo(null); l.src = s.studioLogo || "/img/logo.png"; }, [s.studioLogo]);
   useEffect(() => { if (ref.current) drawGraphic(ref.current, { W, H: GH, tpl, head, sub, cta, logo: useLogo }, img, logo); }, [W, GH, tpl, head, sub, cta, useLogo, img, logo]);
@@ -823,7 +835,7 @@ function Studio({ s, can, run, openCompose }: { s: State; can: Can; run: Run; op
           <label className="mk-btn sm ghost" style={{ cursor: busy ? "wait" : "pointer" }}>
             Upload logo<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; void uploadLogo(f); e.currentTarget.value = ""; }} />
           </label>
-          {s.studioLogo && <button type="button" className="mk-btn sm ghost" disabled={busy} onClick={() => void run({ action: "saveStudioLogo", url: "" }, "Default NEAS logo restored ✓")}>Use default logo</button>}
+          {s.studioLogo && <button type="button" className="mk-btn sm ghost" disabled={busy} onClick={() => void runAction({ action: "saveStudioLogo", url: "" }, "Default NEAS logo restored ✓")}>Use default logo</button>}
         </div>}
 
         <div className="mk-label">✦ Headline from AI</div>

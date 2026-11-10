@@ -50,6 +50,16 @@ export async function getSetting<T extends object>(key: string, fallback: T): Pr
     return merged;
   } catch { return fallback; }
 }
+export async function getStringSetting(key: string, fallback: string): Promise<string> {
+  try {
+    const rows = await sql`select value from settings where key = ${key}`;
+    if (!rows[0]) return fallback;
+    const value: unknown = JSON.parse(rows[0].value);
+    return typeof value === "string" ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
 export async function setSetting(key: string, value: unknown) {
   await sql`insert into settings (key, value) values (${key}, ${JSON.stringify(value)}) on conflict (key) do update set value = excluded.value`;
 }
