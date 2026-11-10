@@ -26,9 +26,9 @@ export default async function Store() {
   const pub = products.map((p) => ({ id: p.id, category: p.category, code: p.code, name: p.name, price: p.price, image: (p as { image?: string }).image ?? "", description: (p as { description?: string }).description ?? "", features: (p as { features?: string }).features ?? "", specs_url: (p as { specs_url?: string }).specs_url ?? "" }));
   return <div className="wrap" style={{ padding: "40px 20px" }}>
     <StorePromoBanner />
-    <div className="eyebrow">Online Store · PPE &amp; Rope Access Equipment</div>
-    <h1>Shop Certified Height-Safety Gear</h1>
-    <p className="muted" style={{ maxWidth: 680 }}>Genuine Skylotec, Singing Rock and Trestec equipment. Order online and pay by bank transfer. We confirm stock and delivery once payment is received.</p>
+    <div className="eyebrow reveal">Online Store · PPE &amp; Rope Access Equipment</div>
+    <h1 className="reveal">Shop Certified Height-Safety Gear</h1>
+    <p className="muted reveal" style={{ maxWidth: 680 }}>Genuine Skylotec, Singing Rock and Trestec equipment. Order online and pay by bank transfer. We confirm stock and delivery once payment is received.</p>
     <StoreClient products={pub} user={user ? { name: user.name, phone: user.phone, email: user.email } : null} bank={BANK} />
     <section aria-labelledby="store-guide" style={{ maxWidth: 900, margin: "56px auto 20px", lineHeight: 1.75 }}>
       <h2 id="store-guide">Rope Access and Height-Safety Equipment for Philippine Worksites</h2>

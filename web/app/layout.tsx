@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
+import ChatBot from "@/components/ChatBot";
+import ScrollReveal from "@/components/ScrollReveal";
 
 export const metadata: Metadata = {
   title: "NEAS Online Store — NextEdge Access Solutions",
@@ -15,6 +17,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Header />
         <main>{children}</main>
+        <ScrollReveal />
+        <ChatBot />
         <footer className="ftr"><div className="wrap"><span>© 2026 NextEdge Access Solutions (NEAS) OPC · <a href="/privacy-policy">Privacy Policy</a></span><span>sales@nextedge-access-solutions.com · +63 991 426 5886</span></div></footer>
       </body>
     </html>
