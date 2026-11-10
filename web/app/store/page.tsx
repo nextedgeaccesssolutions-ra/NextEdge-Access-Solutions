@@ -1,4 +1,5 @@
 import { listProducts } from "@/lib/db";
+import { dedupePublicProducts } from "@/lib/catalog";
 import { getUser } from "@/lib/auth";
 import { BANK } from "@/lib/http";
 import StoreClient from "./StoreClient";
@@ -23,7 +24,7 @@ export default async function Store() {
     }))),
     getUser().catch(() => null),
   ]);
-  const pub = products.map((p) => ({ id: p.id, category: p.category, code: p.code, name: p.name, price: p.price, image: (p as { image?: string }).image ?? "", description: (p as { description?: string }).description ?? "", features: (p as { features?: string }).features ?? "", specs_url: (p as { specs_url?: string }).specs_url ?? "" }));
+  const pub = dedupePublicProducts(products).map((p) => ({ id: p.id, category: p.category, code: p.code, name: p.name, price: p.price, image: (p as { image?: string }).image ?? "", description: (p as { description?: string }).description ?? "", features: (p as { features?: string }).features ?? "", specs_url: (p as { specs_url?: string }).specs_url ?? "" }));
   return <div className="wrap" style={{ padding: "40px 20px" }}>
     <StorePromoBanner />
     <div className="eyebrow">Online Store · PPE &amp; Rope Access Equipment</div>

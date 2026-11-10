@@ -1,6 +1,7 @@
 import { sql } from "./db";
 import { decrypt } from "./social";
 import { waReply, waThreads } from "./whatsapp";
+import { inboxMetaKey } from "./inbox-meta";
 
 /** Facebook Page inbox: Messenger conversations and comments on recent Page posts, read live from the Graph API.
  *  Needs the Page connected with pages_messaging (messages) and pages_read_user_content + pages_manage_engagement (comments). */
@@ -44,7 +45,14 @@ export async function loadInbox(ws: number | null = null): Promise<{ threads: In
   const meta = await sql`select thread_key, status, assigned_to, note from mk_inbox_meta`.catch(() => []);
   const m = new Map(meta.map((r) => [r.thread_key, r]));
   threads.sort((x, y) => +new Date(y.at) - +new Date(x.at));
-  return { threads: threads.map((t) => ({ ...t, ...(m.get(t.key) ? { status: m.get(t.key)!.status, assignedTo: m.get(t.key)!.assigned_to, note: m.get(t.key)!.note } : {}) })), errors };
+  return {
+    threads: threads.map((t) => {
+      const metaKey = inboxMetaKey(ws, t.key);
+      const row = m.get(metaKey);
+      return { ...t, ...(row ? { status: row.status, assignedTo: row.assigned_to, note: row.note } : {}) };
+    }),
+    errors,
+  };
 }
 
 /** Sends a reply. Messenger replies only work within 24 hours of the customer's last message (Meta's rule). */

@@ -1,10 +1,13 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import { type Server } from "http";
+import { rateLimit } from "express-rate-limit";
 import { nanoid } from "nanoid";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
+
+const viteFileRouteRateLimit = rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: "draft-8", legacyHeaders: false });
 
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
@@ -21,7 +24,7 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
+  app.use("*", viteFileRouteRateLimit, async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
@@ -47,6 +50,8 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
+const staticFallbackRateLimit = rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: "draft-8", legacyHeaders: false });
+
 export function serveStatic(app: Express) {
   const distPath = path.resolve(import.meta.dirname, "../..", "dist", "public");
   if (!fs.existsSync(distPath)) {
@@ -58,7 +63,7 @@ export function serveStatic(app: Express) {
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  app.use("*", staticFallbackRateLimit, (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
