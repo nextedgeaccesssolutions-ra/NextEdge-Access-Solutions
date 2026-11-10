@@ -68,7 +68,18 @@ export const appRouter = router({
     projects: publicProcedure.query(() => listPublishedProjects()),
     submitContact: publicProcedure
       .input(z.object({ formName: z.string().min(1).max(120), payload: z.record(z.string(), z.unknown()) }))
-      .mutation(({ input }) => createSubmission(input.formName, JSON.stringify(input.payload)).then(() => ({ success: true }))),
+      .mutation(async ({ input }) => {
+        const payload = JSON.stringify(input.payload);
+        if (Buffer.byteLength(payload, "utf8") > 64 * 1024) {
+          throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Your request is too large. Please shorten the details and try again." });
+        }
+        try {
+          await createSubmission(input.formName, payload);
+          return { success: true };
+        } catch {
+          throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "We could not save your request right now. Please try again later." });
+        }
+      }),
   }),
   cms: router({
     pages: protectedProcedure.query(() => listPages()),

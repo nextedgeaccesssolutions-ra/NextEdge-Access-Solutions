@@ -5,10 +5,14 @@ import { publishPost } from "@/lib/publish";
 import { googleReady, tiktokReady } from "@/lib/social-video";
 import { configStatus, loadConfig, saveConfig } from "@/lib/config";
 import { loadInbox, sendReply } from "@/lib/inbox";
+import { inboxMetaKey } from "@/lib/inbox-meta";
 import { loadInsights } from "@/lib/insights";
+import { fetchPublicFeed, validatePublicFeedUrl } from "@/lib/safe-feed";
+import { stripFeedMarkup } from "@/lib/feed-text";
 import { autoSettings, sendMail, type AutoSettings } from "@/lib/notify";
 import { notifyApproval } from "@/lib/notify";
 import { bad, ok } from "@/lib/http";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { getSetting, getStringSetting, setSetting } from "@/lib/settings";
 import {
   getMkUser, can, TRANSITIONS, STATUSES, PLATFORMS, ROLES, logActivity, generate, platformStatus,
@@ -80,12 +84,17 @@ function parseDate(v: unknown): Date | null | "bad" {
 }
 
 export async function POST(req: Request) {
+  const limited = rateLimitRequest(req, "marketing-actions", 60, 60_000);
+  if (limited) return limited;
   const u = await getMkUser();
   if (!u) return bad("Admin access required.", 403);
   // Same-origin check (CSRF defence on top of the SameSite session cookie).
   const origin = req.headers.get("origin");
   if (origin && new URL(origin).host !== new URL(req.url).host && new URL(origin).host !== req.headers.get("host")) return bad("Bad origin.", 403);
-  const b = await req.json().catch(() => ({}));
+  const rawBody = await req.json().catch(() => ({}));
+  const b: Record<string, any> = rawBody && typeof rawBody === "object" && !Array.isArray(rawBody)
+    ? rawBody as Record<string, any>
+    : {};
   const need = (r: MkRole) => can(u, r);
   const log = (action: string, detail = "", postId: number | null = null) => logActivity(u.id, action, detail, postId, u.ws);
   const staffOnly = () => bad("This part is for the NEAS team only.", 403);
@@ -181,9 +190,15 @@ export async function POST(req: Request) {
     }
     case "saveFeed": {
       if (!need("manager")) return deny();
-      const url = cleanUrl(b.url), name = txt(b.name, 80).trim();
-      if (!url || !name) return bad("Enter a name and a feed link starting with https://");
-      await sql`insert into mk_feeds (name, url, ws) values (${name}, ${url}, ${u.ws})`;
+      const rawUrl = cleanUrl(b.url), name = txt(b.name, 80).trim();
+      if (!rawUrl || !name) return bad("Enter a name and a public HTTPS feed link.");
+      let target: Awaited<ReturnType<typeof validatePublicFeedUrl>>;
+      try {
+        target = await validatePublicFeedUrl(rawUrl);
+      } catch {
+        return bad("Only public HTTPS feed URLs are allowed. Private, local and IP-literal addresses are blocked.");
+      }
+      await sql`insert into mk_feeds (name, url, ws) values (${name}, ${target.url.toString()}, ${u.ws})`;
       return ok();
     }
     case "deleteFeed": {
@@ -195,19 +210,18 @@ export async function POST(req: Request) {
       const f = (await sql`select url from mk_feeds where id=${Number(b.id)} and ${inWs(u.ws)}`)[0];
       if (!f) return bad("Feed not found.", 404);
       try {
-        const r = await fetch(f.url, { headers: { "user-agent": "NEAS-FeedReader/1.0" }, signal: AbortSignal.timeout(8000) });
-        if (!r.ok) return bad(`The feed answered ${r.status}.`);
-        const xml = (await r.text()).slice(0, 2_000_000);
-        const strip = (s: string) => s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+        const xml = await fetchPublicFeed(f.url);
         const items = [...xml.matchAll(/<(item|entry)\b[\s\S]*?<\/\1>/g)].slice(0, 25).map((m) => {
           const x = m[0];
-          const title = strip(x.match(/<title[^>]*>([\s\S]*?)<\/title>/)?.[1] ?? "");
-          const link = x.match(/<link[^>]*href="([^"]+)"/)?.[1] ?? strip(x.match(/<link[^>]*>([\s\S]*?)<\/link>/)?.[1] ?? "");
-          const summary = strip(x.match(/<(description|summary|content)[^>]*>([\s\S]*?)<\/\1>/)?.[2] ?? "").slice(0, 400);
+          const title = stripFeedMarkup(x.match(/<title[^>]*>([\s\S]*?)<\/title>/)?.[1] ?? "");
+          const link = x.match(/<link[^>]*href="([^"]+)"/)?.[1] ?? stripFeedMarkup(x.match(/<link[^>]*>([\s\S]*?)<\/link>/)?.[1] ?? "");
+          const summary = stripFeedMarkup(x.match(/<(description|summary|content)[^>]*>([\s\S]*?)<\/\1>/)?.[2] ?? "").slice(0, 400);
           return { title, link: /^https?:\/\//.test(link) ? link : "", summary };
         }).filter((i) => i.title);
         return ok({ items });
-      } catch (e) { return bad("Couldn't read that feed: " + (e as Error).message); }
+      } catch {
+        return bad("Could not read this feed. Only public HTTPS feeds up to 2 MB are supported.");
+      }
     }
     case "saveStudioLogo": {
       if (!need("admin")) return deny();
@@ -249,10 +263,13 @@ export async function POST(req: Request) {
     }
     case "inboxMeta": {
       if (!need("editor")) return deny();
-      const key = txt(b.key, 200);
-      if (!/^[mcw]:[\w.-]+$/.test(key)) return bad("Invalid conversation.");
+      const rawKey = txt(b.key, 200);
+      if (!/^[mcw]:[\w.-]+$/.test(rawKey)) return bad("Invalid conversation.");
+      const key = inboxMetaKey(u.ws, rawKey);
       const status = ["open", "done"].includes(b.status) ? b.status : "open";
       const assigned = b.assignedTo ? Number(b.assignedTo) : null;
+      if (assigned !== null && (!Number.isSafeInteger(assigned) || assigned < 1)) return bad("Invalid assignee.");
+      if (u.tenant && assigned !== null && assigned !== u.id) return bad("You can assign this conversation only to your workspace owner.");
       await sql`insert into mk_inbox_meta (thread_key, status, assigned_to, note, updated_by) values (${key}, ${status}, ${assigned}, ${txt(b.note, 2000) || null}, ${u.id})
         on conflict (thread_key) do update set status = excluded.status, assigned_to = excluded.assigned_to, note = excluded.note, updated_by = excluded.updated_by, updated_at = now()`;
       return ok();
