@@ -15,7 +15,7 @@ function BankBox({ bank }: { bank: Bank }) {
     <tr><th>SWIFT Code</th><td>{bank.swift}</td></tr><tr><th>Bank</th><td>{bank.bank}</td></tr></tbody></table></div>;
 }
 
-export default function StoreClient({ products, user, bank }: { products: P[]; user: { name: string; phone: string | null; email: string } | null; bank: Bank }) {
+export default function StoreClient({ products, user, bank, linkable = false }: { products: P[]; user: { name: string; phone: string | null; email: string } | null; bank: Bank; linkable?: boolean }) {
   const [cat, setCat] = useState("All"); const [q, setQ] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({}); const [qty, setQty] = useState<Record<string, number>>({});
   const [wish, setWish] = useState<Record<string, 1>>({});
@@ -75,7 +75,7 @@ export default function StoreClient({ products, user, bank }: { products: P[]; u
       {list.map((p) => { const n = qty[p.id] || 1; return <article key={p.id} className="sp">
         <div className="sp-top"><span className="eyebrow" style={{ fontSize: 10 }}>{p.category}</span><button type="button" className={"wish" + (wish[p.id] ? " on" : "")} aria-label="Wishlist" aria-pressed={!!wish[p.id]} onClick={() => setWish((w) => { const x = { ...w }; if (x[p.id]) delete x[p.id]; else x[p.id] = 1; return x; })}>♥</button></div>
         <button type="button" className="sp-img" onClick={() => setModal({ kind: "spec", p })} aria-label={"View " + p.name}>{p.image ? <img src={p.image} alt={p.name} loading="lazy" /> : <span>🛡️</span>}</button>
-        <button type="button" className="sp-name" onClick={() => setModal({ kind: "spec", p })}>{p.name}</button>
+        {linkable ? <a href={`/store/p/${encodeURIComponent(p.id)}`} className="sp-name" onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); setModal({ kind: "spec", p }); }}>{p.name}</a> : <button type="button" className="sp-name" onClick={() => setModal({ kind: "spec", p })}>{p.name}</button>}
         <div className="sp-code">{p.code && "Code: " + p.code}</div>
         <div className="sp-price">{peso(p.price)}</div>
         <div className="qty"><button type="button" className="minus" aria-label="Less" onClick={() => setQty((x) => ({ ...x, [p.id]: Math.max(1, n - 1) }))}>−</button><span>{n}</span><button type="button" className="plus" aria-label="More" onClick={() => setQty((x) => ({ ...x, [p.id]: Math.min(999, n + 1) }))}>+</button>{cart[p.id] ? <em>{cart[p.id]} in cart</em> : null}</div>

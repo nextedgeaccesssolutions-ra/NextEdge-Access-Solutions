@@ -12,6 +12,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${origin}/`, lastModified: now, priority: 1 },
     { url: `${origin}/store`, lastModified: now, priority: 0.9 },
     { url: `${origin}/privacy-policy`, lastModified: now, priority: 0.3 },
-    ...dedupePublicProducts(await listProducts().catch(() => [])).map((p) => ({ url: `${origin}/store/p/${p.id}`, lastModified: now, priority: 0.7 })),
+    ...dedupePublicProducts(await listProducts().catch((err) => { console.error("[sitemap] listProducts failed; product URLs omitted:", err); return []; })).map((p) => ({ url: `${origin}/store/p/${p.id}`, lastModified: now, priority: 0.7 })),
   ];
 }

@@ -7,11 +7,12 @@ import StorePromoBanner from "./StorePromoBanner";
 import catalog from "../../scripts/catalog.json";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Rope Access & Height Safety Equipment Store | NEAS Philippines", description: "Shop height-safety and rope-access equipment from NEAS, including Skylotec, Singing Rock and Trestec products. Request availability and delivery across the Philippines.", alternates: { canonical: "https://www.nextedge-access-solutions.com/store" } };
+export const metadata = { title: "Rope Access & Height Safety Equipment Store", description: "Shop height-safety and rope-access equipment from NEAS, including Skylotec, Singing Rock and Trestec products. Request availability and delivery across the Philippines.", alternates: { canonical: "https://www.nextedge-access-solutions.com/store" } };
 
 export default async function Store() {
+  let live = true;
   const [products, user] = await Promise.all([
-    listProducts().catch((): Product[] => catalog.map((p) => ({
+    listProducts().catch((err): Product[] => { live = false; console.error("[store] listProducts failed; serving static fallback catalog:", err); return catalog.map((p) => ({
       id: p.id,
       category: p.cat,
       code: p.code,
@@ -30,16 +31,22 @@ export default async function Store() {
       name_override: null,
       code_override: null,
       category_override: null,
-    }))),
+    })); }),
     getUser().catch(() => null),
   ]);
   const pub = dedupePublicProducts(products).map((p) => ({ id: p.id, category: p.category, code: p.code, name: p.name, price: p.price, image: (p as { image?: string }).image ?? "", description: (p as { description?: string }).description ?? "", features: (p as { features?: string }).features ?? "", specs_url: (p as { specs_url?: string }).specs_url ?? "" }));
+  const origin = "https://www.nextedge-access-solutions.com";
+  const itemList = live && pub.length ? {
+    "@context": "https://schema.org", "@type": "ItemList", name: "NEAS Online Store",
+    itemListElement: pub.map((p, i) => ({ "@type": "ListItem", position: i + 1, url: `${origin}/store/p/${encodeURIComponent(p.id)}`, name: p.name })),
+  } : null;
   return <div className="wrap" style={{ padding: "40px 20px" }}>
+    {itemList && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList).replace(/</g, "\\u003c") }} />}
     <StorePromoBanner />
     <div className="eyebrow reveal">Online Store · PPE &amp; Rope Access Equipment</div>
     <h1 className="reveal">Shop Certified Height-Safety Gear</h1>
     <p className="muted reveal" style={{ maxWidth: 680 }}>Genuine Skylotec, Singing Rock and Trestec equipment. Order online and pay by bank transfer. We confirm stock and delivery once payment is received.</p>
-    <StoreClient products={pub} user={user ? { name: user.name, phone: user.phone, email: user.email } : null} bank={BANK} />
+    <StoreClient linkable={live} products={pub} user={user ? { name: user.name, phone: user.phone, email: user.email } : null} bank={BANK} />
     <section aria-labelledby="store-guide" style={{ maxWidth: 900, margin: "56px auto 20px", lineHeight: 1.75 }}>
       <h2 id="store-guide">Rope Access and Height-Safety Equipment for Philippine Worksites</h2>
       <p>NEAS supplies selected personal protective equipment and work-at-height products for rope access technicians, industrial maintenance teams, construction contractors, renewable-energy operators, telecom crews, and facility managers in the Philippines. The online catalogue includes equipment categories such as helmets, full-body harnesses, ropes, descenders, ascenders, connectors, lanyards, pulleys, anchors, slings, rope-protection products, bags, and accessories.</p>
