@@ -1255,14 +1255,14 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){
   <span id="neas-chat-unread" style="display:none;position:absolute;top:2px;right:2px;width:12px;height:12px;background:#ef4444;border-radius:50%;border:2px solid #fff"></span>
 </div>
 
-<div id="neas-chat-window" style="display:none;position:fixed;bottom:92px;right:24px;z-index:9998;width:360px;max-width:calc(100vw - 48px);background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.18);border:1px solid #e2e8f0;flex-direction:column;overflow:hidden;animation:chatSlideUp .25s ease">
+<div id="neas-chat-window" role="dialog" aria-label="NEAS chat" style="position:fixed;bottom:92px;right:24px;z-index:9998;width:360px;max-width:calc(100vw - 48px);background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.18);border:1px solid #e2e8f0;flex-direction:column;overflow:hidden;animation:chatSlideUp .25s ease">
   <div style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:14px 16px;display:flex;align-items:center;gap:10px">
     <div style="width:36px;height:36px;border-radius:50%;background:rgba(249,115,22,.2);display:flex;align-items:center;justify-content:center;font-size:18px">🤖</div>
     <div>
-      <div style="color:#fff;font-weight:700;font-size:14px">NEAS Assistant</div>
-      <div style="color:#94a3b8;font-size:11px">Rope Access · Safety · Training</div>
+      <div style="color:#fff;font-weight:700;font-size:14px">NEAS AI Sales Assistant</div>
+      <div style="color:#cbd5e1;font-size:11px">Rope Access · Safety · Training · PPE</div>
     </div>
-    <div style="margin-left:auto;width:8px;height:8px;background:#22c55e;border-radius:50%" title="Online"></div>
+    <a href="tel:+639914265886" aria-label="Call NEAS on +63 991 426 5886" style="margin-left:auto;display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:8px;background:rgba(34,197,94,.18);border:1px solid rgba(34,197,94,.4);color:#fff;font-size:11px;font-weight:700;text-decoration:none">📞 Call</a>
     <button id="neas-chat-close" style="background:none;border:none;cursor:pointer;padding:4px;margin-left:4px" aria-label="Close chat">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
@@ -1278,9 +1278,15 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){
     </div>
   </div>
   <div id="neas-chat-sent" style="display:none;padding:10px 14px;background:#f0fdf4;border-top:1px solid #bbf7d0;font-size:13px;color:#166534;font-weight:600">✅ Inquiry sent! Our team will contact you soon.</div>
-  <div style="padding:10px 14px 14px;border-top:1px solid #f1f5f9;display:flex;gap:8px">
-    <input id="neas-chat-input" placeholder="Ask about our services..." style="flex:1;padding:9px 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;outline:none;font-family:inherit">
+  <div style="padding:10px 14px 10px;border-top:1px solid #f1f5f9;display:flex;gap:6px;align-items:center">
+    <button id="neas-chat-mic" type="button" aria-label="Speak your question" title="Speak your question" style="display:none;width:36px;height:36px;flex-shrink:0;border-radius:50%;border:none;background:#f1f5f9;cursor:pointer;font-size:16px">🎤</button>
+    <button id="neas-chat-speak" type="button" aria-label="Read the last answer aloud" title="Read the last answer aloud" style="display:none;width:36px;height:36px;flex-shrink:0;border-radius:50%;border:none;background:#f1f5f9;cursor:pointer;font-size:16px">🔊</button>
+    <input id="neas-chat-input" aria-label="Your message" placeholder="Ask about our services..." style="flex:1;padding:9px 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;outline:none;font-family:inherit">
     <button id="neas-chat-send" style="padding:9px 14px;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-size:12px;font-family:inherit">Send</button>
+  </div>
+  <div style="padding:8px 14px 12px;background:#f8fafc;border-top:1px solid #f1f5f9;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+    <a href="tel:+639914265886" style="padding:6px 12px;border-radius:20px;background:#fff;border:1px solid #e2e8f0;color:#0f172a;font-size:11px;font-weight:700;text-decoration:none">📞 +63 991 426 5886</a>
+    <a href="https://wa.me/639914265886?text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services." target="_blank" rel="noopener" style="padding:6px 12px;border-radius:20px;background:#128C7E;color:#fff;font-size:11px;font-weight:700;text-decoration:none">WhatsApp</a>
   </div>
 </div>
 
@@ -1290,11 +1296,16 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){
 @keyframes chatDot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
 #neas-chat-window{display:none}
 #neas-chat-window.open{display:flex}
+#neas-chat-window{max-height:calc(100vh - 108px);max-height:calc(100dvh - 108px)}
+#neas-chat-msgs{min-height:80px!important;flex:1 1 auto}
+#neas-chat-window>*{flex-shrink:0;min-width:0}
+#neas-chat-input{min-width:0;width:100%}
+@media (max-width:480px){#neas-chat-window{right:12px!important;max-width:calc(100vw - 24px)!important}}
 </style>
 
 <script>
 (function(){
-  var MSGS=[{role:"assistant",content:"👋 Hi! I'm the NEAS virtual assistant. I can help you with questions about our rope access services, training, equipment, and pricing. How can I help you today?"}];
+  var MSGS=[{role:"assistant",content:"👋 Hello! I'm the NEAS AI Sales Assistant. Ask me about rope access, wind turbine and facade work, IRATA training, PPE, or a quote. You can type, tap 🎤 to speak, or tap 📞 to call our team directly."}];
   var open=false,loading=false,userCount=0;
   var fab=document.getElementById('neas-chat-fab');
   var win=document.getElementById('neas-chat-window');
@@ -1359,6 +1370,21 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){
     loading=false;sendBtn.disabled=false;
   }
   sendBtn.addEventListener('click',send);
+
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition,mic=document.getElementById('neas-chat-mic'),rec=null;
+  if(SR&&mic){mic.style.display='block';mic.addEventListener('click',function(){
+    if(rec){rec.stop();return;}
+    rec=new SR();rec.lang=document.documentElement.lang||'en-PH';rec.interimResults=false;
+    mic.style.background='#ef4444';input.placeholder='Listening…';
+    rec.onresult=function(e){input.value=e.results[0][0].transcript;send();};
+    rec.onend=rec.onerror=function(){rec=null;mic.style.background='#f1f5f9';input.placeholder='Ask about our services...';};
+    rec.start();
+  });}
+  var spk=document.getElementById('neas-chat-speak');
+  if('speechSynthesis' in window&&spk){spk.style.display='block';spk.addEventListener('click',function(){
+    if(speechSynthesis.speaking){speechSynthesis.cancel();return;}
+    for(var i=MSGS.length-1;i>=0;i--){if(MSGS[i].role==='assistant'){var u=new SpeechSynthesisUtterance(MSGS[i].content.replace(/[*_#`]/g,''));u.lang='en-US';u.rate=.95;speechSynthesis.speak(u);break;}}
+  });}
   input.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
 
   ciSend&&ciSend.addEventListener('click',async function(){
@@ -1368,8 +1394,9 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){
     if(!n&&!em)return;
     ciSend.disabled=true;
     try{
-      await fetch('/api/chatbot',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({sendInquiry:true,messages:MSGS.slice(-20),name:n,email:em,phone:ph})});
-      contactEl.style.display='none';sentEl.style.display='block';
+      var ir=await fetch('/api/chatbot',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({sendInquiry:true,messages:MSGS.slice(-20),name:n,email:em,phone:ph})});
+      if(ir.ok){contactEl.style.display='none';sentEl.style.display='block';}
+      else{var ij=await ir.json().catch(function(){return {};});ciSend.disabled=false;MSGS.push({role:'assistant',content:(ij.error||'Your inquiry could not be sent.')+' You can also call +63 991 426 5886 or email sales@nextedge-access-solutions.com.'});bubble(MSGS[MSGS.length-1]);}
     }catch(e){ciSend.disabled=false;}
   });
 })();
