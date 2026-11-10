@@ -1,4 +1,4 @@
-import { listProducts } from "@/lib/db";
+import { listProducts, type Product } from "@/lib/db";
 import { dedupePublicProducts } from "@/lib/catalog";
 import { getUser } from "@/lib/auth";
 import { BANK } from "@/lib/http";
@@ -11,7 +11,7 @@ export const metadata = { title: "Rope Access & Height Safety Equipment Store | 
 
 export default async function Store() {
   const [products, user] = await Promise.all([
-    listProducts().catch(() => catalog.map((p, i) => ({
+    listProducts().catch((): Product[] => catalog.map((p) => ({
       id: p.id,
       category: p.cat,
       code: p.code,
@@ -20,7 +20,10 @@ export default async function Store() {
       price_override: null,
       active: true,
       price: Math.ceil((Number(p.dealer) * 1.2) / 5) * 5,
-      sort: i,
+      image: "",
+      description: "",
+      features: "",
+      specs_url: "",
     }))),
     getUser().catch(() => null),
   ]);
