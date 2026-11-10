@@ -125,7 +125,9 @@ export function fingerprintCsv(text: string) {
 
 export async function applyRows(rows: SheetRow[], hideMissing: boolean) {
   return sql.begin(async (tx) => {
-    const existing = await tx`select id, code, name, active from products`;
+    // Match on what the sheet last wrote, not the displayed value: an admin
+    // override of code or name must not orphan the row and create a duplicate.
+    const existing = await tx`select id, coalesce(code_sheet, code) as code, coalesce(name_sheet, name) as name, active from products`;
     const byCode = new Map<string, string>();
     const byName = new Map<string, string>();
     for (const p of existing) {
@@ -145,9 +147,14 @@ export async function applyRows(rows: SheetRow[], hideMissing: boolean) {
       const id = existingId ?? p.id;
       if (existingId) updated++; else added++;
       matchedIds.push(id);
-      await tx`insert into products (id, category, code, name, dealer_price, sheet_price, image_url, active, sort)
-        values (${id}, ${p.category}, ${p.code}, ${p.name}, ${p.dealer}, ${p.sell}, ${p.image || null}, true, ${i})
-        on conflict (id) do update set category = excluded.category, code = excluded.code, name = excluded.name, dealer_price = excluded.dealer_price, sheet_price = excluded.sheet_price, image_url = coalesce(excluded.image_url, products.image_url), active = true, sort = excluded.sort`;
+      await tx`insert into products (id, category, code, name, category_sheet, code_sheet, name_sheet, dealer_price, sheet_price, image_url, active, sort)
+        values (${id}, ${p.category}, ${p.code}, ${p.name}, ${p.category}, ${p.code}, ${p.name}, ${p.dealer}, ${p.sell}, ${p.image || null}, true, ${i})
+        on conflict (id) do update set
+          category_sheet = excluded.category, code_sheet = excluded.code, name_sheet = excluded.name,
+          category = coalesce(products.category_override, excluded.category),
+          code = coalesce(products.code_override, excluded.code),
+          name = coalesce(products.name_override, excluded.name),
+          dealer_price = excluded.dealer_price, sheet_price = excluded.sheet_price, image_url = coalesce(excluded.image_url, products.image_url), active = true, sort = excluded.sort`;
     }
     let hidden = 0;
     if (hideMissing) {
