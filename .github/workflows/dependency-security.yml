@@ -1,12 +1,17 @@
 name: NEAS Dependency Security
 
 on:
+  # Weekly sweep: without it, a newly disclosed advisory is only caught
+  # when someone happens to touch package.json. Monday 04:23 Asia/Manila.
+  schedule:
+    - cron: "23 20 * * 0"
   workflow_dispatch:
   pull_request:
     paths:
       - "package.json"
       - "pnpm-lock.yaml"
       - ".github/workflows/dependency-security.yml"
+      - "docs/dependency-security-remediation.md"
 
 permissions:
   contents: read
