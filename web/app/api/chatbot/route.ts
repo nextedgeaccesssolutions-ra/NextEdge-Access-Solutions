@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadConfig } from "@/lib/config";
 import { sendMail } from "@/lib/notify";
+import { rateLimitRequest } from "@/lib/rate-limit";
+
+// gemini-1.5-flash was shut down by Google (Sep 2025). Override with GEMINI_MODEL if needed.
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-3.6-flash";
+const MAX_MESSAGES = 20;
+const MAX_CHARS = 2000;
+
+const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+
+function sanitize(raw: unknown): Msg[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((m): m is Msg => !!m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .slice(-MAX_MESSAGES)
+    .map((m) => ({ role: m.role, content: m.content.slice(0, MAX_CHARS) }));
+}
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -194,9 +210,9 @@ async function askGemini(messages: Msg[], apiKey: string): Promise<string> {
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.content }],
   }));
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({ system_instruction: { parts: [{ text: SYSTEM }] }, contents }),
   });
   const j = await r.json().catch(() => ({}));
@@ -207,25 +223,35 @@ async function askGemini(messages: Msg[], apiKey: string): Promise<string> {
 export async function POST(req: NextRequest) {
   try {
     await loadConfig().catch(() => {});
-    const { messages, sendInquiry, name, email, phone } = await req.json() as {
-      messages?: Msg[]; sendInquiry?: boolean; name?: string; email?: string; phone?: string;
+    const body = await req.json().catch(() => ({})) as {
+      messages?: unknown; sendInquiry?: boolean; name?: string; email?: string; phone?: string;
     };
+    const { sendInquiry } = body;
+    const messages = sanitize(body.messages);
+    const name = String(body.name ?? "").slice(0, 120);
+    const email = String(body.email ?? "").slice(0, 200);
+    const phone = String(body.phone ?? "").slice(0, 40);
 
     // Send inquiry email
     if (sendInquiry) {
+      const limited = rateLimitRequest(req, "chatbot-inquiry", 5, 60 * 60_000);
+      if (limited) return limited;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && phone.replace(/\D/g, "").length < 7) {
+        return NextResponse.json({ error: "Please provide a valid email or phone number." }, { status: 400 });
+      }
       const chatLog = (messages ?? []).map((m) => `${m.role === "user" ? "Customer" : "AI"}: ${m.content}`).join("\n\n");
       await sendMail(
         "info.nextedgeaccesssolutions@gmail.com",
-        `New Website Inquiry from ${name || "Website Visitor"}`,
+        `New Website Inquiry from ${(name || "Website Visitor").replace(/[\r\n]/g, " ")}`,
         `<div style="font-family:sans-serif;max-width:600px">
           <h2 style="color:#f97316">New Inquiry – NEAS Website Chatbot</h2>
           <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
-            <tr><td style="padding:8px;font-weight:600;color:#475569">Name:</td><td style="padding:8px">${name || "Not provided"}</td></tr>
-            <tr style="background:#f8fafc"><td style="padding:8px;font-weight:600;color:#475569">Email:</td><td style="padding:8px">${email || "Not provided"}</td></tr>
-            <tr><td style="padding:8px;font-weight:600;color:#475569">Phone:</td><td style="padding:8px">${phone || "Not provided"}</td></tr>
+            <tr><td style="padding:8px;font-weight:600;color:#475569">Name:</td><td style="padding:8px">${esc(name || "Not provided")}</td></tr>
+            <tr style="background:#f8fafc"><td style="padding:8px;font-weight:600;color:#475569">Email:</td><td style="padding:8px">${esc(email || "Not provided")}</td></tr>
+            <tr><td style="padding:8px;font-weight:600;color:#475569">Phone:</td><td style="padding:8px">${esc(phone || "Not provided")}</td></tr>
           </table>
           <h3 style="color:#0f172a">Chat Conversation:</h3>
-          <pre style="background:#f1f5f9;padding:16px;border-radius:8px;white-space:pre-wrap;font-size:13px">${chatLog}</pre>
+          <pre style="background:#f1f5f9;padding:16px;border-radius:8px;white-space:pre-wrap;font-size:13px">${esc(chatLog)}</pre>
           <p style="color:#64748b;font-size:12px">Sent from NEAS website chatbot · nextedge-access-solutions.com</p>
         </div>`,
         "chatbot_inquiry"
@@ -234,7 +260,9 @@ export async function POST(req: NextRequest) {
     }
 
     // AI response
-    if (!messages?.length) return NextResponse.json({ error: "No messages provided" }, { status: 400 });
+    const limited = rateLimitRequest(req, "chatbot", 30, 10 * 60_000);
+    if (limited) return limited;
+    if (!messages.length || messages[messages.length - 1].role !== "user") return NextResponse.json({ error: "No messages provided" }, { status: 400 });
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
       // Fallback: static NEAS info without AI

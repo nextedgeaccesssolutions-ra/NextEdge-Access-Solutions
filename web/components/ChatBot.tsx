@@ -136,13 +136,19 @@ export default function ChatBot() {
     if (!contact.name && !contact.email && !contact.phone) return;
     setLoading(true);
     try {
-      await fetch("/api/chatbot", {
+      const r = await fetch("/api/chatbot", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ sendInquiry: true, messages: msgs.slice(-20), ...contact }),
       });
-      setSent(true);
-    } catch { /* ignore */ }
+      if (r.ok) setSent(true);
+      else {
+        const j = await r.json().catch(() => ({}));
+        alert(j?.error || "Sorry, we couldn't send your inquiry. Please call (+63) 991 426 5886 or email sales@nextedge-access-solutions.com.");
+      }
+    } catch {
+      alert("Network error. Please call (+63) 991 426 5886 or email sales@nextedge-access-solutions.com.");
+    }
     setLoading(false);
   }
 
