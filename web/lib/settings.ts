@@ -31,6 +31,15 @@ export const DEFAULT_BUSINESS: Business = {
   street: "B 15 Lot 6, Marilao Grand Villas, Barangay Loma de Gato", city: "Marilao", region: "Bulacan", postal: "3019", country: "PH", hours: "Mo-Su 00:00-23:59", logo: "/img/logo.png",
 };
 
+export async function getStringSetting(key: string, fallback = ""): Promise<string> {
+  try {
+    const rows = await sql`select value from settings where key = ${key}`;
+    if (!rows[0]) return fallback;
+    const v = JSON.parse(rows[0].value);
+    return typeof v === "string" ? v : fallback;
+  } catch { return fallback; }
+}
+
 export async function getSetting<T extends object>(key: string, fallback: T): Promise<T> {
   try {
     const rows = await sql`select value from settings where key = ${key}`;
