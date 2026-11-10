@@ -24,6 +24,12 @@ export default async function Store() {
       description: "",
       features: "",
       specs_url: "",
+      name_sheet: p.name,
+      code_sheet: p.code,
+      category_sheet: p.cat,
+      name_override: null,
+      code_override: null,
+      category_override: null,
     }))),
     getUser().catch(() => null),
   ]);

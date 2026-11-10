@@ -2,9 +2,41 @@
 import { useState } from "react";
 import ImageCell from "./ImageCell";
 
-type Prod = { id: string; category: string; code: string; name: string; dealer_price: number; price_override: number | null; active: boolean; price: number; image: string; description: string; features: string; specs_url: string };
+type Prod = { id: string; category: string; code: string; name: string; dealer_price: number; price_override: number | null; active: boolean; price: number; image: string; description: string; features: string; specs_url: string; name_sheet: string; code_sheet: string; category_sheet: string; name_override: string | null; code_override: string | null; category_override: string | null };
 type Order = { id: number; reference: string; status: string; total: number; created_at: string; email: string; customer: string; delivery: string; notes: string; items: { name: string; code: string; quantity: number; unit_price: number }[] };
 type Cust = { id: number; name: string; email: string; phone: string; created_at: string; orders: number };
+function ItemCell({ p, onSaved, flash }: { p: Prod; onSaved: (patch: Partial<Prod>) => void; flash: (t: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  async function save(field: "nameOverride" | "codeOverride" | "categoryOverride", raw: string, sheetValue: string, applied: (v: string | null) => Partial<Prod>) {
+    const next = raw.trim() === "" ? null : raw.trim();
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/admin/products/${p.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ [field]: next }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "Could not save.");
+      onSaved(applied(next));
+      flash(next === null ? `Reset to the sheet value: ${sheetValue} ✓` : "Saved ✓");
+    } catch (e) { flash((e as Error).message); }
+    finally { setBusy(false); }
+  }
+  const box = { width: "100%", fontSize: 13, marginBottom: 4 } as const;
+  return <div style={{ minWidth: 240 }}>
+    <input className="input" style={{ ...box, fontWeight: 700 }} disabled={busy} defaultValue={p.name} placeholder={p.name_sheet}
+      aria-label={"Item name for " + p.name}
+      onBlur={(e) => { if (e.target.value.trim() !== p.name) save("nameOverride", e.target.value, p.name_sheet, (v) => ({ name_override: v, name: v ?? p.name_sheet })); }} />
+    <div style={{ display: "flex", gap: 4 }}>
+      <input className="input" style={box} disabled={busy} defaultValue={p.category} placeholder={p.category_sheet}
+        aria-label={"Category for " + p.name}
+        onBlur={(e) => { if (e.target.value.trim() !== p.category) save("categoryOverride", e.target.value, p.category_sheet, (v) => ({ category_override: v, category: v ?? p.category_sheet })); }} />
+      <input className="input" style={box} disabled={busy} defaultValue={p.code} placeholder={p.code_sheet}
+        aria-label={"Item code for " + p.name}
+        onBlur={(e) => { if (e.target.value.trim() !== p.code) save("codeOverride", e.target.value, p.code_sheet, (v) => ({ code_override: v, code: v ?? p.code_sheet })); }} />
+    </div>
+    {(p.name_override ?? p.code_override ?? p.category_override) != null &&
+      <span className="muted" style={{ fontSize: 11 }}>Edited here — the sheet sync will not overwrite it. Clear a box to go back to the sheet.</span>}
+  </div>;
+}
+
 const peso = (n: number) => "₱" + Math.round(n).toLocaleString("en-PH");
 const STATUSES = [["awaiting_payment", "Awaiting payment"], ["paid", "Paid"], ["processing", "Processing"], ["shipped", "Shipped"], ["completed", "Completed"], ["cancelled", "Cancelled"]];
 const sell = (d: number, o: number | null, m: number) => (o != null ? o : Math.ceil((d * (1 + m / 100)) / 5) * 5);
@@ -88,7 +120,7 @@ export default function AdminClient(props: { markup: number; categoryMarkup: Rec
       <table className="t"><thead><tr><th>Photo</th><th>Item</th><th>Details &amp; specs</th><th>Dealer</th><th>Selling price</th><th>Own price (override)</th><th>Shown</th></tr></thead><tbody>
         {products.filter((p) => !q || (p.name + p.code + p.category).toLowerCase().includes(q.toLowerCase())).map((p) => <tr key={p.id} style={{ opacity: p.active ? 1 : 0.5 }}>
           <td><ImageCell id={p.id} name={p.name} initial={p.image} /></td>
-          <td><b>{p.name}</b><br /><span className="muted" style={{ fontSize: 12 }}>{p.category}{p.code && " · " + p.code}</span></td>
+          <td><ItemCell p={p} flash={flash} onSaved={(patch) => setProducts((ps) => ps.map((x) => (x.id === p.id ? { ...x, ...patch } : x)))} /></td>
           <td style={{ minWidth: 300 }}><DetailsEditor p={p} /></td>
           <td>{peso(p.dealer_price)}</td>
           <td><b>{peso(sell(p.dealer_price, p.price_override, mkFor(p.category)))}</b>{p.price_override != null && <span className="badge" style={{ marginLeft: 6 }}>custom</span>}</td>
