@@ -194,14 +194,34 @@ async function askGemini(messages: Msg[], apiKey: string): Promise<string> {
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.content }],
   }));
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ system_instruction: { parts: [{ text: SYSTEM }] }, contents }),
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j?.error?.message || `Gemini ${r.status}`);
-  return j.candidates?.[0]?.content?.parts?.[0]?.text ?? "I'm sorry, I couldn't generate a response.";
+  // gemini-1.5-* is retired; model is overridable via GEMINI_MODEL without a code change.
+  const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+  const call = async (withSearch: boolean) => {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYSTEM }] },
+        contents,
+        // Google Search grounding = live internet knowledge
+        ...(withSearch ? { tools: [{ google_search: {} }] } : {}),
+        generationConfig: { maxOutputTokens: 800, temperature: 0.6 },
+      }),
+      signal: AbortSignal.timeout(25000),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j?.error?.message || `Gemini ${r.status}`);
+    const parts: { text?: string }[] = j.candidates?.[0]?.content?.parts ?? [];
+    const text = parts.map((p) => p.text ?? "").join("").trim();
+    if (!text) throw new Error("Empty Gemini response");
+    return text;
+  };
+  try {
+    return await call(true);
+  } catch (e) {
+    console.error("[chatbot] grounded call failed, retrying without search:", (e as Error).message);
+    return await call(false);
+  }
 }
 
 export async function POST(req: NextRequest) {
