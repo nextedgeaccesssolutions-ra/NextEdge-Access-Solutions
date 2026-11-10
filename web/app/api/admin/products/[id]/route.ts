@@ -22,6 +22,28 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (u && !/^https?:\/\/\S+$/i.test(u) && !u.startsWith("/")) return bad("Technical specs link must start with https://");
     await sql`update products set specs_url = ${u.slice(0, 1000) || null} where id = ${id}`;
   }
+  // Sheet-owned fields. Setting an override writes both the override (so the
+  // next sync preserves it) and the effective column (so every existing query
+  // -- store listing, search, category markup, bulk pricing -- keeps working
+  // unchanged). Clearing it restores whatever the sheet last supplied.
+  for (const [field, column] of [["nameOverride", "name"], ["codeOverride", "code"], ["categoryOverride", "category"]] as const) {
+    if (!(field in b)) continue;
+    const raw = b[field as keyof typeof b];
+    const v = raw === null || String(raw ?? "").trim() === "" ? null : String(raw).trim().slice(0, 200);
+    if (column === "name" && v === null) {
+      const [row] = await sql`select name_sheet from products where id = ${id}`;
+      if (!row?.name_sheet) return bad("This item has no sheet name to fall back to. Type a name instead of clearing it.");
+    }
+    if (v === null) {
+      if (column === "name") await sql`update products set name_override = null, name = coalesce(name_sheet, name) where id = ${id}`;
+      else if (column === "code") await sql`update products set code_override = null, code = coalesce(code_sheet, code) where id = ${id}`;
+      else await sql`update products set category_override = null, category = coalesce(category_sheet, category) where id = ${id}`;
+    } else {
+      if (column === "name") await sql`update products set name_override = ${v}, name = ${v} where id = ${id}`;
+      else if (column === "code") await sql`update products set code_override = ${v}, code = ${v} where id = ${id}`;
+      else await sql`update products set category_override = ${v}, category = ${v} where id = ${id}`;
+    }
+  }
   if ("active" in b) await sql`update products set active = ${Boolean(b.active)} where id = ${id}`;
   return ok();
 }

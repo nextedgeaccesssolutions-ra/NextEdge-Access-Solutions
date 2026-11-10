@@ -8,7 +8,11 @@ export const sql = g.__neasSql ?? postgres(url, {
 });
 if (process.env.NODE_ENV !== "production") g.__neasSql = sql;
 
-export type Product = { id: string; category: string; code: string; name: string; dealer_price: number; price_override: number | null; active: boolean; price: number; image: string; description: string; features: string; specs_url: string };
+export type Product = { id: string; category: string; code: string; name: string; dealer_price: number; price_override: number | null; active: boolean; price: number; image: string; description: string; features: string; specs_url: string;
+  /** What the Google Sheet last supplied, shown as the placeholder when an override is cleared. */
+  name_sheet: string; code_sheet: string; category_sheet: string;
+  /** Admin overrides. Non-null wins over the sheet and survives every sync. */
+  name_override: string | null; code_override: string | null; category_override: string | null };
 
 export async function getMarkup(): Promise<number> {
   const rows = await sql`select value from settings where key = 'markup_percent'`;
@@ -29,11 +33,13 @@ export async function listProducts(includeInactive = false): Promise<Product[]> 
   const sheetCfg = await getSetting<{ priceSource: string }>("sheet", { priceSource: "markup" });
   const useSheet = sheetCfg.priceSource === "sheet";
   const rows = includeInactive
-    ? await sql`select id, category, code, name, dealer_price, price_override, active, sort, image_url, sheet_price, description, features, specs_url from products order by active desc, sort`
-    : await sql`select id, category, code, name, dealer_price, price_override, active, sort, image_url, sheet_price, description, features, specs_url from products where active order by sort`;
+    ? await sql`select id, category, code, name, dealer_price, price_override, active, sort, image_url, sheet_price, description, features, specs_url, name_sheet, code_sheet, category_sheet, name_override, code_override, category_override from products order by active desc, sort`
+    : await sql`select id, category, code, name, dealer_price, price_override, active, sort, image_url, sheet_price, description, features, specs_url, name_sheet, code_sheet, category_sheet, name_override, code_override, category_override from products where active order by sort`;
   return rows.map((r) => {
     const dealer = Number(r.dealer_price);
     const override = r.price_override == null ? null : Number(r.price_override);
-    return { id: r.id, category: r.category, code: r.code, name: r.name, dealer_price: dealer, price_override: override, active: r.active, image: r.image_url ?? "", description: r.description ?? "", features: r.features ?? "", specs_url: r.specs_url ?? "", price: useSheet && r.sheet_price != null && override == null ? Math.ceil(Number(r.sheet_price)) : sellPrice(dealer, override, catMarkup[r.category] ?? markup) };
+    return { id: r.id, category: r.category, code: r.code, name: r.name,
+      name_sheet: r.name_sheet ?? r.name, code_sheet: r.code_sheet ?? r.code, category_sheet: r.category_sheet ?? r.category,
+      name_override: r.name_override ?? null, code_override: r.code_override ?? null, category_override: r.category_override ?? null, dealer_price: dealer, price_override: override, active: r.active, image: r.image_url ?? "", description: r.description ?? "", features: r.features ?? "", specs_url: r.specs_url ?? "", price: useSheet && r.sheet_price != null && override == null ? Math.ceil(Number(r.sheet_price)) : sellPrice(dealer, override, catMarkup[r.category] ?? markup) };
   });
 }
