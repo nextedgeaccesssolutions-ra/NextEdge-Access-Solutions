@@ -148,14 +148,14 @@ export async function applyRows(rows: SheetRow[], hideMissing: boolean) {
       const id = existingId ?? p.id;
       if (existingId) updated++; else added++;
       matchedIds.push(id);
-      await tx`insert into products (id, category, code, name, category_sheet, code_sheet, name_sheet, dealer_price, sheet_price, image_url, active, sort)
-        values (${id}, ${p.category}, ${p.code}, ${p.name}, ${p.category}, ${p.code}, ${p.name}, ${p.dealer}, ${p.sell}, ${p.image || null}, true, ${i})
+      await tx`insert into products (id, category, code, name, category_sheet, code_sheet, name_sheet, dealer_price, dealer_price_sheet, sheet_price, image_url, active, sort)
+        values (${id}, ${p.category}, ${p.code}, ${p.name}, ${p.category}, ${p.code}, ${p.name}, ${p.dealer}, ${p.dealer}, ${p.sell}, ${p.image || null}, true, ${i})
         on conflict (id) do update set
           category_sheet = excluded.category, code_sheet = excluded.code, name_sheet = excluded.name,
           category = coalesce(products.category_override, excluded.category),
           code = coalesce(products.code_override, excluded.code),
           name = coalesce(products.name_override, excluded.name),
-          dealer_price = excluded.dealer_price, sheet_price = excluded.sheet_price, image_url = coalesce(excluded.image_url, products.image_url), active = true, sort = excluded.sort`;
+          dealer_price_sheet = excluded.dealer_price, dealer_price = coalesce(products.dealer_override, excluded.dealer_price), sheet_price = excluded.sheet_price, image_url = coalesce(excluded.image_url, products.image_url), active = true, sort = excluded.sort`;
     }
     let hidden = 0;
     if (hideMissing) {

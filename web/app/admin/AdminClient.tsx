@@ -2,9 +2,33 @@
 import { useState } from "react";
 import ImageCell from "./ImageCell";
 
-type Prod = { id: string; category: string; code: string; name: string; dealer_price: number; price_override: number | null; active: boolean; price: number; image: string; description: string; features: string; specs_url: string; name_sheet: string; code_sheet: string; category_sheet: string; name_override: string | null; code_override: string | null; category_override: string | null };
+type Prod = { id: string; category: string; code: string; name: string; dealer_price: number; price_override: number | null; active: boolean; price: number; image: string; description: string; features: string; specs_url: string; name_sheet: string; code_sheet: string; category_sheet: string; name_override: string | null; code_override: string | null; category_override: string | null; dealer_price_sheet: number | null; dealer_override: number | null };
 type Order = { id: number; reference: string; status: string; total: number; created_at: string; email: string; customer: string; delivery: string; notes: string; items: { name: string; code: string; quantity: number; unit_price: number }[] };
 type Cust = { id: number; name: string; email: string; phone: string; created_at: string; orders: number };
+function DealerCell({ p, onSaved, flash }: { p: Prod; onSaved: (patch: Partial<Prod>) => void; flash: (t: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  async function save(raw: string) {
+    const t = raw.trim().replace(/[₱,\s]/g, "");
+    if (t === String(p.dealer_override ?? "") || (t === "" && p.dealer_override == null)) return;
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/admin/products/${p.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ dealerOverride: t === "" ? null : Number(t) }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "Could not save.");
+      const sheet = p.dealer_price_sheet ?? p.dealer_price;
+      onSaved(t === "" ? { dealer_override: null, dealer_price: sheet } : { dealer_override: Number(t), dealer_price: Number(t) });
+      flash(t === "" ? `Dealer price reset to the sheet value ✓` : "Dealer price saved ✓");
+    } catch (e) { flash((e as Error).message); }
+    finally { setBusy(false); }
+  }
+  return <div style={{ minWidth: 110 }}>
+    <input className="input" style={{ width: 110 }} inputMode="decimal" disabled={busy} defaultValue={p.dealer_override ?? ""}
+      placeholder={String(p.dealer_price_sheet ?? p.dealer_price)} aria-label={"Dealer price for " + p.name}
+      onBlur={(e) => save(e.target.value)} />
+    <div className="muted" style={{ fontSize: 11 }}>{p.dealer_override != null ? <>custom · sheet ₱{(p.dealer_price_sheet ?? 0).toLocaleString("en-PH")}</> : "from sheet"}</div>
+  </div>;
+}
+
 function ItemCell({ p, onSaved, flash }: { p: Prod; onSaved: (patch: Partial<Prod>) => void; flash: (t: string) => void }) {
   const [busy, setBusy] = useState(false);
   async function save(field: "nameOverride" | "codeOverride" | "categoryOverride", raw: string, sheetValue: string, applied: (v: string | null) => Partial<Prod>) {
@@ -122,7 +146,7 @@ export default function AdminClient(props: { markup: number; categoryMarkup: Rec
           <td><ImageCell id={p.id} name={p.name} initial={p.image} /></td>
           <td><ItemCell p={p} flash={flash} onSaved={(patch) => setProducts((ps) => ps.map((x) => (x.id === p.id ? { ...x, ...patch } : x)))} /></td>
           <td style={{ minWidth: 300 }}><DetailsEditor p={p} /></td>
-          <td>{peso(p.dealer_price)}</td>
+          <td><DealerCell p={p} flash={flash} onSaved={(patch) => setProducts((ps) => ps.map((x) => (x.id === p.id ? { ...x, ...patch } : x)))} /></td>
           <td><b>{peso(sell(p.dealer_price, p.price_override, mkFor(p.category)))}</b>{p.price_override != null && <span className="badge" style={{ marginLeft: 6 }}>custom</span>}</td>
           <td><input className="input" style={{ width: 120 }} placeholder="auto" defaultValue={p.price_override ?? ""} onBlur={(e) => { const v = e.target.value; if (v !== String(p.price_override ?? "")) savePrice(p, v); }} aria-label={"Own price for " + p.name} /></td>
           <td><input type="checkbox" checked={p.active} onChange={() => toggle(p)} aria-label={"Show " + p.name + " in store"} /></td></tr>)}

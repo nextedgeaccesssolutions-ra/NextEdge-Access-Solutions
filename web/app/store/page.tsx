@@ -30,7 +30,7 @@ export default async function Store() {
       category_sheet: p.cat,
       name_override: null,
       code_override: null,
-      category_override: null,
+      category_override: null, dealer_price_sheet: null, dealer_override: null,
     })); }),
     getUser().catch(() => null),
   ]);

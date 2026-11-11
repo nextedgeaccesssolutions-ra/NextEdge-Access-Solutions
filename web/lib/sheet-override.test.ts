@@ -61,4 +61,16 @@ describe.skipIf(!live)("sheet sync vs admin overrides", () => {
     const p = await get();
     expect([p.name, p.code, p.category]).toEqual(["ZZ Override Test Helmet v2", "ZZ-OVR-001", "Helmets"]);
   });
+
+  it("keeps an admin dealer price through a sync and restores the sheet price when cleared", async () => {
+    await sql`update products set dealer_override = 3500, dealer_price = 3500 where id = ${ID}`;
+    await applyRows([row({ dealer: 4100 })], false);
+    let [p] = await sql`select dealer_price, dealer_price_sheet, dealer_override from products where id = ${ID}`;
+    expect(Number(p.dealer_price)).toBe(3500);
+    expect(Number(p.dealer_price_sheet)).toBe(4100);
+    await sql`update products set dealer_override = null, dealer_price = coalesce(dealer_price_sheet, dealer_price) where id = ${ID}`;
+    [p] = await sql`select dealer_price, dealer_override from products where id = ${ID}`;
+    expect(Number(p.dealer_price)).toBe(4100);
+    expect(p.dealer_override).toBeNull();
+  });
 });
