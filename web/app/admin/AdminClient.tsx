@@ -141,14 +141,14 @@ export default function AdminClient(props: { markup: number; categoryMarkup: Rec
         </div>
       </div>
       <input className="input" placeholder="Filter products…" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: "100%", marginBottom: 10 }} />
-      <table className="t"><thead><tr><th>Photo</th><th>Item</th><th>Details &amp; specs</th><th>Dealer</th><th>Selling price</th><th>Own price (override)</th><th>Shown</th></tr></thead><tbody>
+      <table className="t"><thead><tr><th>Photo</th><th>Item</th><th>Details &amp; specs</th><th>Dealer</th><th>Selling price</th><th>Shown</th></tr></thead><tbody>
         {products.filter((p) => !q || (p.name + p.code + p.category).toLowerCase().includes(q.toLowerCase())).map((p) => <tr key={p.id} style={{ opacity: p.active ? 1 : 0.5 }}>
           <td><ImageCell id={p.id} name={p.name} initial={p.image} /></td>
           <td><ItemCell p={p} flash={flash} onSaved={(patch) => setProducts((ps) => ps.map((x) => (x.id === p.id ? { ...x, ...patch } : x)))} /></td>
           <td style={{ minWidth: 300 }}><DetailsEditor p={p} /></td>
           <td><DealerCell p={p} flash={flash} onSaved={(patch) => setProducts((ps) => ps.map((x) => (x.id === p.id ? { ...x, ...patch } : x)))} /></td>
-          <td><b>{peso(sell(p.dealer_price, p.price_override, mkFor(p.category)))}</b>{p.price_override != null && <span className="badge" style={{ marginLeft: 6 }}>custom</span>}</td>
-          <td><input className="input" style={{ width: 120 }} placeholder="auto" defaultValue={p.price_override ?? ""} onBlur={(e) => { const v = e.target.value; if (v !== String(p.price_override ?? "")) savePrice(p, v); }} aria-label={"Own price for " + p.name} /></td>
+          <td style={{ minWidth: 120 }}><input className="input" style={{ width: 120, fontWeight: 700 }} inputMode="decimal" placeholder={String(sell(p.dealer_price, null, mkFor(p.category)))} defaultValue={p.price_override ?? ""} onBlur={(e) => { const v = e.target.value.trim().replace(/[₱,\s]/g, ""); if (v !== String(p.price_override ?? "")) savePrice(p, v); }} aria-label={"Selling price for " + p.name} />
+            <div className="muted" style={{ fontSize: 11 }}>{p.price_override != null ? <>custom · auto {peso(sell(p.dealer_price, null, mkFor(p.category)))}</> : <>auto: dealer + markup</>}</div></td>
           <td><input type="checkbox" checked={p.active} onChange={() => toggle(p)} aria-label={"Show " + p.name + " in store"} /></td></tr>)}
       </tbody></table>
     </div>}
