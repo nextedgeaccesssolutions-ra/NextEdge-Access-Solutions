@@ -1,9 +1,10 @@
-import { sql } from "@/lib/db";
+import { sql, ensureProductColumns } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { bad, ok } from "@/lib/http";
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) return bad("Admin access required.", 403);
   const { id } = await params;
+  await ensureProductColumns();
   const b = await req.json().catch(() => ({}));
   if ("priceOverride" in b) {
     const v = b.priceOverride === null || b.priceOverride === "" ? null : Number(b.priceOverride);

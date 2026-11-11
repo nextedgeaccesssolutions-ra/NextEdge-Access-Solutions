@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { sql } from "./db";
+import { sql, ensureProductColumns } from "./db";
 
 export type SheetRow = { id: string; category: string; code: string; name: string; dealer: number; sell: number | null; image: string };
 
@@ -124,6 +124,7 @@ export function fingerprintCsv(text: string) {
 }
 
 export async function applyRows(rows: SheetRow[], hideMissing: boolean) {
+  await ensureProductColumns();
   return sql.begin(async (tx) => {
     // Match on what the sheet last wrote, not the displayed value: an admin
     // override of code or name must not orphan the row and create a duplicate.
