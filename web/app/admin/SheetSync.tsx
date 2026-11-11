@@ -10,6 +10,8 @@ type Cfg = {
   lastAttempt?: string;
   lastError?: string;
   connectionStatus?: "connected" | "error" | "not-tested";
+  autoSync?: boolean;
+  lastAuto?: string;
 };
 type Row = { code: string; name: string; category: string; dealer: number; sell: number | null };
 const peso = (n: number | null) => (n == null ? "—" : "₱" + Math.round(n).toLocaleString("en-PH"));
@@ -39,6 +41,7 @@ export default function SheetSync({ initial }: { initial: Cfg }) {
           url: cfg.url,
           priceSource: cfg.priceSource,
           hideMissing: cfg.hideMissing,
+          autoSync: cfg.autoSync !== false,
           csv: csv || undefined,
           sourceHash: action === "sync" ? previewHash : undefined,
         }),
@@ -86,6 +89,7 @@ export default function SheetSync({ initial }: { initial: Cfg }) {
         <label style={{ display: "flex", gap: 6, alignItems: "center" }}><input type="radio" checked={cfg.priceSource === "markup"} onChange={() => { setCfg({ ...cfg, priceSource: "markup" }); invalidatePreview(); }} /> Store price = Dealer price + markup</label>
         <label style={{ display: "flex", gap: 6, alignItems: "center" }}><input type="radio" checked={cfg.priceSource === "sheet"} onChange={() => { setCfg({ ...cfg, priceSource: "sheet" }); invalidatePreview(); }} /> Store price = sheet's Selling Price (VAT)</label>
         <label style={{ display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={cfg.hideMissing} onChange={(e) => { setCfg({ ...cfg, hideMissing: e.target.checked }); invalidatePreview(); }} /> Hide store items no longer in the sheet</label>
+        <label style={{ display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={cfg.autoSync !== false} onChange={(e) => setCfg({ ...cfg, autoSync: e.target.checked })} /> Update automatically every day{cfg.lastAuto ? <span className="muted"> · last auto {new Date(cfg.lastAuto).toLocaleString("en-PH")}</span> : null}</label>
       </div>
       <details style={{ marginBottom: 12 }}>
         <summary className="muted" style={{ cursor: "pointer", fontSize: 13 }}>Can't share the sheet publicly? Paste a CSV export instead</summary>
