@@ -15,7 +15,6 @@ export async function renderHomepage(): Promise<string> {
   ]);
   const origin = (() => { try { return new URL(seo.canonical).origin; } catch { return "https://www.nextedge-access-solutions.com"; } })();
   // Normalize the legacy public contact record to the verified NEAS business details.
-  if (biz.email?.trim().toLowerCase() === "info.nextedgeaccesssolutions@gmail.com") biz.email = "info@nextedge-access-solutions.com";
   if (!biz.street?.trim()) biz.street = "B 15 Lot 6, Marilao Grand Villas, Barangay Loma de Gato";
   if (!biz.city?.trim()) biz.city = "Marilao";
   if (!biz.region?.trim()) biz.region = "Bulacan";
