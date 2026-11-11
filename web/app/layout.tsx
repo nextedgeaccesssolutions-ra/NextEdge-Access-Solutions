@@ -5,6 +5,7 @@ import ChatBot from "@/components/ChatBot";
 import ScrollReveal from "@/components/ScrollReveal";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.nextedge-access-solutions.com"),
   title: { default: "NextEdge Access Solutions (NEAS) — Rope Access & Height Safety Philippines", template: "%s | NEAS Philippines" },
   description: "NEAS is a Philippine company providing certified rope access services, IRATA/SPRAT training, NDT inspections, and height-safety equipment. Based in Cebu, serving clients across the Philippines.",
   keywords: ["rope access Philippines", "IRATA training Philippines", "height safety equipment", "rope access Cebu", "SPRAT training", "NDT inspection Philippines", "work at height", "PPE Philippines"],

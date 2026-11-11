@@ -8,7 +8,7 @@ import AdminShell from "./AdminShell";
 import { getSetting, getCategoryMarkup, DEFAULT_SEO, DEFAULT_SOCIAL, DEFAULT_BUSINESS, type Seo, type Social, type Business } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Admin Panel — NEAS" };
+export const metadata = { title: "Admin Panel — NEAS", robots: { index: false, follow: false } };
 
 export default async function Admin() {
   const user = await getUser();
