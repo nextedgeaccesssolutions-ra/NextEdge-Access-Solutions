@@ -32,8 +32,10 @@ const nextConfig = {
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
       { key: "X-Frame-Options", value: "SAMEORIGIN" },
-      // Served over HTTPS on Vercel only; two-year max-age with preload-compatible directives.
-      { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+      // Served over HTTPS on Vercel only. Deliberately WITHOUT includeSubDomains: webmail and
+      // store subdomains were not verified as HTTPS-only, and HSTS is cached client-side for the
+      // full max-age, so binding them is not quickly reversible. Add it only after checking each.
+      { key: "Strict-Transport-Security", value: "max-age=63072000" },
       { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
       { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
       { key: "X-DNS-Prefetch-Control", value: "off" },
