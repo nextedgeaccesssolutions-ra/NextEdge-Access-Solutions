@@ -6,6 +6,7 @@ import { ok, bad } from "@/lib/http";
 import { originOf } from "@/lib/reset";
 import { cronToken, publishPost } from "@/lib/publish";
 import { rateLimitRequest } from "@/lib/rate-limit";
+import { autoSyncSheet } from "@/lib/sheet-source";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -33,7 +34,9 @@ async function run(req: Request) {
     else if ("error" in r) await sql`update mk_posts set status = 'failed', notes = coalesce(notes,'') || ${"\nAuto-publish: " + r.error} where id = ${p.id}`;
   }
   await setSetting("mk_cron_last", { at: new Date().toISOString(), published: results.filter((r) => r.ok).length, failed: results.filter((r) => !r.ok).length });
-  return ok({ ran: new Date().toISOString(), checked: due.length, results });
+  // Daily Google Sheet price update rides on the same cron (one cron job on the Hobby plan).
+  const sheet = await autoSyncSheet().catch((e) => ({ error: String(e) }));
+  return ok({ ran: new Date().toISOString(), checked: due.length, results, sheet });
 }
 export const GET = run;
 export const POST = run;

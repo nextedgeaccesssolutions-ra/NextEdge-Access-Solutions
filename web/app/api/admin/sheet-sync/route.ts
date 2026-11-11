@@ -1,47 +1,8 @@
 import { requireAdmin } from "@/lib/admin";
-import { applyRows, csvUrl, fingerprintCsv, rowsFromCsv } from "@/lib/sheet";
+import { applyRows, fingerprintCsv, rowsFromCsv } from "@/lib/sheet";
+import { DEF, MAX_CSV_BYTES, readSheet, type SheetCfg } from "@/lib/sheet-source";
 import { getSetting, setSetting } from "@/lib/settings";
 import { bad, ok } from "@/lib/http";
-
-type SheetCfg = {
-  url: string;
-  priceSource: "markup" | "sheet";
-  hideMissing: boolean;
-  lastSync: string;
-  lastResult: string;
-  lastAttempt?: string;
-  lastError?: string;
-  connectionStatus?: "connected" | "error" | "not-tested";
-};
-const DEF: SheetCfg = { url: "", priceSource: "markup", hideMissing: true, lastSync: "", lastResult: "", connectionStatus: "not-tested" };
-const MAX_CSV_BYTES = 2_000_000;
-
-async function readSheet(url: string) {
-  const endpoint = csvUrl(url);
-  let response: Response;
-  try {
-    response = await fetch(endpoint, {
-      redirect: "follow",
-      cache: "no-store",
-      signal: AbortSignal.timeout(15_000),
-      headers: { accept: "text/csv,text/plain;q=0.9,*/*;q=0.1" },
-    });
-  } catch (error) {
-    const message = error instanceof Error && error.name === "TimeoutError"
-      ? "Google Sheets did not respond within 15 seconds. Try again."
-      : "Could not reach Google Sheets. Check the connection and try again.";
-    throw new Error(message);
-  }
-  if (!response.ok) throw new Error("Google Sheets returned HTTP " + response.status + ". Check that the spreadsheet is shared with the required access and that the selected tab still exists.");
-  const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
-  const text = await response.text();
-  if (contentType.includes("text/html") || /<!doctype html|<html[\s>]/i.test(text.slice(0, 500))) {
-    throw new Error("Google returned a sign-in or access page instead of CSV. Set General access to Anyone with the link – Viewer, or upload a CSV export.");
-  }
-  if (!text.trim()) throw new Error("Google returned an empty worksheet. Confirm the selected tab (gid) contains data.");
-  if (new TextEncoder().encode(text).byteLength > MAX_CSV_BYTES) throw new Error("The worksheet export exceeds the 2 MB import limit. Reduce the exported data or use a smaller worksheet.");
-  return text;
-}
 
 export async function POST(req: Request) {
   if (!(await requireAdmin())) return bad("Admin access required.", 403);
@@ -50,6 +11,7 @@ export async function POST(req: Request) {
   if (typeof body.url === "string") cfg.url = body.url.trim().slice(0, 500);
   if (body.priceSource === "markup" || body.priceSource === "sheet") cfg.priceSource = body.priceSource;
   if (typeof body.hideMissing === "boolean") cfg.hideMissing = body.hideMissing;
+  if (typeof body.autoSync === "boolean") cfg.autoSync = body.autoSync;
 
   if (body.action === "save") {
     await setSetting("sheet", cfg);
