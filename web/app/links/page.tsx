@@ -2,7 +2,7 @@ import { sql } from "@/lib/db";
 import { getSetting, DEFAULT_SOCIAL, DEFAULT_BUSINESS, type Social, type Business } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "NextEdge Access Solutions — Links", description: "IRATA rope access & height safety in the Philippines. Online Store, services and contact." };
+export const metadata = { title: "NextEdge Access Solutions — Links", description: "IRATA rope access & height safety in the Philippines. Online Store, services and contact.", alternates: { canonical: "/links" } };
 
 export default async function Links() {
   const [links, social, biz] = await Promise.all([
