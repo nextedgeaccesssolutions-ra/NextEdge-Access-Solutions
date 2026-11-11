@@ -11,6 +11,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (v !== null && (!Number.isFinite(v) || v < 0 || v > 10_000_000)) return bad("Enter a valid price.");
     await sql`update products set price_override = ${v} where id = ${id}`;
   }
+  if ("dealerOverride" in b) {
+    if (b.dealerOverride === null || b.dealerOverride === "") {
+      await sql`update products set dealer_override = null, dealer_price = coalesce(dealer_price_sheet, dealer_price) where id = ${id}`;
+    } else {
+      const v = Number(b.dealerOverride);
+      if (!Number.isFinite(v) || v < 0 || v > 10_000_000) return bad("Enter a valid dealer price.");
+      await sql`update products set dealer_override = ${v}, dealer_price = ${v} where id = ${id}`;
+    }
+  }
   if ("dealerPrice" in b) {
     const v = Number(b.dealerPrice);
     if (!Number.isFinite(v) || v < 0 || v > 10_000_000) return bad("Enter a valid dealer price.");
