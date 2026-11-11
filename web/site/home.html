@@ -330,6 +330,17 @@ body{background:var(--bg);color:var(--fg)}
 .modal-contact span{color:var(--fg3);font-size:12px}
 @media(max-width:600px){.modal-cta{grid-template-columns:1fr}.modal-quote{width:100%}}
 </style>
+<style id="modal-share">
+.modal-detail{display:grid;grid-template-columns:1fr minmax(0,236px);gap:22px;align-items:start}
+.modal-share{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.modal-share-btn{border:0;background:var(--accent);color:#fff;font-weight:700;font-size:13px;border-radius:999px;padding:8px 16px;cursor:pointer;transition:background .2s,transform .2s}
+.modal-share-btn:hover{background:var(--accent2);transform:translateY(-1px)}
+.modal-share-btn:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+.modal-sharebox{display:flex;flex-wrap:wrap;gap:6px}
+.modal-sharebox a,.modal-sharebox button{border:1px solid var(--border2);background:var(--bg2);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;line-height:1.4;color:var(--fg);text-decoration:none;cursor:pointer}
+.modal-sharebox a:hover,.modal-sharebox button:hover{border-color:var(--accent);color:var(--accent)}
+@media(max-width:600px){.modal-detail{grid-template-columns:1fr}.modal-share,.modal-share-btn{width:100%}}
+</style>
 <style id="glass">
 /* lighter haze so photos show; glass panel carries readability */
 .hero-bg::after{background:linear-gradient(to right,rgba(255,255,255,0.55) 25%,rgba(255,255,255,0.15) 65%,rgba(255,255,255,0.05))!important}
@@ -897,7 +908,13 @@ body{background:var(--bg);color:var(--fg)}
       <div class="modal-tag" id="modal-tag"></div>
       <div class="modal-title" id="modal-title"></div>
       <div class="modal-desc" id="modal-desc"></div>
-      <div class="modal-features" id="modal-features"></div>
+      <div class="modal-detail">
+        <div class="modal-features" id="modal-features"></div>
+        <div class="modal-share">
+          <button type="button" class="modal-share-btn" id="svc-share" aria-expanded="false" aria-controls="svc-sharebox">⤴ Share</button>
+          <div class="modal-sharebox" id="svc-sharebox" hidden></div>
+        </div>
+      </div>
       <div class="modal-cta">
         <button type="button" class="modal-quote" onclick="quoteFromModal()">Request a Quote</button>
         <div class="modal-contact">
@@ -953,6 +970,7 @@ const SERVICES={
 
 function openModal(id){
   const s=SERVICES[id];if(!s)return;
+  CURRENT_SERVICE=id;resetServiceShare();
   document.getElementById('modal-tag').textContent=s.tag;
   document.getElementById('modal-title').textContent=s.title;
   document.getElementById('modal-desc').textContent=s.desc;
@@ -965,10 +983,36 @@ function openModal(id){
 }
 function closeModal(e){
   if(e&&e.target!==document.getElementById('modal')&&!e.target.classList.contains('modal-close'))return;
+  resetServiceShare();
   document.getElementById('modal').classList.remove('open');
   document.body.style.overflow='';
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal({target:document.getElementById('modal')});});
+/* ---- Share this service ---- */
+var CURRENT_SERVICE='';
+function serviceUrl(id){return location.origin+location.pathname+'#service='+id}
+function resetServiceShare(){
+  const box=document.getElementById('svc-sharebox'),btn=document.getElementById('svc-share');
+  if(box){box.hidden=true;box.innerHTML=''}
+  if(btn)btn.setAttribute('aria-expanded','false');
+}
+function shareService(){
+  const s=SERVICES[CURRENT_SERVICE];if(!s)return;
+  const u=serviceUrl(CURRENT_SERVICE),t=s.title+' — NextEdge Access Solutions',e=encodeURIComponent;
+  if(navigator.share&&matchMedia('(pointer:coarse)').matches){navigator.share({title:t,text:s.desc,url:u}).catch(()=>{});return}
+  const box=document.getElementById('svc-sharebox'),btn=document.getElementById('svc-share');
+  if(!box.hidden){resetServiceShare();return}
+  const L=[['Facebook','https://www.facebook.com/sharer/sharer.php?u='+e(u)],['Messenger','fb-messenger://share/?link='+e(u)],['WhatsApp','https://wa.me/?text='+e(t+' '+u)],['Viber','viber://forward?text='+e(t+' '+u)],['X','https://twitter.com/intent/tweet?text='+e(t)+'&url='+e(u)],['LinkedIn','https://www.linkedin.com/sharing/share-offsite/?url='+e(u)],['Email','mailto:?subject='+e(t)+'&body='+e(t+'\n\n'+u)]];
+  box.innerHTML=L.map(x=>'<a href="'+x[1]+'" target="_blank" rel="noopener">'+x[0]+'</a>').join('')+'<button type="button" id="svc-copylink">Copy link</button><a href="'+u+'" target="_blank" rel="noopener">Service page ↗</a>';
+  box.hidden=false;btn.setAttribute('aria-expanded','true');
+  const cb=document.getElementById('svc-copylink');
+  cb.onclick=()=>{(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>{cb.textContent='Copied ✓';setTimeout(()=>{cb.textContent='Copy link'},2000)},()=>{prompt('Copy link:',u)})};
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const btn=document.getElementById('svc-share');if(btn)btn.onclick=shareService;
+  const m=/^#service=([a-z0-9-]+)$/i.exec(location.hash||'');
+  if(m&&SERVICES[m[1]])openModal(m[1]);
+});
 async function submitForm(e){
   e.preventDefault();
   const form=e.currentTarget;
@@ -1037,6 +1081,7 @@ setTimeout(next,5000);
 <script>
 function quoteFromModal(){
   var t=document.getElementById('modal-title').textContent.trim();
+  resetServiceShare();
   document.getElementById('modal').classList.remove('open');document.body.style.overflow='';
   var sel=document.querySelector('#contact-form select')||document.querySelector('#contact select');
   if(sel){for(var o of sel.options){if(o.text.trim()===t){sel.value=o.value||o.text;break;}}}
