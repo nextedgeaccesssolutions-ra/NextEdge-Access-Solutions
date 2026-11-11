@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { SignJWT, jwtVerify } from "jose";
-import { strongKey, legacyKey, signingKey, verifyKeys } from "./auth";
+import { strongKey, legacyKey, signingKey, verifyKeys } from "./session-key";
 
 const LONG = "x".repeat(32);
 const DB = "postgres://user:pw@db.example.org:5432/neas";
