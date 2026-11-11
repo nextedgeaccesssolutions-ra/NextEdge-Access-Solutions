@@ -25,7 +25,23 @@ export function sellPrice(dealer: number, override: number | null, markup: numbe
   return Math.ceil((Number(dealer) * (1 + markup / 100)) / 5) * 5;
 }
 
+// Additive, idempotent schema repair for the admin item-override columns (#52).
+// Production builds no longer run scripts/migrate.mjs, so make sure the columns exist at runtime.
+let productColumnsReady: Promise<void> | null = null;
+export function ensureProductColumns(): Promise<void> {
+  productColumnsReady ??= (async () => {
+    for (const col of ["name_sheet", "code_sheet", "category_sheet", "name_override", "code_override", "category_override"]) {
+      await sql.unsafe(`alter table products add column if not exists ${col} text`);
+    }
+  })().catch((err) => {
+    productColumnsReady = null; // retry on a later request
+    console.error("[db] could not add product override columns (run `npm run migrate`):", err);
+  });
+  return productColumnsReady;
+}
+
 export async function listProducts(includeInactive = false): Promise<Product[]> {
+  await ensureProductColumns();
   const markup = await getMarkup();
   const { getCategoryMarkup } = await import("./settings");
   const catMarkup = await getCategoryMarkup();
