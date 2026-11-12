@@ -1,0 +1,210 @@
+From 603f78b512ffd16f4a430093623dfaec3234ba15 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 14:51:30 +0900
+Subject: [PATCH 1/2] fix(contact): prefill WhatsApp messages on contact,
+ footer and chat links
+
+The WhatsApp buttons in the homepage contact block, the footer 24/7
+emergency block, the AI chat widget footer and the /links page opened a
+blank WhatsApp chat, leaving the visitor to type an opening message.
+Add a ?text= prefill so the enquiry arrives with context.
+
+- web/site/home.html contact block: "Hello, I am interested in NEAS services."
+- web/site/home.html footer emergency block: "Hello NEAS, this is an urgent enquiry."
+- web/components/ChatBot.tsx and web/app/links/page.tsx: general prefill
+
+The wa.me/?text= links in the service and store share widgets are left
+untouched: they are share buttons alongside Facebook/Messenger/X/LinkedIn
+and are meant to open a recipient picker, not a chat with NEAS.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_013E71HHNBrVB7D4V6VgonLA
+---
+ web/app/links/page.tsx     | 2 +-
+ web/components/ChatBot.tsx | 2 +-
+ web/site/home.html         | 4 ++--
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/web/app/links/page.tsx b/web/app/links/page.tsx
+index ec62ce3..2977e05 100644
+--- a/web/app/links/page.tsx
++++ b/web/app/links/page.tsx
+@@ -18,7 +18,7 @@ export default async function Links() {
+       <p style={{ margin: 0, color: "#94A3B8" }}>IRATA Rope Access · Height Safety · PPE</p>
+       <div style={{ display: "grid", gap: 10, width: "100%", marginTop: 12 }}>
+         {links.map((l) => <a key={l.id} href={`/links/go/${l.id}`} style={{ display: "block", border: "1px solid #CA9332", borderRadius: 999, padding: "14px 18px", color: "#fff", textDecoration: "none", fontWeight: 700, background: "rgba(202,147,50,.1)" }}>{l.label}</a>)}
+-        <a href="https://wa.me/639957708144" target="_blank" rel="noopener noreferrer" style={{ display: "block", borderRadius: 999, padding: "14px 18px", color: "#fff", textDecoration: "none", fontWeight: 700, background: "#16a34a" }}>WhatsApp +63 995 770 8144</a>
++        <a href="https://wa.me/639957708144?text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services." target="_blank" rel="noopener noreferrer" style={{ display: "block", borderRadius: 999, padding: "14px 18px", color: "#fff", textDecoration: "none", fontWeight: 700, background: "#16a34a" }}>WhatsApp +63 995 770 8144</a>
+       </div>
+       {socials.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center", marginTop: 10 }}>{socials.map(([k, v]) => <a key={k} href={v} target="_blank" rel="noopener" style={{ color: "#EBC07E", fontSize: 13, textTransform: "capitalize" }}>{k.replace(/([A-Z])/g, " $1")}</a>)}</div>}
+       <a href="/" style={{ color: "#94A3B8", fontSize: 12, marginTop: 16 }}>www.nextedge-access-solutions.com</a>
+diff --git a/web/components/ChatBot.tsx b/web/components/ChatBot.tsx
+index c52b04a..d261621 100644
+--- a/web/components/ChatBot.tsx
++++ b/web/components/ChatBot.tsx
+@@ -470,7 +470,7 @@ export default function ChatBot() {
+                 <span>📞</span> {PHONE_PRIMARY}
+               </div>
+             </a>
+-            <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
++            <a href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services.`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+               <div style={{
+                 display: "flex", alignItems: "center", gap: 5, padding: "5px 12px",
+                 background: "#25D366", borderRadius: 20,
+diff --git a/web/site/home.html b/web/site/home.html
+index d3fcdc4..4a8e5ca 100644
+--- a/web/site/home.html
++++ b/web/site/home.html
+@@ -806,7 +806,7 @@ body{background:var(--bg);color:var(--fg)}
+     </div>
+     <div class="contact-grid">
+       <div class="contact-details reveal">
+-        <div class="contact-item"><div class="contact-icon">📞</div><div><div class="contact-lbl">Phone / WhatsApp / Viber</div><div class="contact-val"><div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639914265886" target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639957708144" target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div></div></div></div>
++        <div class="contact-item"><div class="contact-icon">📞</div><div><div class="contact-lbl">Phone / WhatsApp / Viber</div><div class="contact-val"><div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639914265886?text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services." target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639957708144?text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services." target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div></div></div></div>
+         <div class="contact-item"><div class="contact-icon">✉️</div><div><div class="contact-lbl">Email</div><div class="contact-val">info.nextedgeaccesssolutions@gmail.com<br>sales@nextedge-access-solutions.com</div></div></div>
+         <div class="contact-item"><div class="contact-icon">🌐</div><div><div class="contact-lbl">Website</div><div class="contact-val">www.nextedge-access-solutions.com</div></div></div>
+         <div class="contact-item"><div class="contact-icon">📍</div><div><div class="contact-lbl">Address</div><div class="contact-val">B 15 Lot 6, Marilao Grand Villas<br>Barangay Loma de Gato, Marilao, Bulacan 3019<br>Philippines</div></div></div>
+@@ -864,7 +864,7 @@ body{background:var(--bg);color:var(--fg)}
+       </div>
+       <div class="footer-emergency">
+         <p>🚨 24/7 Emergency</p>
+-        <div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639914265886" target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639957708144" target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div>
++        <div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639914265886?text=Hello%20NEAS%2C%20this%20is%20an%20urgent%20enquiry." target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639957708144?text=Hello%20NEAS%2C%20this%20is%20an%20urgent%20enquiry." target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div>
+         <div style="font-size:11px;color:var(--fg3);margin-top:6px">Tap to call or message — available 24/7</div>
+       </div>
+     </div>
+-- 
+2.43.0
+
+
+From df67a980864695124d6f5b22df8e5c6dd471ea96 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 15:00:34 +0900
+Subject: [PATCH 2/2] fix(contact): use api.whatsapp.com long form for
+ click-to-chat links
+
+The wa.me short domain is commonly blocked by ad blockers, privacy
+extensions and DNS filters, which renders a blank page instead of
+opening the chat. Switch every direct-contact link to the long form,
+which carries the number as a ?phone= parameter and survives filters
+that eat the short domain.
+
+Converted 10 links across:
+- web/site/home.html (contact block, footer emergency, chat widget)
+- web/components/ChatBot.tsx
+- web/app/links/page.tsx
+- web/app/forgot-password/ForgotForm.tsx
+- web/app/admin/AdminClient.tsx
+
+In home.html the query separator is written &amp; so the href parses
+correctly as raw HTML; the .tsx files keep a literal &.
+
+The three wa.me/?text= share links in the service and store share
+widgets are deliberately unchanged: they carry no phone number and are
+meant to open a recipient picker.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_013E71HHNBrVB7D4V6VgonLA
+---
+ web/app/admin/AdminClient.tsx          | 2 +-
+ web/app/forgot-password/ForgotForm.tsx | 2 +-
+ web/app/links/page.tsx                 | 2 +-
+ web/components/ChatBot.tsx             | 4 ++--
+ web/site/home.html                     | 6 +++---
+ 5 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/web/app/admin/AdminClient.tsx b/web/app/admin/AdminClient.tsx
+index 4db79c7..bf8087a 100644
+--- a/web/app/admin/AdminClient.tsx
++++ b/web/app/admin/AdminClient.tsx
+@@ -200,7 +200,7 @@ function ResetLinkButton({ id, name, phone }: { id: number; name: string; phone:
+     {msg && <span className="muted" style={{ fontSize: 11 }}>{msg}</span>}
+     {link && <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+       <button type="button" className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => navigator.clipboard?.writeText(link)}>Copy</button>
+-      <a className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} target="_blank" rel="noopener" href={`https://wa.me/${wa}?text=${encodeURIComponent(`Hi ${name}, here is your NEAS password reset link (valid 24 hours): ${link}`)}`}>WhatsApp</a>
++      <a className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} target="_blank" rel="noopener" href={`https://api.whatsapp.com/send?phone=${wa}&text=${encodeURIComponent(`Hi ${name}, here is your NEAS password reset link (valid 24 hours): ${link}`)}`}>WhatsApp</a>
+     </div>}
+   </div>;
+ }
+diff --git a/web/app/forgot-password/ForgotForm.tsx b/web/app/forgot-password/ForgotForm.tsx
+index 3e10979..5611001 100644
+--- a/web/app/forgot-password/ForgotForm.tsx
++++ b/web/app/forgot-password/ForgotForm.tsx
+@@ -8,7 +8,7 @@ export default function ForgotForm({ emailOn }: { emailOn: boolean }) {
+     setBusy(false);
+     if (r.ok) setDone(true); else setErr((await r.json().catch(() => ({}))).error || "Something went wrong. Please try again.");
+   }
+-  const help = <p className="muted" style={{ fontSize: 13 }}>No email? Message us on <a href="https://wa.me/639914265886?text=Hi%20NEAS%2C%20please%20help%20me%20reset%20my%20website%20password." target="_blank" rel="noopener">WhatsApp +63 991 426 5886</a> and we&apos;ll send you a reset link.</p>;
++  const help = <p className="muted" style={{ fontSize: 13 }}>No email? Message us on <a href="https://api.whatsapp.com/send?phone=639914265886&text=Hi%20NEAS%2C%20please%20help%20me%20reset%20my%20website%20password." target="_blank" rel="noopener">WhatsApp +63 991 426 5886</a> and we&apos;ll send you a reset link.</p>;
+   if (done) return <div className="card"><h3 style={{ marginTop: 0 }}>Check your email</h3><p>If an account exists for that address, a reset link is on its way. It works for 1 hour. Check your Spam folder too.</p>{help}<a className="btn btn-ghost" href="/login">Back to log in</a></div>;
+   return <form className="card" onSubmit={submit} style={{ display: "grid", gap: 12 }}>
+     <label className="field">Email<input name="email" type="email" required autoComplete="email" /></label>
+diff --git a/web/app/links/page.tsx b/web/app/links/page.tsx
+index 2977e05..8bb5429 100644
+--- a/web/app/links/page.tsx
++++ b/web/app/links/page.tsx
+@@ -18,7 +18,7 @@ export default async function Links() {
+       <p style={{ margin: 0, color: "#94A3B8" }}>IRATA Rope Access · Height Safety · PPE</p>
+       <div style={{ display: "grid", gap: 10, width: "100%", marginTop: 12 }}>
+         {links.map((l) => <a key={l.id} href={`/links/go/${l.id}`} style={{ display: "block", border: "1px solid #CA9332", borderRadius: 999, padding: "14px 18px", color: "#fff", textDecoration: "none", fontWeight: 700, background: "rgba(202,147,50,.1)" }}>{l.label}</a>)}
+-        <a href="https://wa.me/639957708144?text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services." target="_blank" rel="noopener noreferrer" style={{ display: "block", borderRadius: 999, padding: "14px 18px", color: "#fff", textDecoration: "none", fontWeight: 700, background: "#16a34a" }}>WhatsApp +63 995 770 8144</a>
++        <a href="https://api.whatsapp.com/send?phone=639957708144&text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services." target="_blank" rel="noopener noreferrer" style={{ display: "block", borderRadius: 999, padding: "14px 18px", color: "#fff", textDecoration: "none", fontWeight: 700, background: "#16a34a" }}>WhatsApp +63 995 770 8144</a>
+       </div>
+       {socials.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center", marginTop: 10 }}>{socials.map(([k, v]) => <a key={k} href={v} target="_blank" rel="noopener" style={{ color: "#EBC07E", fontSize: 13, textTransform: "capitalize" }}>{k.replace(/([A-Z])/g, " $1")}</a>)}</div>}
+       <a href="/" style={{ color: "#94A3B8", fontSize: 12, marginTop: 16 }}>www.nextedge-access-solutions.com</a>
+diff --git a/web/components/ChatBot.tsx b/web/components/ChatBot.tsx
+index d261621..e6ba9f5 100644
+--- a/web/components/ChatBot.tsx
++++ b/web/components/ChatBot.tsx
+@@ -267,7 +267,7 @@ export default function ChatBot() {
+                   </div>
+                 </a>
+                 {/* WhatsApp button */}
+-                <a href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services.`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
++                <a href={`https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services.`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                   <div style={{
+                     display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
+                     background: "rgba(37,211,102,.15)", border: "1px solid rgba(37,211,102,.3)",
+@@ -470,7 +470,7 @@ export default function ChatBot() {
+                 <span>📞</span> {PHONE_PRIMARY}
+               </div>
+             </a>
+-            <a href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services.`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
++            <a href={`https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services.`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+               <div style={{
+                 display: "flex", alignItems: "center", gap: 5, padding: "5px 12px",
+                 background: "#25D366", borderRadius: 20,
+diff --git a/web/site/home.html b/web/site/home.html
+index 4a8e5ca..670350b 100644
+--- a/web/site/home.html
++++ b/web/site/home.html
+@@ -806,7 +806,7 @@ body{background:var(--bg);color:var(--fg)}
+     </div>
+     <div class="contact-grid">
+       <div class="contact-details reveal">
+-        <div class="contact-item"><div class="contact-icon">📞</div><div><div class="contact-lbl">Phone / WhatsApp / Viber</div><div class="contact-val"><div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639914265886?text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services." target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639957708144?text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services." target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div></div></div></div>
++        <div class="contact-item"><div class="contact-icon">📞</div><div><div class="contact-lbl">Phone / WhatsApp / Viber</div><div class="contact-val"><div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://api.whatsapp.com/send?phone=639914265886&amp;text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services." target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://api.whatsapp.com/send?phone=639957708144&amp;text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services." target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div></div></div></div>
+         <div class="contact-item"><div class="contact-icon">✉️</div><div><div class="contact-lbl">Email</div><div class="contact-val">info.nextedgeaccesssolutions@gmail.com<br>sales@nextedge-access-solutions.com</div></div></div>
+         <div class="contact-item"><div class="contact-icon">🌐</div><div><div class="contact-lbl">Website</div><div class="contact-val">www.nextedge-access-solutions.com</div></div></div>
+         <div class="contact-item"><div class="contact-icon">📍</div><div><div class="contact-lbl">Address</div><div class="contact-val">B 15 Lot 6, Marilao Grand Villas<br>Barangay Loma de Gato, Marilao, Bulacan 3019<br>Philippines</div></div></div>
+@@ -864,7 +864,7 @@ body{background:var(--bg);color:var(--fg)}
+       </div>
+       <div class="footer-emergency">
+         <p>🚨 24/7 Emergency</p>
+-        <div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639914265886?text=Hello%20NEAS%2C%20this%20is%20an%20urgent%20enquiry." target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639957708144?text=Hello%20NEAS%2C%20this%20is%20an%20urgent%20enquiry." target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div>
++        <div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://api.whatsapp.com/send?phone=639914265886&amp;text=Hello%20NEAS%2C%20this%20is%20an%20urgent%20enquiry." target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://api.whatsapp.com/send?phone=639957708144&amp;text=Hello%20NEAS%2C%20this%20is%20an%20urgent%20enquiry." target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div>
+         <div style="font-size:11px;color:var(--fg3);margin-top:6px">Tap to call or message — available 24/7</div>
+       </div>
+     </div>
+@@ -1320,7 +1320,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){
+   </div>
+   <div style="padding:8px 14px 12px;background:#f8fafc;border-top:1px solid #f1f5f9;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+     <a href="tel:+639914265886" style="padding:6px 12px;border-radius:20px;background:#fff;border:1px solid #e2e8f0;color:#0f172a;font-size:11px;font-weight:700;text-decoration:none">📞 +63 991 426 5886</a>
+-    <a href="https://wa.me/639914265886?text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services." target="_blank" rel="noopener" style="padding:6px 12px;border-radius:20px;background:#128C7E;color:#fff;font-size:11px;font-weight:700;text-decoration:none">WhatsApp</a>
++    <a href="https://api.whatsapp.com/send?phone=639914265886&amp;text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services." target="_blank" rel="noopener" style="padding:6px 12px;border-radius:20px;background:#128C7E;color:#fff;font-size:11px;font-weight:700;text-decoration:none">WhatsApp</a>
+   </div>
+ </div>
+ 
+-- 
+2.43.0
+
