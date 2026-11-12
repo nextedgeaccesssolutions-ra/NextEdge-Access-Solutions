@@ -1,11 +1,21 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getSetting, DEFAULT_SEO, DEFAULT_SOCIAL, DEFAULT_BUSINESS, type Seo, type Social, type Business } from "./settings";
+import { getServiceMeta } from "./services";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 let cached: string | null = null;
 
-export async function renderHomepage(): Promise<string> {
+/**
+ * Renders the static homepage with SEO tags injected.
+ *
+ * `serviceId` comes from the `?service=` deep link the service modal's share
+ * button produces. Social crawlers do not run JavaScript, so when it names a
+ * known service the Open Graph and Twitter tags are overridden to describe
+ * that service instead of the site as a whole. The canonical link is left
+ * pointing at the homepage: these are the same page, not six new ones.
+ */
+export async function renderHomepage(serviceId?: string | null): Promise<string> {
   cached ??= await readFile(path.join(process.cwd(), "site", "home.html"), "utf8");
   let html = cached;
   // The static homepage is served through a route handler; declare Philippine English explicitly.
@@ -31,17 +41,22 @@ export async function renderHomepage(): Promise<string> {
     ...(social.googleMaps ? { hasMap: social.googleMaps } : {}),
     ...(sameAs.length ? { sameAs } : {}),
   };
+  const service = getServiceMeta(serviceId);
+  const pageTitle = service ? `${service.title} | ${biz.name}` : seo.title;
+  const pageDesc = service ? service.desc : seo.description;
+  const pageImage = service ? origin + service.image : ogImage;
+  const pageUrl = service ? `${seo.canonical.replace(/\/$/, "")}/?service=${encodeURIComponent(serviceId as string)}` : seo.canonical;
   const head = [
-    `<title>${esc(seo.title)}</title>`,
-    `<meta name="description" content="${esc(seo.description)}">`,
+    `<title>${esc(pageTitle)}</title>`,
+    `<meta name="description" content="${esc(pageDesc)}">`,
     seo.keywords && `<meta name="keywords" content="${esc(seo.keywords)}">`,
     `<link rel="canonical" href="${esc(seo.canonical)}">`,
     `<link rel="alternate" hreflang="en-PH" href="${esc(seo.canonical)}">`,
     `<meta name="robots" content="${seo.robotsIndex ? "index,follow" : "noindex,nofollow"}">`,
     `<meta property="og:type" content="website"><meta property="og:site_name" content="${esc(biz.name)}">`,
-    `<meta property="og:title" content="${esc(seo.title)}"><meta property="og:description" content="${esc(seo.description)}">`,
-    `<meta property="og:url" content="${esc(seo.canonical)}"><meta property="og:image" content="${esc(ogImage)}">`,
-    `<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(seo.title)}"><meta name="twitter:description" content="${esc(seo.description)}"><meta name="twitter:image" content="${esc(ogImage)}">`,
+    `<meta property="og:title" content="${esc(pageTitle)}"><meta property="og:description" content="${esc(pageDesc)}">`,
+    `<meta property="og:url" content="${esc(pageUrl)}"><meta property="og:image" content="${esc(pageImage)}">`,
+    `<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(pageTitle)}"><meta name="twitter:description" content="${esc(pageDesc)}"><meta name="twitter:image" content="${esc(pageImage)}">`,
     seo.googleVerification && `<meta name="google-site-verification" content="${esc(seo.googleVerification)}">`,
     seo.bingVerification && `<meta name="msvalidate.01" content="${esc(seo.bingVerification)}">`,
     ...String(seo.extraMeta ?? "").split("\n").filter((l) => l.includes("=")).map((l) => { const i = l.indexOf("="); return `<meta name="${esc(l.slice(0, i).trim())}" content="${esc(l.slice(i + 1).trim())}">`; }),
