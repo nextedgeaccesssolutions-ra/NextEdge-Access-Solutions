@@ -1173,7 +1173,7 @@ loadLive();
 /* Product pricing is managed in the authenticated NEAS Admin Portal. */
 /* show store only from menu */
 var ST=$('store');function showStore(){ST.classList.add('open');}
-[].forEach.call(document.querySelectorAll('a[href="/store"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();showStore();ST.scrollIntoView({behavior:'smooth'})})});
+[].forEach.call(document.querySelectorAll('a[href="#store"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();showStore();ST.scrollIntoView({behavior:'smooth'})})});
 if(location.hash==='#store'){showStore();setTimeout(function(){ST.scrollIntoView()},300)}
 window.addEventListener('hashchange',function(){if(location.hash==='#store')showStore()});
 $('store-close').onclick=function(){ST.classList.remove('open');window.scrollTo({top:0,behavior:'smooth'})};
