@@ -25,7 +25,7 @@ export default function CookiePreferencesPanel() {
     setUpdatedAt(value.updatedAt);
     setSaved(true);
   };
-  const withdraw = () => { localStorage.removeItem(KEY); setAnalytics(false); setMarketing(false); setUpdatedAt(""); setSaved(true); };
+  const withdraw = () => { const value: Consent = { necessary: true, analytics: false, marketing: false, updatedAt: new Date().toISOString(), version: 1 }; localStorage.setItem(KEY, JSON.stringify(value)); window.dispatchEvent(new CustomEvent("neas:consent-updated", { detail: value })); setAnalytics(false); setMarketing(false); setUpdatedAt(value.updatedAt); setSaved(true); };
 
   return <div className="wrap" style={{ maxWidth: 860, paddingTop: 42, paddingBottom: 30 }}>
     <div className="eyebrow">Privacy controls</div>
