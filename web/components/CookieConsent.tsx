@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import CookiePreferencesPanel from "./CookiePreferencesPanel";
 
 const KEY = "neas_cookie_consent_v1";
 type Choice = { necessary: true; analytics: boolean; marketing: boolean; updatedAt: string; version: 1 };
