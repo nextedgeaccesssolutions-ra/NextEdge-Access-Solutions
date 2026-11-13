@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { sql } from "./db";
+import { publicOrigin } from "./origin";
 
 const hash = (t: string) => createHash("sha256").update(t).digest("hex");
 
@@ -54,8 +55,8 @@ export async function sendResetEmail(to: string, link: string): Promise<boolean>
 
 export const emailConfigured = () => !!process.env.RESEND_API_KEY;
 
-export function originOf(req: Request) {
-  const env = process.env.SITE_URL?.replace(/\/$/, "");
-  if (env && /^https:\/\//.test(env)) return env;
-  return new URL(req.url).origin;
-}
+/**
+ * Canonical public origin. Re-exported from this module because the reset,
+ * social and marketing routes already import it from here.
+ */
+export const originOf = publicOrigin;
