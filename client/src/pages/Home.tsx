@@ -187,6 +187,11 @@ export default function Home() {
   }, [publishedPages]);
 
   useEffect(() => {
+    const targetId = decodeURIComponent(window.location.hash.slice(1));
+    if (targetId) requestAnimationFrame(() => document.getElementById(targetId)?.scrollIntoView());
+  }, []);
+
+  useEffect(() => {
     document.title = homepageSeo.title;
     const upsertMeta = (name: string, content: string) => {
       let tag = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
