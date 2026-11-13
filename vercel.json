@@ -25,6 +25,26 @@
       "destination": "/index.html"
     },
     {
+      "source": "/services",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/partners",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/about",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/home",
+      "destination": "/index.html"
+    },
+    {
       "source": "/github-connector",
       "destination": "/index.html"
     },
