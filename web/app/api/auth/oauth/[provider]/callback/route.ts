@@ -2,13 +2,17 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { createSession } from "@/lib/auth";
+import { loadConfig } from "@/lib/config";
 import { enabled, fetchIdentity, isProvider } from "@/lib/oauth";
 
 export async function GET(req: Request, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
   const url = new URL(req.url);
   const fail = (msg: string) => NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(msg)}`, req.url));
-  if (!isProvider(provider) || !enabled(provider)) return fail("This sign-in option isn't available.");
+  if (!isProvider(provider)) return fail("This sign-in option isn't available.");
+  // Same hydration as the start route: the token exchange below needs the client secret too.
+  await loadConfig().catch(() => {});
+  if (!enabled(provider)) return fail("This sign-in option isn't available.");
   const jar = await cookies();
   let saved: { state?: string; provider?: string; next?: string } = {};
   try { saved = JSON.parse(jar.get("neas_oauth")?.value ?? "{}"); } catch {}
