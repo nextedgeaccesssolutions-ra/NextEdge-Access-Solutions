@@ -27,6 +27,15 @@ const csp = [
 const nextConfig = {
   outputFileTracingIncludes: { "/": ["./site/**/*"] },
   poweredByHeader: false,
+  async redirects() {
+    return [
+      { source: "/home", destination: "/#hero", permanent: true },
+      { source: "/services", destination: "/#services", permanent: true },
+      { source: "/partners", destination: "/#partners", permanent: true },
+      { source: "/contact", destination: "/#contact", permanent: true },
+      { source: "/about", destination: "/#about", permanent: true },
+    ];
+  },
   async headers() {
     return [{ source: "/:path*", headers: [
       { key: "X-Content-Type-Options", value: "nosniff" },
