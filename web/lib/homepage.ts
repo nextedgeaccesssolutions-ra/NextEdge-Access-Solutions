@@ -61,10 +61,12 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
     seo.bingVerification && `<meta name="msvalidate.01" content="${esc(seo.bingVerification)}">`,
     ...String(seo.extraMeta ?? "").split("\n").filter((l) => l.includes("=")).map((l) => { const i = l.indexOf("="); return `<meta name="${esc(l.slice(0, i).trim())}" content="${esc(l.slice(i + 1).trim())}">`; }),
     `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>`,
-    seo.gaMeasurementId && `<script async src="https://www.googletagmanager.com/gtag/js?id=${esc(seo.gaMeasurementId)}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${esc(seo.gaMeasurementId)}');</script>`,
   ].filter(Boolean).join("\n");
   html = html.replace(/<title>[\s\S]*?<\/title>\s*/, "").replace(/<meta name="description"[^>]*>\s*/, "");
   html = html.replace("</head>", head + "\n</head>");
+  // The static homepage bypasses the React layout, so inject its consent interface here.
+  const cookieConsent = await readFile(path.join(process.cwd(), "site", "cookie-consent.html"), "utf8");
+  html = html.replace("</body>", cookieConsent.replace("__NEAS_GA_ID__", esc(seo.gaMeasurementId || "")) + "\n</body>");
   // social links in the side panel
   const map: [string, string][] = [["Facebook", social.facebook], ["LinkedIn", social.linkedin], ["YouTube", social.youtube], ["Instagram", social.instagram], ["TikTok", social.tiktok]];
   for (const [title, url] of map) {
