@@ -4,6 +4,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { sql } from "@/lib/db";
 import { createSession } from "@/lib/auth";
 import { publicOrigin } from "@/lib/origin";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { loadConfig } from "@/lib/config";
 
 const COOKIE = "neas_admin_google_oauth";
@@ -14,11 +15,13 @@ function fail(req: Request, reason = "denied") {
 }
 
 export async function GET(req: Request) {
+  const limited = rateLimitRequest(req, "admin-google-callback", 30, 15 * 60_000);
+  if (limited) return limited;
   await loadConfig().catch(() => {});
   const jar = await cookies();
   let saved: { state?: string; nonce?: string; verifier?: string } = {};
   try { saved = JSON.parse(jar.get(COOKIE)?.value ?? "{}"); } catch {}
-  jar.delete(COOKIE, { path: "/api/auth/admin/google" });
+  jar.delete(COOKIE);
 
   const url = new URL(req.url);
   if (url.searchParams.has("error")) return fail(req, "cancelled");
