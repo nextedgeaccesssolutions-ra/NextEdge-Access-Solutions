@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Admin from "./pages/Admin";
 import StoreBooking from "./pages/StoreBooking";
 import GitHubConnector from "./pages/GitHubConnector";
+import CmsPage from "./pages/CmsPage";
 
 function Router() {
   return (
