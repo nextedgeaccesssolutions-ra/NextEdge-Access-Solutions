@@ -14,13 +14,13 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/home"><Redirect to="/" /></Route>
+      <Route path="/home"><Redirect to="/#hero" /></Route>
       <Route path="/store" component={StoreBooking} />
       <Route path="/store-booking" component={StoreBooking} />
-      <Route path="/services">{() => <CmsPage params={{ slug: "services" }} />}</Route>
-      <Route path="/partners">{() => <CmsPage params={{ slug: "partners" }} />}</Route>
-      <Route path="/contact">{() => <CmsPage params={{ slug: "contact" }} />}</Route>
-      <Route path="/about">{() => <CmsPage params={{ slug: "about" }} />}</Route>
+      <Route path="/services"><Redirect to="/#services" /></Route>
+      <Route path="/partners"><Redirect to="/#partners" /></Route>
+      <Route path="/contact"><Redirect to="/#contact" /></Route>
+      <Route path="/about"><Redirect to="/#about" /></Route>
       <Route path="/admin" component={Admin} />
       <Route path="/github-connector" component={GitHubConnector} />
       <Route path="/page/:slug" component={CmsPage} />
