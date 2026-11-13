@@ -554,7 +554,7 @@ body{background:var(--bg);color:var(--fg)}
         <li><a href="/about">About</a></li>
         <li><a href="/services">Services</a></li>
         
-        <li><a href="/store">Online Store</a></li>
+        <li><a href="https://www.nextedge-access-solutions.com/store">Online Store</a></li>
         <li><a href="/partners">Partners</a></li>
         <li><a href="/contact">Contact</a></li>
         <li class="acct-li"><button type="button" class="acct-btn" id="acct-login">Log in</button></li>
@@ -564,7 +564,7 @@ body{background:var(--bg);color:var(--fg)}
       <button type="button" class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu"><span></span><span></span><span></span></button>
     </nav>
     <div class="mobile-menu" id="mobile-menu" hidden>
-      <a href="/store" class="mm-store">🛒 Online Store</a>
+      <a href="https://www.nextedge-access-solutions.com/store" class="mm-store" data-store-route>🛒 Online Store</a>
       <a href="/about">About</a>
       <a href="/services">Services</a>
       <a href="/partners">Partners</a>
@@ -1278,7 +1278,7 @@ new IntersectionObserver(function(es){es.forEach(function(en){clearTimeout(t);if
 (function(){var b=document.querySelector('.nav-toggle'),m=document.getElementById('mobile-menu');if(!b||!m)return;
 function set(o){m.hidden=!o;b.setAttribute('aria-expanded',o);b.setAttribute('aria-label',o?'Close menu':'Open menu')}
 b.addEventListener('click',function(){set(m.hidden)});
-m.addEventListener('click',function(e){var a=e.target.closest('a');if(!a)return;if(a.dataset.acct){e.preventDefault();var t=document.getElementById(a.dataset.acct);set(false);if(t)t.click();return}set(false)});
+m.addEventListener('click',function(e){var a=e.target.closest('a');if(!a)return;if(a.dataset.acct){e.preventDefault();var t=document.getElementById(a.dataset.acct);set(false);if(t)t.click();return}var href=a.getAttribute('href')||'';if(a.hasAttribute('data-store-route')){e.preventDefault();set(false);window.location.assign('https://www.nextedge-access-solutions.com/store');return}set(false)});
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){set(false);b.focus()}});
 })();
 </script>
