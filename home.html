@@ -1028,7 +1028,7 @@ function shareSvc(){
   const L=[['Facebook','https://www.facebook.com/sharer/sharer.php?u='+e(u)],['Messenger','fb-messenger://share/?link='+e(u)],['WhatsApp','https://wa.me/?text='+e(t+' '+u)],['Viber','viber://forward?text='+e(t+' '+u)],['X','https://twitter.com/intent/tweet?text='+e(t)+'&url='+e(u)],['LinkedIn','https://www.linkedin.com/sharing/share-offsite/?url='+e(u)],['Email','mailto:?subject='+e(t)+'&body='+e(t+'\n'+u)]];
   b.innerHTML=L.map(function(x){return '<a href="'+x[1]+'" target="_blank" rel="noopener">'+x[0]+'</a>';}).join('')+'<button type="button" id="svc-copylink">Copy link</button>';
   const c=document.getElementById('svc-copylink');
-  c.onclick=function(){(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){c.textContent='Copied ✓';},function(){prompt('Copy link:',u);});};
+  c.onclick=function(){(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){c.textContent='Copied ✓';clearTimeout(c._t);c._t=setTimeout(function(){c.textContent='Copy link';},2000);},function(){prompt('Copy link:',u);});};
 }
 function closeModal(e){
   if(e&&e.target!==document.getElementById('modal')&&!e.target.classList.contains('modal-close'))return;
