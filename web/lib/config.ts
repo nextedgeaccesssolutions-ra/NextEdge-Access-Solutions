@@ -46,9 +46,16 @@ async function readSaved(): Promise<Record<string, string>> {
   if (!blob) return {};
   try { return JSON.parse(dec(blob)); } catch { return {}; }
 }
+function effectiveValue(k: string, vals: Record<string, string>) {
+  // Website Google sign-in must use the deployment's explicitly configured OAuth
+  // client. Admin-saved credentials remain a fallback for deployments that do not
+  // define Google credentials, and continue to support the social integrations.
+  if (k === "GOOGLE_CLIENT_ID" || k === "GOOGLE_CLIENT_SECRET") return ORIGINAL[k] || vals[k];
+  return vals[k] ?? ORIGINAL[k];
+}
 function apply(vals: Record<string, string>) {
   for (const k of ALLOWED) {
-    const v = vals[k] ?? ORIGINAL[k];
+    const v = effectiveValue(k, vals);
     if (v === undefined || v === "") delete process.env[k]; else process.env[k] = v;
   }
 }
@@ -62,7 +69,11 @@ export async function loadConfig(force = false) {
 export async function configStatus() {
   await loadConfig(true);
   const saved = cache?.vals ?? {};
-  return CONFIG_KEYS.map((k) => ({ ...k, source: saved[k.key] ? "admin" : ORIGINAL[k.key] ? "hosting" : "", preview: !k.secret ? (saved[k.key] ?? ORIGINAL[k.key] ?? "") : (saved[k.key] ?? ORIGINAL[k.key]) ? "••••" + String(saved[k.key] ?? ORIGINAL[k.key]).slice(-4) : "" }));
+  return CONFIG_KEYS.map((k) => {
+    const value = effectiveValue(k.key, saved);
+    const source = value ? (ORIGINAL[k.key] && value === ORIGINAL[k.key] ? "hosting" : "admin") : "";
+    return { ...k, source, preview: !k.secret ? (value ?? "") : value ? "••••" + value.slice(-4) : "" };
+  });
 }
 export async function saveConfig(changes: Record<string, string | null>) {
   const vals = await readSaved();

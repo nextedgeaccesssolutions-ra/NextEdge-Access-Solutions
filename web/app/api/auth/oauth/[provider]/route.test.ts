@@ -3,8 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Admin-saved integration keys live encrypted in the database and are pushed into
 // process.env by loadConfig(). This stands in for that hydration.
 const loadConfig = vi.fn(async () => {
-  process.env.GOOGLE_CLIENT_ID = "admin-saved-id";
-  process.env.GOOGLE_CLIENT_SECRET = "admin-saved-secret";
+  // Match config.ts precedence: hosting Google credentials win; saved admin
+  // credentials are used only when the deployment has no Google credentials.
+  process.env.GOOGLE_CLIENT_ID ||= "admin-saved-id";
+  process.env.GOOGLE_CLIENT_SECRET ||= "admin-saved-secret";
 });
 vi.mock("@/lib/config", () => ({ loadConfig }));
 
@@ -44,6 +46,16 @@ describe("OAuth start reads admin-saved credentials", () => {
     expect(location).toContain("accounts.google.com");
     expect(location).toContain("client_id=admin-saved-id");
     expect(location).not.toContain("error=unavailable");
+  });
+
+  it("uses the hosting Google OAuth client when admin-saved credentials also exist", async () => {
+    process.env.GOOGLE_CLIENT_ID = "production-client-id";
+    process.env.GOOGLE_CLIENT_SECRET = "production-client-secret";
+    const { GET } = await import("./route");
+    const res = await GET(...(start("google") as never as [Request, { params: Promise<{ provider: string }> }]));
+    const location = res.headers.get("location") ?? "";
+    expect(location).toContain("client_id=production-client-id");
+    expect(location).not.toContain("admin-saved-id");
   });
 
   it("still reports unavailable when no credentials exist anywhere", async () => {
