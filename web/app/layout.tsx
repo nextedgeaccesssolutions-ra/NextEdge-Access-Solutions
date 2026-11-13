@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ScrollReveal />
         <ChatBot />
         <CookieConsent />
-        <footer className="ftr"><div className="wrap"><span>© 2026 NextEdge Access Solutions (NEAS) OPC · <a href="/privacy-policy">Privacy Policy</a></span><span>sales@nextedge-access-solutions.com · +63 991 426 5886</span></div></footer>
+        <footer className="ftr"><div className="wrap"><span>© 2026 NextEdge Access Solutions (NEAS) OPC · <a href="/privacy-policy">Privacy Policy</a> · <a href="/cookie-policy">Cookie Policy</a> · <a href="/cookie-preferences">Cookie Preferences</a></span><span>sales@nextedge-access-solutions.com · +63 991 426 5886</span></div></footer>
       </body>
     </html>
   );
