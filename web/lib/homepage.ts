@@ -101,6 +101,6 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
       if (destination) window.location.replace(destination + window.location.search);
     })();
   </script>`;
-  html = html.replace("</body>", legacyRouteRedirect + "\\n</body>");
+  html = html.replace("</body>", legacyRouteRedirect + "\n</body>");
   return html;
 }
