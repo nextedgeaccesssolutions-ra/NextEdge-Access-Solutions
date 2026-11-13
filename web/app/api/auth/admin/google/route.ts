@@ -2,11 +2,14 @@ import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { publicOrigin } from "@/lib/origin";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { loadConfig } from "@/lib/config";
 
 const COOKIE = "neas_admin_google_oauth";
 
 export async function GET(req: Request) {
+  const limited = rateLimitRequest(req, "admin-google-start", 20, 15 * 60_000);
+  if (limited) return limited;
   await loadConfig().catch(() => {});
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -25,7 +28,7 @@ export async function GET(req: Request) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    path: "/api/auth/admin/google",
+    path: "/",
     maxAge: 600,
   });
 
