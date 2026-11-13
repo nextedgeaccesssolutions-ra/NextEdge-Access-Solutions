@@ -40,7 +40,9 @@ function replaceMeta(html: string, expression: RegExp, value: string): string {
 export async function renderSectionPage(section: NeasSectionRoute): Promise<string> {
   let html = await renderHomepage();
   const meta = PAGE_META[section];
-  html = html.replace(/<title>[\\s\\S]*?<\\/title>/i, `<title>${escapeHtml(meta.title)}</title>`);
+  const titleStart = html.indexOf("<title>");
+  const titleEnd = html.indexOf("</title>", titleStart);
+  if (titleStart >= 0 && titleEnd >= 0) html = html.slice(0, titleStart) + `<title>${escapeHtml(meta.title)}</title>` + html.slice(titleEnd + "</title>".length);
   html = replaceMeta(html, /<meta name="description" content="[^"]*">/i, meta.description);
   html = replaceMeta(html, /<meta property="og:title" content="[^"]*">/i, meta.title);
   html = replaceMeta(html, /<meta property="og:description" content="[^"]*">/i, meta.description);
@@ -66,5 +68,5 @@ export async function renderSectionPage(section: NeasSectionRoute): Promise<stri
       }
     })();
   </script>`;
-  return html.replace("</body>", scrollScript + "\\n</body>");
+  return html.replace("</body>", scrollScript + String.fromCharCode(10) + "</body>");
 }
