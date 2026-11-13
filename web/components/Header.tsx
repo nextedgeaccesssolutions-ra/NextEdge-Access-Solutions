@@ -11,7 +11,7 @@ export default async function Header() {
       <Link href="/store" className="nav-store">Online Store</Link>
       {user?.role === "admin" && <Link href="/admin">Admin Panel</Link>}
       {user ? <><Link href="/account">My Account</Link><LogoutButton /></> : <Link href="/login">Log in / Sign up</Link>}
-      <a className="cta" href="/#contact">Get a Quote</a>
+      <a className="cta" href="/contact">Get a Quote</a>
     </>
   );
   return (
