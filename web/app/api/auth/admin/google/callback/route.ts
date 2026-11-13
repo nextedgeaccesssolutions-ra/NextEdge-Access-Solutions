@@ -4,6 +4,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { sql } from "@/lib/db";
 import { createSession } from "@/lib/auth";
 import { publicOrigin } from "@/lib/origin";
+import { loadConfig } from "@/lib/config";
 
 const COOKIE = "neas_admin_google_oauth";
 const GOOGLE_KEYS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
@@ -13,6 +14,7 @@ function fail(req: Request, reason = "denied") {
 }
 
 export async function GET(req: Request) {
+  await loadConfig().catch(() => {});
   const jar = await cookies();
   let saved: { state?: string; nonce?: string; verifier?: string } = {};
   try { saved = JSON.parse(jar.get(COOKIE)?.value ?? "{}"); } catch {}
