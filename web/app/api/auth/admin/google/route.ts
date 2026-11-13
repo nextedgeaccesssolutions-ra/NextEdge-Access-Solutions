@@ -2,10 +2,12 @@ import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { publicOrigin } from "@/lib/origin";
+import { loadConfig } from "@/lib/config";
 
 const COOKIE = "neas_admin_google_oauth";
 
 export async function GET(req: Request) {
+  await loadConfig().catch(() => {});
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const allowed = (process.env.ADMIN_GOOGLE_EMAILS || "").split(",").map((v) => v.trim().toLowerCase()).filter(Boolean);
