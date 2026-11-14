@@ -6,8 +6,8 @@ function isLoopbackPostgresUrl(value: string): boolean {
     return host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "::1";
   } catch {
     // Also support PostgreSQL keyword/value connection strings.
-    return /(?:^|\\s)host=(?:localhost|127\\.0\\.0\\.1|::1)(?:\\s|$)/i.test(value)
-      || /host=\\/tmp(?:\\s|$)/i.test(value);
+    return /(?:^|\s)host=(?:localhost|127\.0\.0\.1|::1)(?:\s|$)/i.test(value)
+      || /host=\/tmp(?:\s|$)/i.test(value);
   }
 }
 
