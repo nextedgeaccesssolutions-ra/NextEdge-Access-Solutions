@@ -29,6 +29,7 @@
 <script>
 (function(){
   var KEY="neas_cookie_consent_v1",gaId="__NEAS_GA_ID__",gaLoaded=false;
+  var rybbitHost="__NEAS_RYBBIT_HOST__",rybbitSiteId="__NEAS_RYBBIT_SITE_ID__",rybbitLoaded=false;
   var layer=document.getElementById("neas-cookie-layer"),options=document.getElementById("neas-cookie-options");
   var analytics=document.getElementById("neas-cookie-analytics"),marketing=document.getElementById("neas-cookie-marketing");
   var accept=document.getElementById("neas-cookie-accept"),reject=document.getElementById("neas-cookie-reject");
@@ -42,8 +43,18 @@
     script.onload=function(){window.gtag("js",new Date());window.gtag("config",gaId,{anonymize_ip:true})};
     document.head.appendChild(script);
   }
+  function loadRybbit(){
+    // Self-hosted Rybbit. Stays unloaded unless the host and site id are configured
+    // AND the visitor has accepted analytics - same gate GA goes through.
+    if(!rybbitHost||!rybbitSiteId||rybbitLoaded||document.getElementById("neas-rybbit"))return;
+    rybbitLoaded=true;
+    var script=document.createElement("script");script.id="neas-rybbit";script.defer=true;
+    // siteId stays in the URL: script optimizers drop data-* attributes but keep the URL.
+    script.src=rybbitHost.replace(/\/$/,"")+"/api/script.js?siteId="+encodeURIComponent(rybbitSiteId);
+    document.body.appendChild(script);
+  }
   function apply(choice){
-    if(choice.analytics)loadAnalytics();
+    if(choice.analytics){loadAnalytics();loadRybbit();}
     if(typeof window.gtag==="function")window.gtag("consent","update",{analytics_storage:choice.analytics?"granted":"denied",ad_storage:choice.marketing?"granted":"denied",ad_user_data:choice.marketing?"granted":"denied",ad_personalization:choice.marketing?"granted":"denied"});
     window.dispatchEvent(new CustomEvent("neas:consent-updated",{detail:choice}));
   }
