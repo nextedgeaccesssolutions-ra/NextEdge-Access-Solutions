@@ -67,6 +67,11 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
   // The static homepage bypasses the React layout, so inject its consent interface here.
   const cookieConsent = await readFile(path.join(process.cwd(), "site", "cookie-consent.html"), "utf8");
   html = html.replace("</body>", cookieConsent.replace("__NEAS_GA_ID__", esc(seo.gaMeasurementId || "")) + "\n</body>");
+  // Normalize legacy section fragments to dedicated, crawlable public routes.
+  // Fragments are client-only and never reach the server, so this compatibility
+  // redirect must run in the browser. Keep query parameters and replace history.
+  const legacyRedirect = `<script>(function(){var routes={hero:"/home",about:"/about",services:"/services",store:"/store",partners:"/partners",contact:"/contact"};function normalize(){var key=window.location.hash.slice(1).toLowerCase();var target=routes[key];if(!target)return;if(window.location.pathname!==target){window.location.replace(target+window.location.search);return;}window.history.replaceState(null,"",target+window.location.search);}window.addEventListener("hashchange",normalize);normalize();})();</script>`;
+  html = html.replace("</body>", legacyRedirect + "</body>");
   // social links in the side panel
   const map: [string, string][] = [["Facebook", social.facebook], ["LinkedIn", social.linkedin], ["YouTube", social.youtube], ["Instagram", social.instagram], ["TikTok", social.tiktok]];
   for (const [title, url] of map) {
