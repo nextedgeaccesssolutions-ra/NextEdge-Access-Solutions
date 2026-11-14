@@ -14,12 +14,12 @@ export default async function Admin() {
   const user = await getUser();
   if (!user) redirect("/admin/login");
   if (user.role !== "admin") return <div className="wrap" style={{ padding: 50 }}><h1>Admins only</h1><p className="muted">Your account doesn't have admin access. <a href="/admin/login">Log in with an admin account</a>.</p></div>;
-  const [products, markup, orders, items, customers, catMarkup, seo, social, business, sheetCfg] = await Promise.all([
+  const [products, markup, orders, items, customers, catMarkup, seo, social, business, sitePhotos, sheetCfg] = await Promise.all([
     listProducts(true), getMarkup(),
     sql`select o.*, u.email, u.name as customer_name from orders o join users u on u.id = o.user_id order by o.created_at desc limit 500`,
     sql`select order_id, name, code, quantity, unit_price from order_items`,
     sql`select u.id, u.name, u.email, u.phone, u.created_at, count(o.id)::int as orders from users u left join orders o on o.user_id = u.id where u.role = 'customer' group by u.id order by u.created_at desc`,
-    getCategoryMarkup(), getSetting<Seo>("seo", DEFAULT_SEO), getSetting<Social>("social", DEFAULT_SOCIAL), getSetting<Business>("business", DEFAULT_BUSINESS),
+    getCategoryMarkup(), getSetting<Seo>("seo", DEFAULT_SEO), getSetting<Social>("social", DEFAULT_SOCIAL), getSetting<Business>("business", DEFAULT_BUSINESS), getSetting<Record<string, string>>("site_photos", {}),
     getSetting("sheet", { url: "https://docs.google.com/spreadsheets/d/1fl4TGP5Jl-yvVrN2hheb7DMzLVPVKbpfRQEPgC30Vik/edit?gid=1469242798#gid=1469242798", priceSource: "markup" as "markup" | "sheet", hideMissing: true, lastSync: "", lastResult: "" }),
   ]);
   const awaiting = orders.filter((o) => o.status === "awaiting_payment").length;
@@ -33,6 +33,6 @@ export default async function Admin() {
   return <AdminShell adminName={user.name} counts={{ awaiting, customers: customers.length, products: products.length }} sections={{
     orders: AC("orders"), products: AC("products"), customers: AC("customers"),
     sheet: <SheetSync initial={sheetCfg} />,
-    website: <SettingsPanel seo={seo} social={social} business={business} />,
+    website: <SettingsPanel seo={seo} social={social} business={business} sitePhotos={sitePhotos} />,
   }} />;
 }
