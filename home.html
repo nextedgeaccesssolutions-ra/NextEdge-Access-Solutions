@@ -1119,7 +1119,7 @@ try{wish=JSON.parse(localStorage.getItem('neasWish')||'{}')}catch(e){}
 var $=function(id){return document.getElementById(id)};
 var peso=function(n){return '₱'+Math.round(n).toLocaleString('en-PH')};
 var esc=function(s){var d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML};
-function price(p){if(p.live!=null)return p.live;var o=overrides[p.id];return (o!=null&&o!=='')?Number(o):Math.ceil(p.dealer*(1+markup/100)/5)*5;}
+function price(p){if(!p)return 0;if(p.live!=null)return p.live;var o=overrides[p.id];return (o!=null&&o!=='')?Number(o):Math.ceil(p.dealer*(1+markup/100)/5)*5;}
 function byId(id){return CATALOG.find(function(x){return x.id===id})}
 var cats=['All','♥ Wishlist'].concat(CATALOG.map(function(p){return p.cat}).filter(function(c,i,a){return a.indexOf(c)===i}));
 function renderCats(){$('store-cats').innerHTML='';cats.forEach(function(c){var b=document.createElement('button');b.type='button';b.textContent=c;if(c===cat)b.className='on';b.onclick=function(){cat=c;renderCats();render()};$('store-cats').appendChild(b)})}
@@ -1146,7 +1146,10 @@ function render(){
     g.appendChild(d);
   });
 }
-function totals(){var n=0,t=0;Object.keys(cart).forEach(function(id){n+=cart[id];t+=cart[id]*price(byId(id))});return {n:n,t:t}}
+/* A cart saved on /store holds database ids this page's built-in catalogue only learns
+   about once loadLive() returns. Unresolved ids are skipped here - never counted, never
+   dropped from the cart - because throwing on one killed the whole store script. */
+function totals(){var n=0,t=0;Object.keys(cart).forEach(function(id){var p=byId(id);if(!p)return;n+=cart[id];t+=cart[id]*price(p)});return {n:n,t:t}}
 function renderCart(){var x=totals();$('store-quote').hidden=!x.n;$('sq-count').textContent=x.n;$('sq-total').textContent=peso(x.t);}
 $('sq-clear').onclick=function(){cart={};renderCart();render()};
 $('sq-send').onclick=function(){openCheckout()};
