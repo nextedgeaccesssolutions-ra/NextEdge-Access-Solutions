@@ -10,6 +10,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   return [
     { url: `${origin}/`, lastModified: now, priority: 1 },
+    { url: `${origin}/about`, lastModified: now, priority: 0.8 },
+    { url: `${origin}/services`, lastModified: now, priority: 0.9 },
+    { url: `${origin}/partners`, lastModified: now, priority: 0.7 },
+    { url: `${origin}/contact`, lastModified: now, priority: 0.8 },
     { url: `${origin}/store`, lastModified: now, priority: 0.9 },
     { url: `${origin}/privacy-policy`, lastModified: now, priority: 0.3 },
     ...dedupePublicProducts(await listProducts().catch((err) => { console.error("[sitemap] listProducts failed; product URLs omitted:", err); return []; })).map((p) => ({ url: `${origin}/store/p/${p.id}`, lastModified: now, priority: 0.7 })),
