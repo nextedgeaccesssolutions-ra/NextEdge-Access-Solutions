@@ -1172,6 +1172,7 @@ function loadLive(){fetch('/api/products',{cache:'no-store'}).then(function(r){r
 loadLive();
 /* Product pricing is managed in the authenticated NEAS Admin Portal. */
 /* The store is a dedicated /store page; do not open the legacy homepage overlay. */
+var ST=$('store');
 $('store-close').onclick=function(){ST.classList.remove('open');window.scrollTo({top:0,behavior:'smooth'})};
 })();
 </script>
