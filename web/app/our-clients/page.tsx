@@ -26,6 +26,12 @@ const clients = [
     description: "A wind energy client relationship referenced in NEAS's wind-sector experience.",
     initials: "AW",
   },
+  {
+    name: "Philsurv Geodetic Engineer",
+    sector: "Geodetic Surveying & Engineering",
+    description: "A client name added to NEAS's selected client references.",
+    initials: "PG",
+  },
 ];
 
 const sectors = [
