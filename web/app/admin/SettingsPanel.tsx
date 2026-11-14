@@ -28,6 +28,7 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
   const [social, setSocial] = useState(props.social);
   const [biz, setBiz] = useState(props.business);
   const [sitePhotos, setSitePhotos] = useState<Record<string, string>>(() => Object.fromEntries(PHOTO_FIELDS.map(([key, , , fallback]) => [key, props.sitePhotos[key] || fallback])));
+  const [photoUrlDrafts, setPhotoUrlDrafts] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
 
   async function save(body: unknown) {
@@ -53,7 +54,7 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
 
     {tab === "photos" && <div className="card" style={{ maxWidth: 980 }}>
       <h3 style={{ marginTop: 0 }}>Manage homepage photos</h3>
-      <p className="muted" style={{ marginTop: 0, marginBottom: 16 }}>Upload replacement photos directly here. Changes are saved to the website and appear on the homepage after saving. JPG, PNG, WebP or GIF · maximum 3 MB per image.</p>
+      <p className="muted" style={{ marginTop: 0, marginBottom: 16 }}>Upload a replacement photo or add a public HTTPS image URL. Changes are saved to the website and appear on the homepage after saving. Uploads: JPG, PNG, WebP or GIF · maximum 3 MB. URL images must be publicly accessible.</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 14 }}>
         {PHOTO_FIELDS.map(([key, label, hint, fallback]) => <div key={key} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12, minWidth: 0 }}>
           <b>{label}</b><p className="muted" style={{ fontSize: 12, margin: "3px 0 10px" }}>{hint}</p>
@@ -69,6 +70,20 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
               else setMsg(result.error || "Photo upload failed.");
             }} /></label>
             <button type="button" className="btn btn-ghost" onClick={() => setSitePhotos((current) => ({ ...current, [key]: fallback }))}>Use default</button>
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <input className="input" type="url" aria-label={`Image URL for ${label}`} placeholder="Paste public image URL (https://…)" value={photoUrlDrafts[key] ?? sitePhotos[key] ?? ""} onChange={(e) => setPhotoUrlDrafts((current) => ({ ...current, [key]: e.target.value }))} style={{ flex: "1 1 220px", minWidth: 0 }} />
+            <button type="button" className="btn btn-ghost" disabled={busy} onClick={async () => {
+              const value = (photoUrlDrafts[key] ?? "").trim();
+              let parsed: URL;
+              try { parsed = new URL(value); } catch { setMsg("Enter a valid image URL for " + label + "."); return; }
+              if (parsed.protocol !== "https:") { setMsg("Image URLs must use HTTPS."); return; }
+              setMsg("Checking image URL…");
+              const validImage = await new Promise<boolean>((resolve) => { const image = new Image(); image.onload = () => resolve(image.naturalWidth > 0); image.onerror = () => resolve(false); image.src = value; });
+              if (!validImage) { setMsg("The URL did not load as an image. Use a public direct image URL."); return; }
+              setSitePhotos((current) => ({ ...current, [key]: value }));
+              setMsg(label + " URL added. Click Save Photos to publish it.");
+            }}>Use URL</button>
           </div>
         </div>)}
       </div>
