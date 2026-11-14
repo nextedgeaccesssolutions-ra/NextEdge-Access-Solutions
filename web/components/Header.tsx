@@ -7,17 +7,21 @@ export default async function Header() {
   const user = await getUser().catch(() => null);
   const links = (
     <>
-      <a href="/">Home</a>
+      <a href="/home">Home</a>
+      <a href="/about">About</a>
+      <a href="/services">Services</a>
       <Link href="/store" className="nav-store">Online Store</Link>
+      <a href="/partners">Partners</a>
+      <a href="/contact">Contact</a>
       {user?.role === "admin" && <Link href="/admin">Admin Panel</Link>}
       {user ? <><Link href="/account">My Account</Link><LogoutButton /></> : <Link href="/login">Log in / Sign up</Link>}
-      <a className="cta" href="/#contact">Get a Quote</a>
+      <a className="cta" href="/contact">Get a Quote</a>
     </>
   );
   return (
     <header className="hdr">
       <div className="wrap hdr-in">
-        <a href="/" className="brand" aria-label="NextEdge Access Solutions homepage"><img src="/img/logo.png" alt="" /><span style={{ position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0, 0, 0, 0)", whiteSpace: "nowrap", border: 0 }}>NextEdge Access Solutions homepage</span><div><b>NEXTEDGE</b><span>Access Solutions. NEAS OPC</span></div></a>
+        <a href="/home" className="brand" aria-label="NextEdge Access Solutions homepage"><img src="/img/logo.png" alt="" /><span style={{ position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0, 0, 0, 0)", whiteSpace: "nowrap", border: 0 }}>NextEdge Access Solutions homepage</span><div><b>NEXTEDGE</b><span>Access Solutions. NEAS OPC</span></div></a>
         <nav className="nav nav-desktop" aria-label="Main">{links}</nav>
         <MobileMenu>{links}</MobileMenu>
       </div>
