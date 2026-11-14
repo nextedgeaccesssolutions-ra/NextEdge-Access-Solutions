@@ -2,19 +2,17 @@
 
 import { useEffect } from "react";
 
-// Self-hosted Rybbit analytics (see the Rybbit deploy runbook).
-// Renders nothing and loads nothing until BOTH are true:
-//   1. NEXT_PUBLIC_RYBBIT_HOST and NEXT_PUBLIC_RYBBIT_SITE_ID are set at build time
-//   2. the visitor's saved cookie choice has analytics consent
-const HOST = process.env.NEXT_PUBLIC_RYBBIT_HOST;
-const SITE_ID = process.env.NEXT_PUBLIC_RYBBIT_SITE_ID;
-const CONSENT_KEY = "neas_cookie_consent_v1";
+// Rybbit Cloud analytics. Loaded on every route only after the visitor grants
+// analytics consent through the NEAS cookie preferences.
+const SITE_ID = "35ba1640697f";
 const SCRIPT_ID = "neas-rybbit";
+const SCRIPT_SRC = `https://app.rybbit.io/api/script.js?siteId=${SITE_ID}`;
+const CONSENT_KEY = "neas_cookie_consent_v1";
 
 function analyticsAllowed(): boolean {
   try {
-    const c = JSON.parse(localStorage.getItem(CONSENT_KEY) || "null");
-    return !!c?.analytics;
+    const consent = JSON.parse(localStorage.getItem(CONSENT_KEY) || "null");
+    return !!consent?.analytics;
   } catch {
     return false;
   }
@@ -22,19 +20,19 @@ function analyticsAllowed(): boolean {
 
 export default function AnalyticsLoader() {
   useEffect(() => {
-    if (!HOST || !SITE_ID) return;
     const inject = () => {
       if (!analyticsAllowed() || document.getElementById(SCRIPT_ID)) return;
-      const s = document.createElement("script");
-      s.id = SCRIPT_ID;
-      s.defer = true;
-      // siteId stays in the URL: script optimizers drop data-* attributes but keep the URL.
-      s.src = `${HOST.replace(/\/$/, "")}/api/script.js?siteId=${encodeURIComponent(SITE_ID)}`;
-      document.body.appendChild(s);
+      const script = document.createElement("script");
+      script.id = SCRIPT_ID;
+      script.src = SCRIPT_SRC;
+      script.defer = true;
+      document.head.appendChild(script);
     };
+
     inject();
     window.addEventListener("neas:consent-updated", inject);
     return () => window.removeEventListener("neas:consent-updated", inject);
   }, []);
+
   return null;
 }
