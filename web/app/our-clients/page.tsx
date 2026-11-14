@@ -57,7 +57,7 @@ export default async function OurClientsPage() {
   return (
     <main className="neas-clients">
       <style>{`
-        .neas-clients{--gold:#d7ad68;--ink:#07131d;--panel:#102431;--muted:#aebfca;background:var(--ink);color:#f4f7f9;min-height:100vh;overflow:hidden}
+        .neas-clients{--gold:#d7ad68;--ink:#07131d;--panel:#102431;--muted:#aebfca;background:var(--ink);color:#f4f7f9;min-height:100vh;overflow:hidden;display:flow-root}
         .neas-clients *{box-sizing:border-box}
         .neas-clients .wrap{width:min(1160px,calc(100% - 48px));margin:0 auto}
         .neas-clients .hero{position:relative;padding:clamp(76px,10vw,132px) 0 88px;background:radial-gradient(ellipse at 78% 20%,rgba(215,173,104,.2),transparent 32%),radial-gradient(ellipse at 10% 90%,rgba(39,112,128,.24),transparent 42%),linear-gradient(120deg,#081722 0%,#102d39 55%,#0a1a25 100%);border-bottom:1px solid rgba(255,255,255,.1)}
@@ -85,13 +85,13 @@ export default async function OurClientsPage() {
         .neas-clients .sector-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:32px}
         .neas-clients .sector-item{display:flex;align-items:center;gap:13px;padding:19px 20px;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:rgba(255,255,255,.035);color:#dce6eb;font-size:14px;font-weight:650;min-height:66px}
         .neas-clients .sector-item:before{content:"";width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:var(--gold);box-shadow:0 0 14px rgba(215,173,104,.55)}
-        .neas-clients .cta{margin:0 0 76px;padding:clamp(28px,5vw,48px);border-radius:22px;background:linear-gradient(110deg,#b98d4e,#e0c184);color:#10212b;display:flex;align-items:center;justify-content:space-between;gap:28px;box-shadow:0 22px 54px rgba(0,0,0,.2)}
+        .neas-clients .cta{margin:0;padding:clamp(28px,5vw,48px);border-radius:22px;background:linear-gradient(110deg,#b98d4e,#e0c184);color:#10212b;display:flex;align-items:center;justify-content:space-between;gap:28px;box-shadow:0 22px 54px rgba(0,0,0,.2)}
         .neas-clients .cta h2{font-size:clamp(25px,3.4vw,37px);color:#10212b;margin:0 0 10px}
         .neas-clients .cta p{color:#263b45;line-height:1.7;margin:0}
         .neas-clients .cta-link{display:inline-flex;white-space:nowrap;align-items:center;justify-content:center;padding:15px 22px;border-radius:9px;background:#0b202c;color:#fff;font-weight:800;text-decoration:none;transition:transform .2s ease,background .2s ease}
         .neas-clients .cta-link:hover{transform:translateY(-2px);background:#17394a}
         @media(max-width:900px){.neas-clients .client-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.neas-clients .sector-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:620px){.neas-clients .wrap{width:min(100% - 32px,520px)}.neas-clients .hero{padding:76px 0 62px}.neas-clients .client-grid,.neas-clients .sector-grid{grid-template-columns:1fr}.neas-clients .client-photo{height:190px}.neas-clients .cta{align-items:flex-start;flex-direction:column;margin-bottom:48px}}
+        @media(max-width:620px){.neas-clients .wrap{width:min(100% - 32px,520px)}.neas-clients .hero{padding:76px 0 62px}.neas-clients .client-grid,.neas-clients .sector-grid{grid-template-columns:1fr}.neas-clients .client-photo{height:190px}.neas-clients .cta{align-items:flex-start;flex-direction:column;margin-bottom:0}}
         @media(prefers-reduced-motion:reduce){.neas-clients .client-card,.neas-clients .cta-link{transition:none}}
       `}</style>
 
