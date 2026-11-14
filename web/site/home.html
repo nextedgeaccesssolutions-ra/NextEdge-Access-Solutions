@@ -1448,9 +1448,28 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){
     rec.start();
   });}
   var spk=document.getElementById('neas-chat-speak');
-  if('speechSynthesis' in window&&spk){spk.style.display='block';spk.addEventListener('click',function(){
-    if(speechSynthesis.speaking){speechSynthesis.cancel();return;}
-    for(var i=MSGS.length-1;i>=0;i--){if(MSGS[i].role==='assistant'){var u=new SpeechSynthesisUtterance(MSGS[i].content.replace(/[*_#`]/g,''));u.lang='en-US';u.rate=.95;speechSynthesis.speak(u);break;}}
+  var _elAudio=null,_elPlaying=false;
+  function _elStop(){if(_elAudio){_elAudio.pause();_elAudio.src='';_elAudio=null;}_elPlaying=false;if(spk)spk.style.background='';}
+  function _elSpeak(text){
+    _elStop();
+    var clean=text.replace(/[*_#`]/g,'').trim();
+    if(!clean)return;
+    _elPlaying=true;
+    if(spk){spk.style.background='#7c3aed';}
+    fetch('/api/elevenlabs-tts',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:clean})})
+      .then(function(r){if(!r.ok)throw new Error('TTS failed');return r.blob();})
+      .then(function(blob){
+        var url=URL.createObjectURL(blob);
+        _elAudio=new Audio(url);
+        _elAudio.onended=function(){URL.revokeObjectURL(url);_elStop();};
+        _elAudio.onerror=function(){URL.revokeObjectURL(url);_elStop();};
+        return _elAudio.play();
+      })
+      .catch(function(){_elStop();});
+  }
+  if(spk){spk.style.display='block';spk.addEventListener('click',function(){
+    if(_elPlaying){_elStop();return;}
+    for(var i=MSGS.length-1;i>=0;i--){if(MSGS[i].role==='assistant'){_elSpeak(MSGS[i].content);break;}}
   });}
   input.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
 
