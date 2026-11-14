@@ -72,6 +72,11 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
     .replace("__NEAS_GA_ID__", esc(seo.gaMeasurementId || ""))
     .replace("__NEAS_RYBBIT_HOST__", esc(process.env.NEXT_PUBLIC_RYBBIT_HOST || ""))
     .replace("__NEAS_RYBBIT_SITE_ID__", esc(process.env.NEXT_PUBLIC_RYBBIT_SITE_ID || "")) + "\n</body>");
+  // Normalize legacy section fragments to dedicated, crawlable public routes.
+  // Fragments are client-only and never reach the server, so this compatibility
+  // redirect must run in the browser. Keep query parameters and replace history.
+  const legacyRedirect = `<script>(function(){var routes={hero:"/home",about:"/about",services:"/services",store:"/store",partners:"/partners",contact:"/contact"};function normalize(){var key=window.location.hash.slice(1).toLowerCase();var target=routes[key];if(!target)return;if(window.location.pathname!==target){window.location.replace(target+window.location.search);return;}window.history.replaceState(null,"",target+window.location.search);}window.addEventListener("hashchange",normalize);normalize();})();</script>`;
+  html = html.replace("</body>", legacyRedirect + "</body>");
   // social links in the side panel
   const map: [string, string][] = [["Facebook", social.facebook], ["LinkedIn", social.linkedin], ["YouTube", social.youtube], ["Instagram", social.instagram], ["TikTok", social.tiktok]];
   for (const [title, url] of map) {
