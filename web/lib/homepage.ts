@@ -89,16 +89,13 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
   // must be migrated client-side. Preserve campaign/query parameters.
   const legacyRouteRedirect = `<script id="neas-legacy-section-redirect">
     (function () {
-      var routes = {
-        "#store": "/store",
-        "#services": "/services",
-        "#partners": "/partners",
-        "#contact": "/contact",
-        "#about": "/about",
-        "#hero": "/home"
-      };
-      var destination = routes[window.location.hash];
-      if (destination) window.location.replace(destination + window.location.search);
+      var routes = { "#store": "/store", "#services": "/services", "#partners": "/partners", "#contact": "/contact", "#about": "/about", "#hero": "/home" };
+      function normalizeLegacyRoute() {
+        var destination = routes[String(window.location.hash || "").toLowerCase()];
+        if (destination) window.location.replace(destination + window.location.search);
+      }
+      window.addEventListener("hashchange", normalizeLegacyRoute);
+      normalizeLegacyRoute();
     })();
   </script>`;
   html = html.replace("</body>", legacyRouteRedirect + "\n</body>");
