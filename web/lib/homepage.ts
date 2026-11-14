@@ -85,5 +85,9 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
     return namedOpen + inner + hiddenLabel + close;
   });
   if (social.googleReview) html = html.replace('<div class="footer-bottom">', `<div style="text-align:center;margin:0 0 14px"><a href="${esc(social.googleReview)}" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:999px;padding:8px 16px;font-weight:700;font-size:13px;text-decoration:none">⭐ Review us on Google</a></div><div class="footer-bottom">`);
+  // URL fragments are not sent to the server; normalize legacy section URLs in the browser.
+  // Also listen for taps on older in-page links so they work without a page reload.
+  const legacyRouteRedirect = `<script id="neas-legacy-section-redirect">(function(){var routes={"#store":"/store","#services":"/services","#partners":"/partners","#contact":"/contact","#about":"/about","#hero":"/home"};function normalize(){var destination=routes[String(window.location.hash||"").toLowerCase()];if(destination)window.location.replace(destination+window.location.search);}window.addEventListener("hashchange",normalize);normalize();})();</script>`;
+  html = html.replace("</body>", legacyRouteRedirect + "\n</body>");
   return html;
 }
