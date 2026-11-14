@@ -66,7 +66,12 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
   html = html.replace("</head>", head + "\n</head>");
   // The static homepage bypasses the React layout, so inject its consent interface here.
   const cookieConsent = await readFile(path.join(process.cwd(), "site", "cookie-consent.html"), "utf8");
-  html = html.replace("</body>", cookieConsent.replace("__NEAS_GA_ID__", esc(seo.gaMeasurementId || "")) + "\n</body>");
+  // The placeholders are always substituted, including with "" - left in place they would
+  // read as a truthy host and produce a request to a literal __NEAS_RYBBIT_HOST__.
+  html = html.replace("</body>", cookieConsent
+    .replace("__NEAS_GA_ID__", esc(seo.gaMeasurementId || ""))
+    .replace("__NEAS_RYBBIT_HOST__", esc(process.env.NEXT_PUBLIC_RYBBIT_HOST || ""))
+    .replace("__NEAS_RYBBIT_SITE_ID__", esc(process.env.NEXT_PUBLIC_RYBBIT_SITE_ID || "")) + "\n</body>");
   // Normalize legacy section fragments to dedicated, crawlable public routes.
   // Fragments are client-only and never reach the server, so this compatibility
   // redirect must run in the browser. Keep query parameters and replace history.
