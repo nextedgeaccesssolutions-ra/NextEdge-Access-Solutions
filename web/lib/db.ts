@@ -1,6 +1,28 @@
 import postgres from "postgres";
 
-const url = process.env.DATABASE_URL || process.env.POSTGRES_URL || "";
+function isLoopbackPostgresUrl(value: string): boolean {
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    return host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "::1";
+  } catch {
+    // Also support PostgreSQL keyword/value connection strings.
+    return /(?:^|\\s)host=(?:localhost|127\\.0\\.0\\.1|::1)(?:\\s|$)/i.test(value)
+      || /host=\\/tmp(?:\\s|$)/i.test(value);
+  }
+}
+
+const databaseUrls = [
+  process.env.DATABASE_URL,
+  process.env.POSTGRES_URL,
+  process.env.POSTGRES_URL_NON_POOLING,
+  process.env.DATABASE_URL_UNPOOLED,
+].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+
+// A stale localhost DATABASE_URL must not shadow a configured hosted PostgreSQL URL.
+const url =
+  databaseUrls.find((candidate) => !isLoopbackPostgresUrl(candidate))
+  ?? databaseUrls[0]
+  ?? "";
 const g = globalThis as unknown as { __neasSql?: ReturnType<typeof postgres> };
 export const sql = g.__neasSql ?? postgres(url, {
   ssl: /localhost|127\.0\.0\.1|host=\/tmp/.test(url) ? false : "require",
