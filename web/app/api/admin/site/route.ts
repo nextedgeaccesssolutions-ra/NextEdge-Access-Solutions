@@ -35,7 +35,7 @@ export async function PUT(req: Request) {
     for (const key of allowed) {
       const value = String(current[key] ?? "").trim();
       if (!value) { out[key] = ""; continue; }
-      if (/^\\/api\\/img\\/[A-Za-z0-9_-]{1,40}$/.test(value) || /^https:\\/\\/[^\\s"<>]{1,450}$/i.test(value)) out[key] = value;
+      if (/^\/api\/img\/[A-Za-z0-9_-]{1,40}$/.test(value) || /^https:\/\/[^\s"<>]{1,450}$/i.test(value)) out[key] = value;
       else return bad("Invalid image URL for " + key + ".");
     }
     await setSetting("site_photos", out);
