@@ -200,7 +200,7 @@ function ResetLinkButton({ id, name, phone }: { id: number; name: string; phone:
     {msg && <span className="muted" style={{ fontSize: 11 }}>{msg}</span>}
     {link && <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
       <button type="button" className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => navigator.clipboard?.writeText(link)}>Copy</button>
-      <a className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} target="_blank" rel="noopener" href={`https://wa.me/${wa}?text=${encodeURIComponent(`Hi ${name}, here is your NEAS password reset link (valid 24 hours): ${link}`)}`}>WhatsApp</a>
+      <a className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} target="_blank" rel="noopener" href={`https://api.whatsapp.com/send?phone=${wa}&text=${encodeURIComponent(`Hi ${name}, here is your NEAS password reset link (valid 24 hours): ${link}`)}`}>WhatsApp</a>
     </div>}
   </div>;
 }

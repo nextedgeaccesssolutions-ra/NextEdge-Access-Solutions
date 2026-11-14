@@ -9,7 +9,7 @@ const WELCOME: Msg = {
 };
 
 const PHONE_PRIMARY = "+63 991 426 5886";
-const PHONE_SECONDARY = "+63 995 7708 144";
+const PHONE_SECONDARY = "+63 995 770 8144";
 const WHATSAPP_NUMBER = "639914265886";
 const EMAIL = "sales@nextedge-access-solutions.com";
 
@@ -267,7 +267,7 @@ export default function ChatBot() {
                   </div>
                 </a>
                 {/* WhatsApp button */}
-                <a href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services.`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                <a href={`https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services.`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
                   <div style={{
                     display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
                     background: "rgba(37,211,102,.15)", border: "1px solid rgba(37,211,102,.3)",
@@ -470,7 +470,7 @@ export default function ChatBot() {
                 <span>📞</span> {PHONE_PRIMARY}
               </div>
             </a>
-            <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+            <a href={`https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
               <div style={{
                 display: "flex", alignItems: "center", gap: 5, padding: "5px 12px",
                 background: "#25D366", borderRadius: 20,
