@@ -47,14 +47,30 @@
     // Self-hosted Rybbit. Stays unloaded unless the host and site id are configured
     // AND the visitor has accepted analytics - same gate GA goes through.
     if(!rybbitHost||!rybbitSiteId||rybbitLoaded||document.getElementById("neas-rybbit"))return;
+    // Clear any earlier opt-out first: Rybbit reads these flags once, as it loads.
+    try{localStorage.removeItem("disable-rybbit")}catch(e){}
+    window.__RYBBIT_OPTOUT__=false;
     rybbitLoaded=true;
     var script=document.createElement("script");script.id="neas-rybbit";script.defer=true;
     // siteId stays in the URL: script optimizers drop data-* attributes but keep the URL.
     script.src=rybbitHost.replace(/\/$/,"")+"/api/script.js?siteId="+encodeURIComponent(rybbitSiteId);
     document.body.appendChild(script);
   }
+  function stopRybbit(){
+    // Withdrawal has to stop a tracker that is already running. Rybbit checks its
+    // opt-out flags only when the script loads, so setting them is not enough on a
+    // page that is already tracking - it keeps sending events until the next load.
+    // Set both flags, then reload, but only when the script really was injected in
+    // this page view; otherwise this runs on every visit of an opted-out visitor.
+    try{localStorage.setItem("disable-rybbit","true")}catch(e){}
+    window.__RYBBIT_OPTOUT__=true;
+    var existing=document.getElementById("neas-rybbit");
+    if(!existing)return;
+    existing.parentNode.removeChild(existing);rybbitLoaded=false;
+    location.reload();
+  }
   function apply(choice){
-    if(choice.analytics){loadAnalytics();loadRybbit();}
+    if(choice.analytics){loadAnalytics();loadRybbit();}else stopRybbit();
     if(typeof window.gtag==="function")window.gtag("consent","update",{analytics_storage:choice.analytics?"granted":"denied",ad_storage:choice.marketing?"granted":"denied",ad_user_data:choice.marketing?"granted":"denied",ad_personalization:choice.marketing?"granted":"denied"});
     window.dispatchEvent(new CustomEvent("neas:consent-updated",{detail:choice}));
   }
