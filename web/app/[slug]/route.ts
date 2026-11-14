@@ -56,26 +56,26 @@ export async function GET(
     // Keep the verified NEAS website origin if a stored canonical URL is invalid.
   }
 
-  const canonical = `${origin}${page.canonicalPath}`;
+  const canonical = origin + page.canonicalPath;
   const title = escapeHtml(page.title);
   const description = escapeHtml(page.description);
-  const canonicalTag = `<link rel="canonical" href="${canonical}">`;
-  const alternateTag = `<link rel="alternate" hreflang="en-PH" href="${canonical}">`;
+  const canonicalTag = '<link rel="canonical" href="' + canonical + '">';
+  const alternateTag = '<link rel="alternate" hreflang="en-PH" href="' + canonical + '">';
 
   html = html
-    .replace(/<title>[\\s\\S]*?<\\/title>/i, `<title>${title}</title>`)
-    .replace(/<meta name="description" content="[^"]*">/i, `<meta name="description" content="${description}">`)
+    .replace(/<title>[\s\S]*?<\/title>/i, "<title>" + title + "</title>")
+    .replace(/<meta name="description" content="[^"]*">/i, '<meta name="description" content="' + description + '">')
     .replace(/<link rel="canonical" href="[^"]*">/i, canonicalTag)
     .replace(/<link rel="alternate" hreflang="en-PH" href="[^"]*">/i, alternateTag)
-    .replace(/<meta property="og:title" content="[^"]*">/i, `<meta property="og:title" content="${title}">`)
-    .replace(/<meta property="og:description" content="[^"]*">/i, `<meta property="og:description" content="${description}">`)
-    .replace(/<meta property="og:url" content="[^"]*">/i, `<meta property="og:url" content="${canonical}">`)
-    .replace(/<meta name="twitter:title" content="[^"]*">/i, `<meta name="twitter:title" content="${title}">`)
-    .replace(/<meta name="twitter:description" content="[^"]*">/i, `<meta name="twitter:description" content="${description}">`);
+    .replace(/<meta property="og:title" content="[^"]*">/i, '<meta property="og:title" content="' + title + '">')
+    .replace(/<meta property="og:description" content="[^"]*">/i, '<meta property="og:description" content="' + description + '">')
+    .replace(/<meta property="og:url" content="[^"]*">/i, '<meta property="og:url" content="' + canonical + '">')
+    .replace(/<meta name="twitter:title" content="[^"]*">/i, '<meta name="twitter:title" content="' + title + '">')
+    .replace(/<meta name="twitter:description" content="[^"]*">/i, '<meta name="twitter:description" content="' + description + '">');
 
   const section = JSON.stringify(page.section);
-  const scrollScript = `<script>(function(){var id=${section};function scrollToSection(){var el=document.getElementById(id);if(!el)return;var top=el.getBoundingClientRect().top+window.scrollY-76;window.scrollTo({top:Math.max(0,top),behavior:"auto"});}if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",scrollToSection,{once:true});}else{requestAnimationFrame(scrollToSection);}})();</script>`;
-  html = html.replace("</body>", `${scrollScript}</body>`);
+  const scrollScript = '<script>(function(){var id=' + section + ';function scrollToSection(){var el=document.getElementById(id);if(!el)return;var top=el.getBoundingClientRect().top+window.scrollY-76;window.scrollTo({top:Math.max(0,top),behavior:"auto"});}if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",scrollToSection,{once:true});}else{requestAnimationFrame(scrollToSection);}})();</script>';
+  html = html.replace("</body>", scrollScript + "</body>");
 
   return new Response(html, {
     headers: {
