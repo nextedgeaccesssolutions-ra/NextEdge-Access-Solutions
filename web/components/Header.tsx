@@ -12,6 +12,7 @@ export default async function Header() {
       <a href="/services">Services</a>
       <Link href="/store" className="nav-store">Online Store</Link>
       <a href="/partners">Partners</a>
+      <a href="/our-clients">Our Clients</a>
       <a href="/contact">Contact</a>
       {user?.role === "admin" && <Link href="/admin">Admin Panel</Link>}
       {user ? <><Link href="/account">My Account</Link><LogoutButton /></> : <Link href="/login">Log in / Sign up</Link>}
