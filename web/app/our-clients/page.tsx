@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getSetting } from "@/lib/settings";
 
+// Client photos are changed through the admin database settings; render on each request
+// so published image URLs are not frozen into a static build.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: "Our Clients | NextEdge Access Solutions",
   description: "Meet the organizations and industry partners connected with NextEdge Access Solutions across renewable energy, geodetic surveying and industrial services.",
