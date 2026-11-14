@@ -2,17 +2,28 @@
 import { useState } from "react";
 import type { Seo, Social, Business } from "@/lib/settings";
 
-type Tab = "seo" | "google" | "social";
+type Tab = "seo" | "google" | "social" | "photos";
+
+const PHOTO_FIELDS = [
+  ["hero", "Homepage hero image", "Main homepage banner image", "/img/hero-city.jpg"],
+  ["ropeAccess", "Rope Access service photo", "Our Services card", "/img/ce6c22d9bace.jpg"],
+  ["inspection", "Inspection service photo", "NDT inspection card", "/img/877206fcf5ba.jpg"],
+  ["coatings", "Coatings service photo", "Blasting and painting card", "/img/6447ca2a761e.jpg"],
+  ["metMast", "Met Mast & Telecom photo", "Met mast and telecom card", "/img/0cc8f91dab71.jpg"],
+  ["training", "Training & PPE photo", "Training and PPE card", "/img/390f5ed3244c.jpg"],
+  ["windEnergy", "Wind Energy service photo", "Wind turbine service card", "/img/0ce37cb33507.jpg"],
+] as const;
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return <label className="field" style={{ marginBottom: 10 }}>{label}{children}{hint && <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>{hint}</span>}</label>;
 }
 
-export default function SettingsPanel(props: { seo: Seo; social: Social; business: Business }) {
+export default function SettingsPanel(props: { seo: Seo; social: Social; business: Business; sitePhotos: Record<string, string> }) {
   const [tab, setTab] = useState<Tab>("seo");
   const [seo, setSeo] = useState(props.seo);
   const [social, setSocial] = useState(props.social);
   const [biz, setBiz] = useState(props.business);
+  const [sitePhotos, setSitePhotos] = useState<Record<string, string>>(() => Object.fromEntries(PHOTO_FIELDS.map(([key, , , fallback]) => [key, props.sitePhotos[key] || fallback])));
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
 
   async function save(body: unknown) {
@@ -33,6 +44,30 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
       {([["seo", "SEO (advanced)"], ["google", "Google Business"], ["social", "Social media"]] as const).map(([k, l]) => <button key={k} type="button" className={"btn " + (tab === k ? "btn-primary" : "btn-ghost")} onClick={() => { setTab(k); setMsg(""); }}>{l}</button>)}
       {msg && <span className={msg.startsWith("Saved") ? "ok" : "err"} role="status" style={{ alignSelf: "center" }}>{msg}</span>}
     </div>
+
+    {tab === "photos" && <div className="card" style={{ maxWidth: 980 }}>
+      <h3 style={{ marginTop: 0 }}>Manage homepage photos</h3>
+      <p className="muted" style={{ marginTop: 0, marginBottom: 16 }}>Upload replacement photos directly here. Changes are saved to the website and appear on the homepage after saving. JPG, PNG, WebP or GIF · maximum 3 MB per image.</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 14 }}>
+        {PHOTO_FIELDS.map(([key, label, hint, fallback]) => <div key={key} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12, minWidth: 0 }}>
+          <b>{label}</b><p className="muted" style={{ fontSize: 12, margin: "3px 0 10px" }}>{hint}</p>
+          <img src={sitePhotos[key] || fallback} alt={label} style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: 8, background: "#eef2f4", border: "1px solid var(--line)" }} />
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
+            <label className="btn btn-ghost" style={{ cursor: "pointer" }}>Upload / Replace<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={async (e) => {
+              const file = e.target.files?.[0]; e.target.value = ""; if (!file) return;
+              if (file.size > 3 * 1024 * 1024) { setMsg("Each photo must be 3 MB or smaller."); return; }
+              const fd = new FormData(); fd.append("file", file); setMsg("Uploading " + label + "…");
+              const response = await fetch("/api/admin/upload", { method: "POST", body: fd });
+              const result = await response.json().catch(() => ({}));
+              if (response.ok && result.url) { setSitePhotos((current) => ({ ...current, [key]: result.url })); setMsg(label + " uploaded. Click Save Photos to publish it."); }
+              else setMsg(result.error || "Photo upload failed.");
+            }} /></label>
+            <button type="button" className="btn btn-ghost" onClick={() => setSitePhotos((current) => ({ ...current, [key]: fallback }))}>Use default</button>
+          </div>
+        </div>)}
+      </div>
+      <button type="button" className="btn btn-primary" style={{ marginTop: 18 }} disabled={busy} onClick={() => save({ sitePhotos })}>Save Photos</button>
+    </div>}
 
     {tab === "seo" && <div className="card" style={{ maxWidth: 820 }}>
       <div style={{ display: "flex", gap: 14, alignItems: "center", border: "1px solid var(--line)", borderRadius: 10, padding: 12, marginBottom: 14, flexWrap: "wrap" }}>
