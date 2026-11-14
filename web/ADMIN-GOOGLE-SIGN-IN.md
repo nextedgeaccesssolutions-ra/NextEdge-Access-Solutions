@@ -2,9 +2,17 @@
 
 ## Required configuration
 
-Keep the existing Google OAuth client ID and secret unchanged. Before enabling this flow, add this server-only Vercel Production environment variable:
+All three values can be set either as Vercel Production environment variables or in
+Admin -> Marketing Command Center -> Settings & Logs. The hosting environment always wins;
+a panel value is only used when the environment does not define one. Settings & Logs shows,
+per key, whether a value is present and whether it came from `hosting` or `admin`.
 
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: the site's Google OAuth client.
 - `ADMIN_GOOGLE_EMAILS`: comma-separated, lowercase Google email addresses authorized for Admin Panel SSO. Include only approved NEAS administrator accounts.
+
+If any of the three is missing the flow redirects to `/admin/login?google_error=unavailable`
+and the server log records which keys are absent (`[admin-google:start] not configured, missing: ...`).
+The browser message stays generic on purpose.
 
 Register this exact authorized redirect URI in the same Google OAuth client:
 

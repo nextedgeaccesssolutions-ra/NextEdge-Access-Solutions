@@ -7,6 +7,17 @@ import { loadConfig } from "@/lib/config";
 
 const COOKIE = "neas_admin_google_oauth";
 
+/** Names the missing configuration in the server log only. The browser keeps the
+ *  generic "unavailable" message so an anonymous visitor learns nothing about setup. */
+function logMissingConfig(where: string, clientId?: string, clientSecret?: string, allowCount = 0) {
+  const missing = [
+    !clientId && "GOOGLE_CLIENT_ID",
+    !clientSecret && "GOOGLE_CLIENT_SECRET",
+    allowCount === 0 && "ADMIN_GOOGLE_EMAILS",
+  ].filter(Boolean);
+  if (missing.length) console.warn(`[admin-google:${where}] not configured, missing: ${missing.join(", ")}`);
+}
+
 export async function GET(req: Request) {
   const limited = rateLimitRequest(req, "admin-google-start", 20, 15 * 60_000);
   if (limited) return limited;
@@ -15,6 +26,7 @@ export async function GET(req: Request) {
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const allowed = (process.env.ADMIN_GOOGLE_EMAILS || "").split(",").map((v) => v.trim().toLowerCase()).filter(Boolean);
   if (!clientId || !clientSecret || allowed.length === 0) {
+    logMissingConfig("start", clientId, clientSecret, allowed.length);
     return NextResponse.redirect(new URL("/admin/login?google_error=unavailable", req.url));
   }
 

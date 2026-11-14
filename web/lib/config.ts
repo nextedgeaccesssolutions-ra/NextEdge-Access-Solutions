@@ -20,6 +20,7 @@ export const CONFIG_KEYS: { key: string; label: string; group: string; secret: b
   { key: "GOOGLE_CLIENT_ID", label: "Google OAuth Client ID", group: "YouTube & Google Business", secret: false },
   { key: "GOOGLE_CLIENT_SECRET", label: "Google OAuth Client Secret", group: "YouTube & Google Business", secret: true },
   { key: "YOUTUBE_PRIVACY", label: "YouTube upload privacy (public / unlisted / private)", group: "YouTube & Google Business", secret: false },
+  { key: "ADMIN_GOOGLE_EMAILS", label: "Admin Google sign-in allowlist (comma-separated emails)", group: "Admin sign-in", secret: false, help: "Lowercase Google addresses allowed to sign in to the Admin Panel. Each must already have an admin user record." },
   { key: "TIKTOK_CLIENT_KEY", label: "TikTok Client Key", group: "TikTok", secret: false },
   { key: "TIKTOK_CLIENT_SECRET", label: "TikTok Client Secret", group: "TikTok", secret: true },
   { key: "WHATSAPP_TOKEN", label: "WhatsApp permanent access token", group: "WhatsApp", secret: true },
@@ -50,7 +51,9 @@ function effectiveValue(k: string, vals: Record<string, string>) {
   // Website Google sign-in must use the deployment's explicitly configured OAuth
   // client. Admin-saved credentials remain a fallback for deployments that do not
   // define Google credentials, and continue to support the social integrations.
-  if (k === "GOOGLE_CLIENT_ID" || k === "GOOGLE_CLIENT_SECRET") return ORIGINAL[k] || vals[k];
+  // ADMIN_GOOGLE_EMAILS follows the same rule: a deployment-level allowlist is an
+  // authentication boundary and cannot be widened or overridden from the panel.
+  if (k === "GOOGLE_CLIENT_ID" || k === "GOOGLE_CLIENT_SECRET" || k === "ADMIN_GOOGLE_EMAILS") return ORIGINAL[k] || vals[k];
   return vals[k] ?? ORIGINAL[k];
 }
 function apply(vals: Record<string, string>) {
