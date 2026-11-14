@@ -267,7 +267,7 @@ export default function ChatBot() {
                   </div>
                 </a>
                 {/* WhatsApp button */}
-                <a href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services.`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                <a href={`https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services.`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
                   <div style={{
                     display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
                     background: "rgba(37,211,102,.15)", border: "1px solid rgba(37,211,102,.3)",
