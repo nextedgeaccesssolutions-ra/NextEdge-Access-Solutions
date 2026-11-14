@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getSetting } from "@/lib/settings";
 
 export const metadata: Metadata = {
   title: "Our Clients | NextEdge Access Solutions",
-  description: "Explore selected client relationships and industry experience supporting NextEdge Access Solutions across wind energy and industrial access services.",
+  description: "Meet the organizations and industry partners connected with NextEdge Access Solutions across renewable energy, geodetic surveying and industrial services.",
   alternates: { canonical: "/our-clients" },
   openGraph: {
     title: "Our Clients | NextEdge Access Solutions",
-    description: "Industry relationships and experience across wind energy, rope access and industrial services.",
+    description: "Trusted relationships across renewable energy, geodetic surveying and industrial services.",
     url: "/our-clients",
     type: "website",
   },
@@ -19,18 +20,21 @@ const clients = [
     sector: "Wind Energy",
     description: "A wind energy client relationship referenced in NEAS's wind-sector experience.",
     initials: "TE",
+    photoKey: "clientTriconti",
   },
   {
     name: "Atimonan Windkraft",
     sector: "Wind Energy",
     description: "A wind energy client relationship referenced in NEAS's wind-sector experience.",
     initials: "AW",
+    photoKey: "clientAtimonan",
   },
   {
     name: "Philsurv Geodetic Engineer",
     sector: "Geodetic Surveying & Engineering",
     description: "A client name added to NEAS's selected client references.",
     initials: "PG",
+    photoKey: "clientPhilsurv",
   },
 ];
 
@@ -40,55 +44,77 @@ const sectors = [
   "Industrial Maintenance",
   "Offshore & Onshore Operations",
   "Telecommunications & Infrastructure",
+  "Geodetic Surveying & Engineering",
 ];
 
-export default function OurClientsPage() {
+export default async function OurClientsPage() {
+  const photos = await getSetting<Record<string, string>>("site_photos", {});
   return (
     <main className="neas-clients">
       <style>{`
-        .neas-clients{background:#07111b;color:#eef4f8;min-height:100vh}
+        .neas-clients{--gold:#d7ad68;--ink:#07131d;--panel:#102431;--muted:#aebfca;background:var(--ink);color:#f4f7f9;min-height:100vh;overflow:hidden}
         .neas-clients *{box-sizing:border-box}
-        .neas-clients .clients-wrap{width:min(1120px,calc(100% - 40px));margin:0 auto}
-        .neas-clients .clients-hero{padding:112px 0 76px;background:radial-gradient(ellipse at 82% 10%,rgba(185,132,54,.22),transparent 38%),linear-gradient(135deg,#081521,#102b35 68%,#0c1b27);border-bottom:1px solid rgba(255,255,255,.1)}
-        .neas-clients .eyebrow{color:#d5ad69;text-transform:uppercase;letter-spacing:.19em;font-size:12px;font-weight:800}
-        .neas-clients h1{font-size:clamp(38px,6vw,66px);line-height:1.04;letter-spacing:-.04em;margin:18px 0;color:#fff;max-width:780px}
-        .neas-clients .hero-copy{font-size:18px;line-height:1.75;color:#c2d0d8;max-width:720px}
-        .neas-clients .client-section{padding:76px 0}
-        .neas-clients .section-kicker{font-size:12px;color:#d5ad69;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
-        .neas-clients h2{font-size:clamp(28px,4vw,42px);line-height:1.15;margin:12px 0 14px;color:#fff}
-        .neas-clients .section-copy{color:#aebdc7;line-height:1.75;max-width:700px}
-        .neas-clients .client-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:34px}
-        .neas-clients .client-card{padding:30px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:linear-gradient(145deg,#122633,#0c1a25);min-height:210px;display:flex;gap:20px;align-items:flex-start}
-        .neas-clients .client-mark{width:64px;height:64px;flex:0 0 64px;border-radius:14px;display:grid;place-items:center;background:rgba(213,173,105,.12);border:1px solid rgba(213,173,105,.32);color:#e5c58e;font-weight:900;font-size:20px;letter-spacing:.04em}
-        .neas-clients .client-sector{color:#d5ad69;font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
-        .neas-clients .client-card h3{font-size:22px;margin:8px 0;color:#fff}
-        .neas-clients .client-card p{font-size:14px;color:#aebdc7;line-height:1.65}
-        .neas-clients .sector-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:30px}
-        .neas-clients .sector-item{padding:18px 20px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:#0d1c27;color:#d9e3e9;font-weight:650;font-size:14px}
-        .neas-clients .cta-panel{margin:0 0 76px;padding:36px;border-radius:18px;background:linear-gradient(110deg,#b58b4c,#d8b779);color:#10202b;display:flex;align-items:center;justify-content:space-between;gap:24px}
-        .neas-clients .cta-panel h2{font-size:clamp(24px,3vw,34px);color:#10202b;margin:0 0 8px}
-        .neas-clients .cta-panel p{color:#243743;line-height:1.65}
-        .neas-clients .cta-link{display:inline-flex;white-space:nowrap;align-items:center;justify-content:center;padding:13px 20px;border-radius:8px;background:#0c202b;color:#fff;font-weight:800;text-decoration:none}
-        @media(max-width:700px){.neas-clients .client-grid,.neas-clients .sector-grid{grid-template-columns:1fr}.neas-clients .client-section{padding:54px 0}.neas-clients .clients-hero{padding:94px 0 58px}.neas-clients .client-card{padding:22px}.neas-clients .cta-panel{align-items:flex-start;flex-direction:column;padding:26px}}
+        .neas-clients .wrap{width:min(1160px,calc(100% - 48px));margin:0 auto}
+        .neas-clients .hero{position:relative;padding:clamp(76px,10vw,132px) 0 88px;background:radial-gradient(ellipse at 78% 20%,rgba(215,173,104,.2),transparent 32%),radial-gradient(ellipse at 10% 90%,rgba(39,112,128,.24),transparent 42%),linear-gradient(120deg,#081722 0%,#102d39 55%,#0a1a25 100%);border-bottom:1px solid rgba(255,255,255,.1)}
+        .neas-clients .hero:after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;mask-image:linear-gradient(to bottom,black,transparent);pointer-events:none}
+        .neas-clients .hero-inner{position:relative;z-index:1;max-width:850px}
+        .neas-clients .eyebrow,.neas-clients .kicker{color:var(--gold);font-size:11px;font-weight:850;letter-spacing:.2em;text-transform:uppercase}
+        .neas-clients h1{font-size:clamp(42px,7vw,76px);line-height:1.02;letter-spacing:-.055em;margin:18px 0;color:#fff}
+        .neas-clients .hero-copy{font-size:clamp(16px,2vw,19px);line-height:1.8;color:#c4d2d9;max-width:760px;margin:0}
+        .neas-clients .hero-rule{height:3px;width:76px;background:var(--gold);margin-top:30px;border-radius:5px}
+        .neas-clients .section{padding:clamp(58px,8vw,94px) 0}
+        .neas-clients .section-head{display:flex;justify-content:space-between;align-items:end;gap:28px;flex-wrap:wrap}
+        .neas-clients h2{font-size:clamp(28px,4vw,44px);line-height:1.12;letter-spacing:-.035em;margin:12px 0;color:#fff}
+        .neas-clients .section-copy{color:var(--muted);line-height:1.8;max-width:680px;margin:0}
+        .neas-clients .client-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:38px}
+        .neas-clients .client-card{min-width:0;overflow:hidden;border:1px solid rgba(255,255,255,.1);border-radius:18px;background:linear-gradient(155deg,#142d3a,#0d1e29 75%);box-shadow:0 18px 42px rgba(0,0,0,.16);transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease}
+        .neas-clients .client-card:hover{transform:translateY(-5px);border-color:rgba(215,173,104,.48);box-shadow:0 24px 48px rgba(0,0,0,.25)}
+        .neas-clients .client-photo{height:210px;position:relative;background:radial-gradient(circle at 75% 15%,rgba(215,173,104,.24),transparent 35%),linear-gradient(135deg,#173747,#0c1b27);display:grid;place-items:center;overflow:hidden}
+        .neas-clients .client-photo img{width:100%;height:100%;object-fit:cover;display:block}
+        .neas-clients .photo-placeholder{width:76px;height:76px;border-radius:22px;border:1px solid rgba(215,173,104,.45);background:rgba(215,173,104,.12);display:grid;place-items:center;color:#f0d29c;font-weight:900;font-size:25px;letter-spacing:.04em}
+        .neas-clients .client-body{padding:24px 24px 26px}
+        .neas-clients .client-sector{color:var(--gold);font-size:10px;font-weight:850;letter-spacing:.16em;text-transform:uppercase}
+        .neas-clients .client-card h3{font-size:21px;line-height:1.25;margin:10px 0;color:#fff}
+        .neas-clients .client-card p{font-size:14px;color:#b3c2cb;line-height:1.75;margin:0}
+        .neas-clients .sector-section{background:linear-gradient(180deg,#0b1a25,#0e202b);border-top:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07)}
+        .neas-clients .sector-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:32px}
+        .neas-clients .sector-item{display:flex;align-items:center;gap:13px;padding:19px 20px;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:rgba(255,255,255,.035);color:#dce6eb;font-size:14px;font-weight:650;min-height:66px}
+        .neas-clients .sector-item:before{content:"";width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:var(--gold);box-shadow:0 0 14px rgba(215,173,104,.55)}
+        .neas-clients .cta{margin:0 0 76px;padding:clamp(28px,5vw,48px);border-radius:22px;background:linear-gradient(110deg,#b98d4e,#e0c184);color:#10212b;display:flex;align-items:center;justify-content:space-between;gap:28px;box-shadow:0 22px 54px rgba(0,0,0,.2)}
+        .neas-clients .cta h2{font-size:clamp(25px,3.4vw,37px);color:#10212b;margin:0 0 10px}
+        .neas-clients .cta p{color:#263b45;line-height:1.7;margin:0}
+        .neas-clients .cta-link{display:inline-flex;white-space:nowrap;align-items:center;justify-content:center;padding:15px 22px;border-radius:9px;background:#0b202c;color:#fff;font-weight:800;text-decoration:none;transition:transform .2s ease,background .2s ease}
+        .neas-clients .cta-link:hover{transform:translateY(-2px);background:#17394a}
+        @media(max-width:900px){.neas-clients .client-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.neas-clients .sector-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:620px){.neas-clients .wrap{width:min(100% - 32px,520px)}.neas-clients .hero{padding:76px 0 62px}.neas-clients .client-grid,.neas-clients .sector-grid{grid-template-columns:1fr}.neas-clients .client-photo{height:190px}.neas-clients .cta{align-items:flex-start;flex-direction:column;margin-bottom:48px}}
+        @media(prefers-reduced-motion:reduce){.neas-clients .client-card,.neas-clients .cta-link{transition:none}}
       `}</style>
-      <section className="clients-hero">
-        <div className="clients-wrap">
+
+      <section className="hero">
+        <div className="wrap hero-inner">
           <div className="eyebrow">Partnerships · Performance · Trust</div>
           <h1>Our Clients</h1>
-          <p className="hero-copy">Building trusted working relationships through safe access, dependable execution, and technical solutions for demanding industrial and renewable energy environments.</p>
+          <p className="hero-copy">Strong partnerships. Shared standards. Reliable delivery. We work alongside organizations across renewable energy, infrastructure and specialist technical services.</p>
+          <div className="hero-rule" />
         </div>
       </section>
 
-      <section className="client-section">
-        <div className="clients-wrap">
-          <div className="section-kicker">Selected client relationships</div>
-          <h2>Working alongside the energy sector</h2>
-          <p className="section-copy">NEAS supports projects and industry stakeholders with specialist access capabilities, maintenance support, and a safety-led approach. The client names below are drawn from NEAS's existing wind energy client references.</p>
+      <section className="section">
+        <div className="wrap">
+          <div className="section-head">
+            <div>
+              <div className="kicker">Selected client relationships</div>
+              <h2>Trusted across demanding industries</h2>
+              <p className="section-copy">NEAS supports projects and industry stakeholders with specialist access capabilities, maintenance support and a safety-led approach.</p>
+            </div>
+          </div>
           <div className="client-grid">
             {clients.map((client) => (
               <article className="client-card" key={client.name}>
-                <div className="client-mark" aria-hidden="true">{client.initials}</div>
-                <div>
+                <div className="client-photo">
+                  {photos[client.photoKey] ? <img src={photos[client.photoKey]} alt={client.name + " project or company photo"} /> : <div className="photo-placeholder" aria-hidden="true">{client.initials}</div>}
+                </div>
+                <div className="client-body">
                   <div className="client-sector">{client.sector}</div>
                   <h3>{client.name}</h3>
                   <p>{client.description}</p>
@@ -99,24 +125,24 @@ export default function OurClientsPage() {
         </div>
       </section>
 
-      <section className="client-section" style={{background:"#0a1721",borderTop:"1px solid rgba(255,255,255,.07)",borderBottom:"1px solid rgba(255,255,255,.07)"}}>
-        <div className="clients-wrap">
-          <div className="section-kicker">Industries we serve</div>
+      <section className="section sector-section">
+        <div className="wrap">
+          <div className="kicker">Industries we serve</div>
           <h2>Technical capability across critical sectors</h2>
-          <p className="section-copy">Our service capabilities are designed for complex access and maintenance requirements across energy, infrastructure, and industrial environments.</p>
+          <p className="section-copy">Our service capabilities are designed for complex access and maintenance requirements across energy, infrastructure and industrial environments.</p>
           <div className="sector-grid">
             {sectors.map((sector) => <div className="sector-item" key={sector}>{sector}</div>)}
           </div>
         </div>
       </section>
 
-      <section className="clients-wrap">
-        <div className="cta-panel">
+      <section className="wrap">
+        <div className="cta">
           <div>
             <h2>Let’s build the next project together.</h2>
-            <p>Talk to NEAS about your project requirements, site conditions, and service scope.</p>
+            <p>Talk to NEAS about your project requirements, site conditions and service scope.</p>
           </div>
-          <Link className="cta-link" href="/contact">Discuss a Project ↗</Link>
+          <Link className="cta-link" href="/contact">Discuss a Project <span aria-hidden="true">↗</span></Link>
         </div>
       </section>
     </main>
