@@ -1171,11 +1171,7 @@ function loadLive(){fetch('/api/products',{cache:'no-store'}).then(function(r){r
   cats=['All','♥ Wishlist'].concat(CATALOG.map(function(p){return p.cat}).filter(function(c,i,a){return a.indexOf(c)===i}));var validCart={};CATALOG.forEach(function(p){var n=Math.floor(Number(cart[p.id]));if(n>0)validCart[p.id]=Math.min(n,99)});cart=validCart;renderCats();render();renderCart();}).catch(function(){})}
 loadLive();
 /* Product pricing is managed in the authenticated NEAS Admin Portal. */
-/* show store only from menu */
-var ST=$('store');function showStore(){ST.classList.add('open');}
-[].forEach.call(document.querySelectorAll('a[href="#store"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();showStore();ST.scrollIntoView({behavior:'smooth'})})});
-if(location.hash==='#store'){showStore();setTimeout(function(){ST.scrollIntoView()},300)}
-window.addEventListener('hashchange',function(){if(location.hash==='#store')showStore()});
+/* The store is a dedicated /store page; do not open the legacy homepage overlay. */
 $('store-close').onclick=function(){ST.classList.remove('open');window.scrollTo({top:0,behavior:'smooth'})};
 })();
 </script>
