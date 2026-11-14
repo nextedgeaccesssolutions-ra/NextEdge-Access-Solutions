@@ -10,7 +10,7 @@ if (process.env.NODE_ENV !== "production") g.__neasSql = sql;
 
 export type Product = { id: string; category: string; code: string; name: string; dealer_price: number; price_override: number | null; active: boolean; price: number; image: string; description: string; features: string; specs_url: string;
   /** What the Google Sheet last supplied, shown as the placeholder when an override is cleared. */
-  name_sheet: string; code_sheet: string; category_sheet: string;
+  name_sheet: string; code_sheet: string; category_sheet: string; dealer_price_sheet: number | null; dealer_override: number | null;
   /** Admin overrides. Non-null wins over the sheet and survives every sync. */
   name_override: string | null; code_override: string | null; category_override: string | null };
 
@@ -25,7 +25,26 @@ export function sellPrice(dealer: number, override: number | null, markup: numbe
   return Math.ceil((Number(dealer) * (1 + markup / 100)) / 5) * 5;
 }
 
+// Additive, idempotent schema repair for the admin item-override columns (#52).
+// Production builds no longer run scripts/migrate.mjs, so make sure the columns exist at runtime.
+let productColumnsReady: Promise<void> | null = null;
+export function ensureProductColumns(): Promise<void> {
+  productColumnsReady ??= (async () => {
+    for (const col of ["name_sheet", "code_sheet", "category_sheet", "name_override", "code_override", "category_override"]) {
+      await sql.unsafe(`alter table products add column if not exists ${col} text`);
+    }
+    for (const col of ["dealer_price_sheet", "dealer_override"]) {
+      await sql.unsafe(`alter table products add column if not exists ${col} numeric(12,2)`);
+    }
+  })().catch((err) => {
+    productColumnsReady = null; // retry on a later request
+    console.error("[db] could not add product override columns (run `npm run migrate`):", err);
+  });
+  return productColumnsReady;
+}
+
 export async function listProducts(includeInactive = false): Promise<Product[]> {
+  await ensureProductColumns();
   const markup = await getMarkup();
   const { getCategoryMarkup } = await import("./settings");
   const catMarkup = await getCategoryMarkup();
@@ -35,8 +54,8 @@ export async function listProducts(includeInactive = false): Promise<Product[]> 
   let rows;
   try {
     rows = includeInactive
-      ? await sql`select id, category, code, name, dealer_price, price_override, active, sort, image_url, sheet_price, description, features, specs_url, name_sheet, code_sheet, category_sheet, name_override, code_override, category_override from products order by active desc, sort`
-      : await sql`select id, category, code, name, dealer_price, price_override, active, sort, image_url, sheet_price, description, features, specs_url, name_sheet, code_sheet, category_sheet, name_override, code_override, category_override from products where active order by sort`;
+      ? await sql`select id, category, code, name, dealer_price, price_override, active, sort, image_url, sheet_price, description, features, specs_url, name_sheet, code_sheet, category_sheet, name_override, code_override, category_override, dealer_price_sheet, dealer_override from products order by active desc, sort`
+      : await sql`select id, category, code, name, dealer_price, price_override, active, sort, image_url, sheet_price, description, features, specs_url, name_sheet, code_sheet, category_sheet, name_override, code_override, category_override, dealer_price_sheet, dealer_override from products where active order by sort`;
   } catch (err) {
     // 42703 = undefined_column: the item-override migration has not been applied yet. Serve the real catalogue without overrides.
     if ((err as { code?: string }).code !== "42703") throw err;
@@ -50,6 +69,6 @@ export async function listProducts(includeInactive = false): Promise<Product[]> 
     const override = r.price_override == null ? null : Number(r.price_override);
     return { id: r.id, category: r.category, code: r.code, name: r.name,
       name_sheet: r.name_sheet ?? r.name, code_sheet: r.code_sheet ?? r.code, category_sheet: r.category_sheet ?? r.category,
-      name_override: r.name_override ?? null, code_override: r.code_override ?? null, category_override: r.category_override ?? null, dealer_price: dealer, price_override: override, active: r.active, image: r.image_url ?? "", description: r.description ?? "", features: r.features ?? "", specs_url: r.specs_url ?? "", price: useSheet && r.sheet_price != null && override == null ? Math.ceil(Number(r.sheet_price)) : sellPrice(dealer, override, catMarkup[r.category] ?? markup) };
+      name_override: r.name_override ?? null, code_override: r.code_override ?? null, category_override: r.category_override ?? null, dealer_price_sheet: r.dealer_price_sheet == null ? null : Number(r.dealer_price_sheet), dealer_override: r.dealer_override == null ? null : Number(r.dealer_override), dealer_price: dealer, price_override: override, active: r.active, image: r.image_url ?? "", description: r.description ?? "", features: r.features ?? "", specs_url: r.specs_url ?? "", price: useSheet && r.sheet_price != null && override == null ? Math.ceil(Number(r.sheet_price)) : sellPrice(dealer, override, catMarkup[r.category] ?? markup) };
   });
 }

@@ -1,3 +1,5 @@
+import { publicOrigin } from "./origin";
+
 export type Provider = "google" | "facebook";
 
 export const PROVIDERS: Record<Provider, { authorize: string; token: string; scope: string; id: () => string | undefined; secret: () => string | undefined }> = {
@@ -20,14 +22,7 @@ export const PROVIDERS: Record<Provider, { authorize: string; token: string; sco
 export function isProvider(p: string): p is Provider { return p === "google" || p === "facebook"; }
 export function enabled(p: Provider) { return Boolean(PROVIDERS[p].id() && PROVIDERS[p].secret()); }
 
-export function baseUrl(req: Request) {
-  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
-  const h = req.headers;
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? (host?.startsWith("localhost") ? "http" : "https");
-  return `${proto}://${host}`;
-}
-export const redirectUri = (req: Request, p: Provider) => `${baseUrl(req)}/api/auth/oauth/${p}/callback`;
+export const redirectUri = (req: Request, p: Provider) => `${publicOrigin(req)}/api/auth/oauth/${p}/callback`;
 
 /** Exchange the code and return a verified identity, or throw with a user-facing message. */
 export async function fetchIdentity(req: Request, p: Provider, code: string): Promise<{ providerId: string; email: string; name: string }> {

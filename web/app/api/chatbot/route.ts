@@ -6,7 +6,7 @@ import { rateLimitRequest } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-const SYSTEM = `You are the NEAS Assistant — the official virtual assistant for NextEdge Access Solutions (NEAS) OPC, a Philippine company where "Height is not a limit. It is our expertise." You are knowledgeable, professional, friendly, and concise. Always represent NEAS with pride.
+const SYSTEM = `You are the NEAS Assistant — the official virtual assistant for NextEdge Access Solutions (NEAS) OPC, a Philippine company where "Height is not a limit. It is our expertise." You are knowledgeable, professional, friendly, and concise. Write in plain conversational text: no markdown symbols such as ** or ## (the chat window shows them literally); for lists use a simple dash per line. Always represent NEAS with pride.
 
 ## COMPANY OVERVIEW
 - **Full Name:** NextEdge Access Solutions (NEAS) OPC
@@ -209,6 +209,17 @@ function sanitize(raw: unknown): Msg[] {
   return out.length && out[out.length - 1].role === "user" ? out : [];
 }
 
+/** Chat bubbles render plain text, so strip markdown the model may emit. */
+function toPlainText(s: string): string {
+  return s
+    .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, "$1 ($2)")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*[*-]\s+/gm, "\u2022 ");
+}
+
 async function askGemini(messages: Msg[], apiKey: string): Promise<string> {
   const contents = messages.map((m) => ({
     role: m.role === "assistant" ? "model" : "user",
@@ -299,10 +310,10 @@ export async function POST(req: NextRequest) {
       if (last.includes("wind") || last.includes("turbine")) reply = "NEAS provides comprehensive wind turbine services including nacelle/blade cleaning, repainting, blade inspections & repairs, GURNEY FLAP installations, lifeline systems, and Lidar services.\n\nWe have experience with wind energy clients in the Philippines including Triconti ECC and Atimonan Windkraft. Would you like a quote?";
       if (last.includes("store") || last.includes("ppe") || last.includes("equipment") || last.includes("harness") || last.includes("rope")) reply = "NEAS supplies certified height-safety PPE from top brands including Skylotec, Singing Rock, Trestec, SMC, Climbing Technology, FallProtec, Harken, and KStrong.\n\n🛒 Shop online: https://www.nextedge-access-solutions.com/store\n\nWe carry helmets, harnesses, ropes, descenders, ascenders, connectors, lanyards, pulleys, anchors, and more. Need help selecting equipment?";
       if (last.includes("irata") || last.includes("certif") || last.includes("accredit")) reply = "NEAS holds IRATA certification (No: 2/2322), along with ARAA, SRAA, OPITO, and other accreditations. Our team holds individual certifications in IRATA, OPITO, BOSIET, COSH/BOSH, IOSH, First Aid, and more.\n\nWant to know more about our qualifications or enroll in a training course?";
-      return NextResponse.json({ reply });
+      return NextResponse.json({ reply: toPlainText(reply) });
     }
     const reply = await askGemini(messages, apiKey);
-    return NextResponse.json({ reply });
+    return NextResponse.json({ reply: toPlainText(reply) });
   } catch (e) {
     console.error("[chatbot]", e);
     return NextResponse.json({ error: "Service temporarily unavailable. Please contact us at sales@nextedge-access-solutions.com" }, { status: 500 });

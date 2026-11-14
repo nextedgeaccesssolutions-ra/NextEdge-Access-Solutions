@@ -27,7 +27,7 @@ export const DEFAULT_SOCIAL: Social = {
   x: "",
 };
 export const DEFAULT_BUSINESS: Business = {
-  name: "NextEdge Access Solutions OPC", phone: "+63 991 426 5886", email: "info@nextedge-access-solutions.com",
+  name: "NextEdge Access Solutions OPC", phone: "+63 991 426 5886", email: "info.nextedgeaccesssolutions@gmail.com",
   street: "B 15 Lot 6, Marilao Grand Villas, Barangay Loma de Gato", city: "Marilao", region: "Bulacan", postal: "3019", country: "PH", hours: "Mo-Su 00:00-23:59", logo: "/img/logo.png",
 };
 
@@ -40,7 +40,6 @@ export async function getSetting<T extends object>(key: string, fallback: T): Pr
     const merged = { ...fallback, ...v } as T;
     if (key === "business") {
       const business = merged as unknown as Business;
-      if (business.email?.trim().toLowerCase() === "info.nextedgeaccesssolutions@gmail.com") business.email = "info@nextedge-access-solutions.com";
       business.street = "B 15 Lot 6, Marilao Grand Villas, Barangay Loma de Gato";
       business.city = "Marilao";
       business.region = "Bulacan";

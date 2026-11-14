@@ -1,0 +1,64 @@
+<div id="neas-cookie-layer" class="neas-cookie-layer" role="region" aria-label="Cookie preferences" hidden>
+  <section class="neas-cookie-card" aria-labelledby="neas-cookie-title">
+    <div class="neas-cookie-copy">
+      <p class="neas-cookie-eyebrow">YOUR PRIVACY MATTERS</p><h2 id="neas-cookie-title">Your cookie choices</h2>
+      <p>NEAS uses necessary technologies to operate this website. With your permission, we may also use analytics and marketing technologies. You can change your choices at any time.</p>
+      <p class="neas-cookie-links"><a href="/cookie-policy">Cookie Policy</a><span>·</span><a href="/privacy-policy">Privacy Policy</a></p>
+    </div>
+    <div id="neas-cookie-options" class="neas-cookie-options" hidden>
+      <label><input id="neas-cookie-analytics" type="checkbox"><span><b>Analytics</b><small>Website measurement and performance insights.</small></span></label>
+      <label><input id="neas-cookie-marketing" type="checkbox"><span><b>Marketing</b><small>Advertising and campaign measurement technologies.</small></span></label>
+      <label><input type="checkbox" checked disabled><span><b>Strictly necessary</b><small>Security, sessions and core website functions. Always active.</small></span></label>
+    </div>
+    <div class="neas-cookie-actions">
+      <button type="button" class="neas-cookie-btn primary" id="neas-cookie-accept">Accept all</button>
+      <button type="button" class="neas-cookie-btn" id="neas-cookie-reject">Reject optional</button>
+      <button type="button" class="neas-cookie-btn" id="neas-cookie-customize">Customize</button>
+      <button type="button" class="neas-cookie-btn" id="neas-cookie-save" hidden>Save preferences</button>
+    </div>
+  </section>
+</div>
+<style>
+.neas-cookie-layer{position:fixed;inset:auto 0 0;z-index:99999;padding:18px;background:rgba(7,9,15,.58);backdrop-filter:blur(5px)}
+.neas-cookie-card{max-width:1120px;margin:0 auto;background:#fff;color:#0f172a;border:1px solid #dbe2ea;border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.25);padding:22px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center}
+.neas-cookie-eyebrow{font-size:10px;font-weight:800;letter-spacing:.14em;color:#b7791f;margin:0 0 6px}.neas-cookie-copy h2{font-size:20px;margin:0 0 7px}.neas-cookie-copy p{font-size:13px;line-height:1.55;color:#475569;margin:0 0 8px}.neas-cookie-links{display:flex;gap:9px;align-items:center}.neas-cookie-links a{color:#9a6414;font-weight:700}
+.neas-cookie-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}.neas-cookie-btn{border:1px solid #cbd5e1;background:#fff;color:#0f172a;border-radius:8px;padding:10px 13px;font-size:13px;font-weight:700;cursor:pointer}.neas-cookie-btn.primary{background:#0b1b2b;color:#fff;border-color:#0b1b2b}
+.neas-cookie-options{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.neas-cookie-options label{display:flex;gap:9px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;font-size:13px}.neas-cookie-options small{display:block;color:#64748b;font-weight:400;margin-top:4px;line-height:1.4}
+@media(max-width:760px){.neas-cookie-layer{padding:10px}.neas-cookie-card{grid-template-columns:1fr;padding:16px;max-height:80vh;overflow:auto}.neas-cookie-actions{justify-content:stretch}.neas-cookie-btn{flex:1}.neas-cookie-options{grid-template-columns:1fr}}
+</style>
+<script>
+(function(){
+  var KEY="neas_cookie_consent_v1",gaId="__NEAS_GA_ID__",gaLoaded=false;
+  var layer=document.getElementById("neas-cookie-layer"),options=document.getElementById("neas-cookie-options");
+  var analytics=document.getElementById("neas-cookie-analytics"),marketing=document.getElementById("neas-cookie-marketing");
+  var accept=document.getElementById("neas-cookie-accept"),reject=document.getElementById("neas-cookie-reject");
+  var customize=document.getElementById("neas-cookie-customize"),save=document.getElementById("neas-cookie-save");
+  if(!layer)return;
+  function read(){try{return JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){return null}}
+  function loadAnalytics(){
+    if(!gaId||gaLoaded)return;
+    gaLoaded=true;window.dataLayer=window.dataLayer||[];window.gtag=window.gtag||function(){window.dataLayer.push(arguments)};
+    var script=document.createElement("script");script.async=true;script.src="https://www.googletagmanager.com/gtag/js?id="+encodeURIComponent(gaId);
+    script.onload=function(){window.gtag("js",new Date());window.gtag("config",gaId,{anonymize_ip:true})};
+    document.head.appendChild(script);
+  }
+  function apply(choice){
+    if(choice.analytics)loadAnalytics();
+    if(typeof window.gtag==="function")window.gtag("consent","update",{analytics_storage:choice.analytics?"granted":"denied",ad_storage:choice.marketing?"granted":"denied",ad_user_data:choice.marketing?"granted":"denied",ad_personalization:choice.marketing?"granted":"denied"});
+    window.dispatchEvent(new CustomEvent("neas:consent-updated",{detail:choice}));
+  }
+  function store(a,m){
+    var choice={necessary:true,analytics:!!a,marketing:!!m,updatedAt:new Date().toISOString(),version:1};
+    try{localStorage.setItem(KEY,JSON.stringify(choice))}catch(e){}
+    apply(choice);layer.hidden=true;
+  }
+  var current=read();
+  if(current){analytics.checked=!!current.analytics;marketing.checked=!!current.marketing;apply(current)}else layer.hidden=false;
+  accept.addEventListener("click",function(){store(true,true)});
+  reject.addEventListener("click",function(){store(false,false)});
+  customize.addEventListener("click",function(){options.hidden=false;var c=read();analytics.checked=!!(c&&c.analytics);marketing.checked=!!(c&&c.marketing);accept.hidden=true;reject.hidden=true;customize.hidden=true;save.hidden=false});
+  save.addEventListener("click",function(){store(analytics.checked,marketing.checked)});
+  window.addEventListener("neas:open-cookie-preferences",function(){var c=read();analytics.checked=!!(c&&c.analytics);marketing.checked=!!(c&&c.marketing);options.hidden=false;accept.hidden=true;reject.hidden=true;customize.hidden=true;save.hidden=false;layer.hidden=false});
+  if(new URLSearchParams(location.search).get("cookie-preferences")==="1"){options.hidden=false;accept.hidden=true;reject.hidden=true;customize.hidden=true;save.hidden=false;layer.hidden=false}
+})();
+</script>

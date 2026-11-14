@@ -147,6 +147,11 @@ section{padding-block:80px}
 .modal-title{font-size:24px;font-weight:800;color:#fff;margin-bottom:12px}
 .modal-desc{font-size:14px;color:var(--fg2);line-height:1.7;margin-bottom:20px}
 .modal-features{display:flex;flex-direction:column;gap:8px}
+.modal-featrow{display:flex;gap:28px;align-items:flex-start}
+.modal-featrow .modal-features{flex:1 1 auto;min-width:0}
+.modal-shareside{flex:0 0 260px;display:flex;flex-direction:column;gap:8px}
+.modal-shareside .sm-sharebox{margin:0}
+@media(max-width:760px){.modal-featrow{flex-direction:column;gap:16px}.modal-shareside{flex:1 1 auto;width:100%}}
 .modal-feature{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--fg)}
 .modal-feature::before{content:'✓';color:var(--accent);font-weight:700;flex-shrink:0}
 .modal-close{position:absolute;top:16px;right:16px;width:32px;height:32px;background:rgba(0,0,0,0.5);border:1px solid var(--border);border-radius:50%;color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -889,7 +894,7 @@ section[id]{scroll-margin-top:64px}
       <div class="footer-brand">
         <img src="/img/83c162b165ae.png" alt="NEAS">
         <div style="font-size:13px;font-weight:700;color:#fff;margin-top:8px">NEXTEDGE ACCESS SOLUTIONS</div>
-        <p>IRATA-certified rope access specialists serving Asia since 2025. Safe · Reliable · Professional.</p>
+        <p>IRATA-certified rope access specialists with 20+ years of combined international experience, serving Asia since 2025. Safe · Reliable · Professional.</p>
       </div>
       <div class="footer-links">
         <div class="footer-col"><h4>Services</h4><ul><li><a href="#services">Rope Access &amp; Facade</a></li><li><a href="#services">NDT Inspection</a></li><li><a href="#services">Blasting &amp; Painting</a></li><li><a href="#services">Wind &amp; Met Mast</a></li><li><a href="#services">Telecom Tower</a></li><li><a href="#services">Training &amp; PPE</a></li><li><a href="#services">Wind Turbine</a></li></ul></div>
@@ -935,7 +940,13 @@ section[id]{scroll-margin-top:64px}
       <div class="modal-tag" id="modal-tag"></div>
       <div class="modal-title" id="modal-title"></div>
       <div class="modal-desc" id="modal-desc"></div>
-      <div class="modal-features" id="modal-features"></div>
+      <div class="modal-featrow">
+        <div class="modal-features" id="modal-features"></div>
+        <div class="modal-shareside">
+          <button type="button" class="sm-share" id="svc-share" aria-expanded="false">⤴ Share</button>
+          <div id="svc-sharebox" class="sm-sharebox" hidden></div>
+        </div>
+      </div>
       <div class="modal-cta">
         <button type="button" class="modal-quote" onclick="quoteFromModal()">Request a Quote</button>
         <div class="modal-contact">
@@ -998,8 +1009,26 @@ function openModal(id){
   const card=document.querySelector(`[onclick="openModal('${id}')"] .service-photo`);
   const bg=card?card.style.backgroundImage:'';
   document.getElementById('modal-hero').style.backgroundImage=bg||'linear-gradient(135deg,#0d1117,#1c2333)';
+  currentSvc=id;
+  var _sb=document.getElementById('svc-sharebox'),_st=document.getElementById('svc-share');
+  if(_sb){_sb.hidden=true;_sb.innerHTML='';}
+  if(_st){_st.setAttribute('aria-expanded','false');}
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow='hidden';
+}
+let currentSvc=null;
+function svcShareUrl(id){return location.origin+location.pathname+'?service='+encodeURIComponent(id);}
+function shareSvc(){
+  const s=SERVICES[currentSvc];if(!s)return;
+  const u=svcShareUrl(currentSvc),t=s.title+' | NextEdge Access Solutions',e=encodeURIComponent;
+  if(navigator.share&&matchMedia('(pointer:coarse)').matches){navigator.share({title:t,text:t,url:u}).catch(function(){});return;}
+  const b=document.getElementById('svc-sharebox'),btn=document.getElementById('svc-share');
+  b.hidden=!b.hidden;btn.setAttribute('aria-expanded',String(!b.hidden));
+  if(b.hidden){b.innerHTML='';return;}
+  const L=[['Facebook','https://www.facebook.com/sharer/sharer.php?u='+e(u)],['Messenger','fb-messenger://share/?link='+e(u)],['WhatsApp','https://wa.me/?text='+e(t+' '+u)],['Viber','viber://forward?text='+e(t+' '+u)],['X','https://twitter.com/intent/tweet?text='+e(t)+'&url='+e(u)],['LinkedIn','https://www.linkedin.com/sharing/share-offsite/?url='+e(u)],['Email','mailto:?subject='+e(t)+'&body='+e(t+'\n'+u)]];
+  b.innerHTML=L.map(function(x){return '<a href="'+x[1]+'" target="_blank" rel="noopener">'+x[0]+'</a>';}).join('')+'<button type="button" id="svc-copylink">Copy link</button>';
+  const c=document.getElementById('svc-copylink');
+  c.onclick=function(){(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){c.textContent='Copied ✓';clearTimeout(c._t);c._t=setTimeout(function(){c.textContent='Copy link';},2000);},function(){prompt('Copy link:',u);});};
 }
 function closeModal(e){
   if(e&&e.target!==document.getElementById('modal')&&!e.target.classList.contains('modal-close'))return;
@@ -1007,6 +1036,11 @@ function closeModal(e){
   document.body.style.overflow='';
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal({target:document.getElementById('modal')});});
+(function(){
+  var b=document.getElementById('svc-share');
+  if(b)b.addEventListener('click',shareSvc);
+  try{var q=new URLSearchParams(location.search).get('service');if(q&&SERVICES[q])openModal(q);}catch(err){}
+})();
 function submitForm(e){
   e.preventDefault();
   const btn=e.target.querySelector('.form-submit');

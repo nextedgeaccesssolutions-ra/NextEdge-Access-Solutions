@@ -47,6 +47,8 @@ await sql`alter table products add column if not exists category_sheet text`;
 await sql`alter table products add column if not exists name_override text`;
 await sql`alter table products add column if not exists code_override text`;
 await sql`alter table products add column if not exists category_override text`;
+await sql`alter table products add column if not exists dealer_price_sheet numeric(12,2)`;
+await sql`alter table products add column if not exists dealer_override numeric(12,2)`;
 await sql`create table if not exists product_images (id text primary key, mime text not null, data bytea not null, created_at timestamptz not null default now())`;
 await sql`insert into settings (key, value) values ('markup_percent', '20') on conflict (key) do nothing`;
 

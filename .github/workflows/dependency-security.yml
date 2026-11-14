@@ -10,6 +10,8 @@ on:
     paths:
       - "package.json"
       - "pnpm-lock.yaml"
+      - "web/package.json"
+      - "web/package-lock.json"
       - ".github/workflows/dependency-security.yml"
       - "docs/dependency-security-remediation.md"
 
@@ -62,3 +64,42 @@ jobs:
         run: pnpm test -- --reporter=dot
       - name: Build Vite and Express application
         run: pnpm build
+
+  audit-web:
+    name: Audit Next.js application dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install exactly from lockfile
+        run: npm ci
+        working-directory: web
+      - name: Capture full dependency audit report
+        id: audit
+        continue-on-error: true
+        run: npm audit --audit-level=high --json > npm-audit.json
+        working-directory: web
+      - name: Upload dependency audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neas-npm-audit-report
+          path: web/npm-audit.json
+          if-no-files-found: warn
+      - name: Enforce high and critical advisory gate
+        if: steps.audit.outcome == 'failure'
+        run: |
+          echo "web/ dependency audit found high or critical advisories. Download the neas-npm-audit-report artifact to inspect the report."
+          exit 1
+      # Deliberately build:app, not build. web/package.json "build" is next build,
+      # but "migrate" must never run in CI against a real database.
+      - name: Build Next.js application
+        run: npm run build:app
+        working-directory: web
