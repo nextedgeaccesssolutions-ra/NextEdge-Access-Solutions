@@ -54,7 +54,7 @@ export default async function Store() {
       <p>Use the catalogue search and category filters to identify products, then add items to your enquiry or checkout. Stock, final pricing, delivery arrangements, and product suitability are confirmed by NEAS before an order is finalized. For project quantities, technical questions, equipment packages, or procurement support, contact the NEAS team with your required product, intended application, quantity, and delivery location.</p>
       <h3>Equipment selection and ordering</h3>
       <p>NEAS supports customers seeking rope-access PPE and height-safety equipment for industrial, commercial, construction, telecom, and renewable-energy applications. Orders are subject to stock confirmation. Where a product requires a specific technical document or manufacturer reference, request the latest information from NEAS before use. All equipment must be selected, inspected, maintained, and used in accordance with its manufacturer instructions and the site's approved risk assessment and safe system of work.</p>
-      <p>For bulk requirements or specialist project scopes, <a href="/#contact">request a quotation from NEAS</a>. For information about handling customer and order information, read our <a href="/privacy-policy">Privacy Policy</a>.</p>
+      <p>For bulk requirements or specialist project scopes, <a href="/contact">request a quotation from NEAS</a>. For information about handling customer and order information, read our <a href="/privacy-policy">Privacy Policy</a>.</p>
     </section>
   </div>;
 }

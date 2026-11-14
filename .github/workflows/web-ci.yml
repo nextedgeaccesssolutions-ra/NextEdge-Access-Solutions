@@ -39,6 +39,10 @@ jobs:
         run: npm ci
         working-directory: web
 
+      - name: Verify clean public route contract
+        run: npm run test:clean-routes
+        working-directory: web
+
       - name: Build application without database access (no migrations)
         run: npm run build:app
         working-directory: web
