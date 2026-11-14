@@ -12,6 +12,9 @@ const PHOTO_FIELDS = [
   ["metMast", "Met Mast & Telecom photo", "Met mast and telecom card", "/img/0cc8f91dab71.jpg"],
   ["training", "Training & PPE photo", "Training and PPE card", "/img/390f5ed3244c.jpg"],
   ["windEnergy", "Wind Energy service photo", "Wind turbine service card", "/img/0ce37cb33507.jpg"],
+  ["clientTriconti", "Triconti ECC client photo", "Displayed on the Our Clients page", ""],
+  ["clientAtimonan", "Atimonan Windkraft client photo", "Displayed on the Our Clients page", ""],
+  ["clientPhilsurv", "Philsurv Geodetic Engineer photo", "Displayed on the Our Clients page", ""],
 ] as const;
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -41,7 +44,7 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
     <div className="eyebrow" style={{ marginTop: 10 }}>Website settings</div>
     <h2 style={{ margin: "4px 0 12px" }}>SEO, Google &amp; Social Media</h2>
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-      {([["seo", "SEO (advanced)"], ["google", "Google Business"], ["social", "Social media"]] as const).map(([k, l]) => <button key={k} type="button" className={"btn " + (tab === k ? "btn-primary" : "btn-ghost")} onClick={() => { setTab(k); setMsg(""); }}>{l}</button>)}
+      {([["seo", "SEO (advanced)"], ["google", "Google Business"], ["social", "Social media"], ["photos", "Website Photos"]] as const).map(([k, l]) => <button key={k} type="button" className={"btn " + (tab === k ? "btn-primary" : "btn-ghost")} onClick={() => { setTab(k); setMsg(""); }}>{l}</button>)}
       {msg && <span className={msg.startsWith("Saved") ? "ok" : "err"} role="status" style={{ alignSelf: "center" }}>{msg}</span>}
     </div>
 
@@ -51,7 +54,7 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 14 }}>
         {PHOTO_FIELDS.map(([key, label, hint, fallback]) => <div key={key} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12, minWidth: 0 }}>
           <b>{label}</b><p className="muted" style={{ fontSize: 12, margin: "3px 0 10px" }}>{hint}</p>
-          <img src={sitePhotos[key] || fallback} alt={label} style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: 8, background: "#eef2f4", border: "1px solid var(--line)" }} />
+          {sitePhotos[key] ? <img src={sitePhotos[key]} alt={label} style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: 8, background: "#eef2f4", border: "1px solid var(--line)" }} /> : <div style={{ width: "100%", height: 150, display: "grid", placeItems: "center", borderRadius: 8, background: "linear-gradient(135deg,#102b39,#091722)", border: "1px dashed var(--line)", color: "#d7ad68", fontWeight: 700, fontSize: 13 }}>No client photo uploaded</div>}
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
             <label className="btn btn-ghost" style={{ cursor: "pointer" }}>Upload / Replace<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={async (e) => {
               const file = e.target.files?.[0]; e.target.value = ""; if (!file) return;
