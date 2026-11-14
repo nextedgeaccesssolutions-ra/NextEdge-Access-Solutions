@@ -1111,7 +1111,7 @@ var $=function(id){return document.getElementById(id)};
 function saveCart(){try{localStorage.setItem('neasCart',JSON.stringify(cart))}catch(e){}}
 var peso=function(n){return '₱'+Math.round(n).toLocaleString('en-PH')};
 var esc=function(s){var d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML};
-function price(p){if(p.live!=null)return p.live;var o=overrides[p.id];return (o!=null&&o!=='')?Number(o):Math.ceil(p.dealer*(1+markup/100)/5)*5;}
+function price(p){if(!p)return 0;if(p.live!=null)return p.live;var o=overrides[p.id];return (o!=null&&o!=='')?Number(o):Math.ceil(p.dealer*(1+markup/100)/5)*5;}
 function byId(id){return CATALOG.find(function(x){return x.id===id})}
 var cats=['All','♥ Wishlist'].concat(CATALOG.map(function(p){return p.cat}).filter(function(c,i,a){return a.indexOf(c)===i}));
 function renderCats(){$('store-cats').innerHTML='';cats.forEach(function(c){var b=document.createElement('button');b.type='button';b.textContent=c;if(c===cat)b.className='on';b.onclick=function(){cat=c;renderCats();render()};$('store-cats').appendChild(b)})}
@@ -1138,7 +1138,7 @@ function render(){
     g.appendChild(d);
   });
 }
-function totals(){var n=0,t=0;Object.keys(cart).forEach(function(id){n+=cart[id];t+=cart[id]*price(byId(id))});return {n:n,t:t}}
+function totals(){var n=0,t=0;Object.keys(cart).forEach(function(id){var p=byId(id);if(!p)return;n+=cart[id];t+=cart[id]*price(p)});return {n:n,t:t}}
 function renderCart(){var x=totals();$('store-quote').hidden=!x.n;$('sq-count').textContent=x.n;$('sq-total').textContent=peso(x.t);saveCart();}
 $('sq-clear').onclick=function(){cart={};renderCart();render()};
 $('sq-send').onclick=function(){openCheckout()};
@@ -1160,6 +1160,12 @@ function openSpec(p){
   wireCopy();if($('sm-share'))$('sm-share').onclick=function(){shareP(p)};$('sm-buy').onclick=function(){cart={};cart[p.id]=1;renderCart();render();openCheckout()};$('sm-add').onclick=function(){addToCart(p.id,1);closeModal()};
 }
 function openCheckout(){var x=totals();if(!x.n)return;saveCart();location.href='/store';}
+/* show store only from menu */
+var ST=$('store');function showStore(){ST.classList.add('open');}
+[].forEach.call(document.querySelectorAll('a[href="#store"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();showStore();ST.scrollIntoView({behavior:'smooth'})})});
+if(location.hash==='#store'){showStore();setTimeout(function(){ST.scrollIntoView()},300)}
+window.addEventListener('hashchange',function(){if(location.hash==='#store')showStore()});
+$('store-close').onclick=function(){ST.classList.remove('open');window.scrollTo({top:0,behavior:'smooth'})};
 renderCats();render();renderCart();
 function shareP(p){var u=location.origin+'/store/p/'+encodeURIComponent(p.id),t=p.name+' — '+peso(price(p))+' | NEAS Online Store',e=encodeURIComponent;
   if(navigator.share&&matchMedia('(pointer:coarse)').matches){navigator.share({title:t,text:t,url:u}).catch(function(){});return}
@@ -1171,12 +1177,6 @@ function loadLive(){fetch('/api/products',{cache:'no-store'}).then(function(r){r
   cats=['All','♥ Wishlist'].concat(CATALOG.map(function(p){return p.cat}).filter(function(c,i,a){return a.indexOf(c)===i}));var validCart={};CATALOG.forEach(function(p){var n=Math.floor(Number(cart[p.id]));if(n>0)validCart[p.id]=Math.min(n,99)});cart=validCart;renderCats();render();renderCart();}).catch(function(){})}
 loadLive();
 /* Product pricing is managed in the authenticated NEAS Admin Portal. */
-/* show store only from menu */
-var ST=$('store');function showStore(){ST.classList.add('open');}
-[].forEach.call(document.querySelectorAll('a[href="#store"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();showStore();ST.scrollIntoView({behavior:'smooth'})})});
-if(location.hash==='#store'){showStore();setTimeout(function(){ST.scrollIntoView()},300)}
-window.addEventListener('hashchange',function(){if(location.hash==='#store')showStore()});
-$('store-close').onclick=function(){ST.classList.remove('open');window.scrollTo({top:0,behavior:'smooth'})};
 })();
 </script>
 
