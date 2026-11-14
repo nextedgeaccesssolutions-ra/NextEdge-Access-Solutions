@@ -29,7 +29,7 @@ export async function PUT(req: Request) {
     await setSetting("social", out);
   }
   if (b.sitePhotos && typeof b.sitePhotos === "object") {
-    const allowed = ["hero", "ropeAccess", "inspection", "coatings", "metMast", "training", "windEnergy"];
+    const allowed = ["hero", "ropeAccess", "inspection", "coatings", "metMast", "training", "windEnergy", "clientTriconti", "clientAtimonan", "clientPhilsurv"];
     const current = b.sitePhotos as Record<string, unknown>;
     const out: Record<string, string> = {};
     for (const key of allowed) {
