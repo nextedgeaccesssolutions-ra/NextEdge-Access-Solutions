@@ -45,6 +45,16 @@ describe("chatbot API hardening", () => {
     expect(okRes.status).toBe(200);
   });
 
+  it("returns plain text without markdown symbols", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(post({ messages: [{ role: "user", content: "hello there" }] }) as never);
+    expect(res.status).toBe(200);
+    const { reply } = await res.json();
+    expect(reply).toBeTruthy();
+    expect(reply).not.toContain("**");
+    expect(reply).not.toMatch(/^#{1,6}\s/m);
+  });
+
   it("rejects oversized requests", async () => {
     const { POST } = await import("./route");
     const req = new Request("http://localhost/api/chatbot", { method: "POST", headers: { "content-length": String(70_000) }, body: "{}" });

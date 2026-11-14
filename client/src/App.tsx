@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Admin from "./pages/Admin";
 import StoreBooking from "./pages/StoreBooking";
+import CmsPage from "./pages/CmsPage";
 import GitHubConnector from "./pages/GitHubConnector";
 
 function Router() {
