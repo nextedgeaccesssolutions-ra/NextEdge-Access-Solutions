@@ -20,10 +20,23 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
   let html = cached;
   // The static homepage is served through a route handler; declare Philippine English explicitly.
   html = html.replace(/<html(?:\s[^>]*)?>/i, '<html lang="en-PH">');
-  const [seo, social, biz] = await Promise.all([
-    getSetting<Seo>("seo", DEFAULT_SEO), getSetting<Social>("social", DEFAULT_SOCIAL), getSetting<Business>("business", DEFAULT_BUSINESS),
+  const [seo, social, biz, sitePhotos] = await Promise.all([
+    getSetting<Seo>("seo", DEFAULT_SEO), getSetting<Social>("social", DEFAULT_SOCIAL), getSetting<Business>("business", DEFAULT_BUSINESS), getSetting<Record<string, string>>("site_photos", {}),
   ]);
   const origin = (() => { try { return new URL(seo.canonical).origin; } catch { return "https://www.nextedge-access-solutions.com"; } })();
+  // Apply administrator-managed homepage photos while preserving the built-in defaults.
+  const photoSources: Record<string, string> = {
+    "/img/hero-city.jpg": sitePhotos.hero || "/img/hero-city.jpg",
+    "/img/ce6c22d9bace.jpg": sitePhotos.ropeAccess || "/img/ce6c22d9bace.jpg",
+    "/img/877206fcf5ba.jpg": sitePhotos.inspection || "/img/877206fcf5ba.jpg",
+    "/img/6447ca2a761e.jpg": sitePhotos.coatings || "/img/6447ca2a761e.jpg",
+    "/img/0cc8f91dab71.jpg": sitePhotos.metMast || "/img/0cc8f91dab71.jpg",
+    "/img/390f5ed3244c.jpg": sitePhotos.training || "/img/390f5ed3244c.jpg",
+    "/img/0ce37cb33507.jpg": sitePhotos.windEnergy || "/img/0ce37cb33507.jpg",
+  };
+  for (const [original, replacement] of Object.entries(photoSources)) {
+    if (replacement !== original) html = html.split(original).join(replacement);
+  }
   // Normalize the legacy public contact record to the verified NEAS business details.
   if (!biz.street?.trim()) biz.street = "B 15 Lot 6, Marilao Grand Villas, Barangay Loma de Gato";
   if (!biz.city?.trim()) biz.city = "Marilao";
