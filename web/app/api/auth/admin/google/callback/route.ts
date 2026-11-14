@@ -10,6 +10,17 @@ import { loadConfig } from "@/lib/config";
 const COOKIE = "neas_admin_google_oauth";
 const GOOGLE_KEYS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
 
+/** Names the missing configuration in the server log only. The browser keeps the
+ *  generic "unavailable" message so an anonymous visitor learns nothing about setup. */
+function logMissingConfig(where: string, clientId?: string, clientSecret?: string, allowCount = 0) {
+  const missing = [
+    !clientId && "GOOGLE_CLIENT_ID",
+    !clientSecret && "GOOGLE_CLIENT_SECRET",
+    allowCount === 0 && "ADMIN_GOOGLE_EMAILS",
+  ].filter(Boolean);
+  if (missing.length) console.warn(`[admin-google:${where}] not configured, missing: ${missing.join(", ")}`);
+}
+
 function fail(req: Request, reason = "denied") {
   return NextResponse.redirect(new URL(`/admin/login?google_error=${encodeURIComponent(reason)}`, req.url));
 }
@@ -34,7 +45,10 @@ export async function GET(req: Request) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const allowlist = new Set((process.env.ADMIN_GOOGLE_EMAILS || "").split(",").map((v) => v.trim().toLowerCase()).filter(Boolean));
-  if (!clientId || !clientSecret || allowlist.size === 0) return fail(req, "unavailable");
+  if (!clientId || !clientSecret || allowlist.size === 0) {
+    logMissingConfig("callback", clientId, clientSecret, allowlist.size);
+    return fail(req, "unavailable");
+  }
 
   const redirectUri = `${publicOrigin(req)}/api/auth/admin/google/callback`;
   let idToken: string;
