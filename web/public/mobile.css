@@ -63,10 +63,10 @@ button,a,input,textarea,select{touch-action:manipulation}
     top:80px!important;
     left:0!important;
     right:0!important;
-    bottom:auto!important;
-    height:92vw!important;
-    min-height:300px!important;
-    max-height:390px!important;
+    bottom:0!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
   }
   .hero>.container{position:relative!important;z-index:2!important}
   .hero-content{
@@ -80,7 +80,7 @@ button,a,input,textarea,select{touch-action:manipulation}
     inset:auto!important;
     z-index:3!important;
     width:100%!important;
-    margin-top:calc(min(92vw,390px) - 12px)!important;
+    margin-top:calc(min(92vw,390px) + 42px)!important;
     background:#07090f!important;
   }
   .hero-stats>.container{padding-inline:0!important}
