@@ -279,8 +279,8 @@ export async function POST(req: Request) {
     case "saveStoreAutomation": {
       if (u.tenant || !need("admin")) return deny();
       const x = b.storeAutomation ?? {};
-      const platforms = (Array.isArray(x.platforms) ? x.platforms : [])
-        .filter((p: string) => ["facebook", "instagram", "linkedin", "google_business"].includes(p));
+      const platforms: string[] = (Array.isArray(x.platforms) ? x.platforms as unknown[] : [])
+        .filter((p): p is string => typeof p === "string" && ["facebook", "instagram", "linkedin", "google_business"].includes(p));
       if (!!x.enabled && process.env.VERCEL_ENV !== "production") return bad("Store autopilot can be enabled only after the Production release. Staging cannot activate real social publishing.", 403);
       if (!!x.enabled && !platforms.length) return bad("Select at least one supported social platform before enabling store autopilot.");
       const value: StorePromoSettings = {
