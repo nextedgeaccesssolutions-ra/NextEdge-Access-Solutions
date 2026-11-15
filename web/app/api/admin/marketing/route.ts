@@ -18,6 +18,7 @@ import {
   getMkUser, can, TRANSITIONS, STATUSES, PLATFORMS, ROLES, logActivity, generate, platformStatus,
   DEFAULT_BRAND, cleanUrl, inWs, brandKey, memberLimit, type Brand, type MkStatus, type MkRole, type MkUser,
 } from "@/lib/marketing";
+import { DEFAULT_STORE_PROMO, type StorePromoSettings } from "@/lib/store-marketing";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -60,7 +61,8 @@ async function loadState(u: MkUser) {
     waReady: !u.tenant && !!(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID),
     emailLog: (await sql`select recipient, subject, kind, ok, error, created_at from mk_email_log where ${!u.tenant} order by id desc limit 40`.catch(() => [])).map((e) => ({ to: e.recipient, subject: e.subject, kind: e.kind, ok: e.ok, error: e.error ?? "", at: new Date(e.created_at).toISOString() })),
     media: (await sql`select id, url, title, width, height, created_at from mk_media where ${inWs(u.ws)} order by id desc limit 200`.catch(() => [])).map((m) => ({ id: m.id, url: m.url, title: m.title, width: m.width, height: m.height, at: new Date(m.created_at).toISOString() })),
-    scheduler: { url: u.role === "admin" && !u.tenant ? `${process.env.SITE_URL?.replace(/\/$/, "") || "https://www.nextedge-access-solutions.com"}/api/cron/publish` : "", hasCronSecret: !!process.env.CRON_SECRET, last: await getSetting<{ at?: string; published?: number; failed?: number }>("mk_cron_last", {}) },
+    scheduler: { url: u.role === "admin" && !u.tenant ? `${process.env.SITE_URL?.replace(/\/$/, "") || "https://www.nextedge-access-solutions.com"}/api/cron/publish` : "", hasCronSecret: !!process.env.CRON_SECRET, last: await getSetting<{ at?: string; published?: number; failed?: number; store?: { created?: number; skipped?: string; error?: string; catalogCount?: number } }>("mk_cron_last", {}) },
+    storeAutomation: u.role === "admin" && !u.tenant ? await getSetting<StorePromoSettings>("mk_store_promo", DEFAULT_STORE_PROMO) : null,
     tenant: u.tenant,
     dailyLimit: u.tenant ? memberLimit() : null,
     publishedToday: u.tenant ? (await sql`select count(distinct r.post_id)::int n from mk_post_results r join mk_posts p on p.id = r.post_id where p.ws = ${u.ws} and r.ok and r.created_at >= (date_trunc('day', now() at time zone 'Asia/Manila') at time zone 'Asia/Manila')`)[0].n : null,
@@ -274,6 +276,28 @@ export async function POST(req: Request) {
         on conflict (thread_key) do update set status = excluded.status, assigned_to = excluded.assigned_to, note = excluded.note, updated_by = excluded.updated_by, updated_at = now()`;
       return ok();
     }
+    case "saveStoreAutomation": {
+      if (u.tenant || !need("admin")) return deny();
+      const x = b.storeAutomation ?? {};
+      const allowedPlatforms: readonly string[] = ["facebook", "instagram", "linkedin", "google_business"];
+      const rawPlatforms: unknown[] = Array.isArray(x.platforms) ? x.platforms : [];
+      const platforms: string[] = [];
+      for (const platform of rawPlatforms) {
+        if (typeof platform === "string" && allowedPlatforms.includes(platform) && !platforms.includes(platform)) {
+          platforms.push(platform);
+        }
+      }
+      if (!!x.enabled && process.env.VERCEL_ENV !== "production") return bad("Store autopilot can be enabled only after the Production release. Staging cannot activate real social publishing.", 403);
+      if (!!x.enabled && !platforms.length) return bad("Select at least one supported social platform before enabling store autopilot.");
+      const value: StorePromoSettings = {
+        enabled: !!x.enabled,
+        dailyCount: Math.max(1, Math.min(5, Math.floor(Number(x.dailyCount) || 5))),
+        platforms,
+      };
+      await setSetting("mk_store_promo", value);
+      await log("updated store product autopilot", `${value.enabled ? "enabled" : "disabled"} · ${value.dailyCount} products/day · ${value.platforms.join(", ")} · 8:00 PM Asia/Manila`);
+      return ok({ storeAutomation: value });
+    }
     case "saveAutomation": {
       if (!need("admin")) return deny();
       if (u.tenant) return staffOnly();
@@ -298,6 +322,7 @@ export async function POST(req: Request) {
       return ok();
     }
     case "publishNow": {
+      if (process.env.VERCEL_ENV !== "production") return bad("Real social publishing is disabled in staging and Preview deployments. Test the composer here; enable live publishing only after Production release.", 403);
       if (!need("manager")) return deny();
       const r = await publishPost(Number(b.id), u.id, originOf(req));
       return "error" in r ? bad(r.error) : ok(r);
