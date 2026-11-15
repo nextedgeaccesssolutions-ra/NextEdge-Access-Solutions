@@ -16,6 +16,18 @@ export const DEFAULT_STORE_PROMO: StorePromoSettings = {
   platforms: ["facebook", "instagram"],
 };
 
+export type StoreDailyPostsResult = {
+  enabled: boolean;
+  created: number;
+  skipped?: string;
+  error?: string;
+  ids?: number[];
+  campaign?: string;
+  catalogCount?: number;
+  selected?: { name: string; platforms: string[] }[];
+  nextCursor?: number;
+};
+
 const ALLOWED = ["facebook", "instagram", "linkedin", "google_business"];
 const CURSOR_KEY = "mk_store_promo_cursor";
 
@@ -62,7 +74,7 @@ async function captionFor(p: Product, url: string, brand: Brand) {
 }
 
 /** Creates one idempotent daily batch of store-product posts. The caller publishes the due queue. */
-export async function createDailyStorePosts(origin: string) {
+export async function createDailyStorePosts(origin: string): Promise<StoreDailyPostsResult> {
   const cfg = await getSetting<StorePromoSettings>("mk_store_promo", DEFAULT_STORE_PROMO);
   if (!cfg.enabled) return { enabled: false, skipped: "Store product autopilot is disabled.", created: 0 };
   const count = Math.max(1, Math.min(5, Math.floor(Number(cfg.dailyCount) || 5)));
