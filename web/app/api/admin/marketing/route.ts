@@ -279,14 +279,20 @@ export async function POST(req: Request) {
     case "saveStoreAutomation": {
       if (u.tenant || !need("admin")) return deny();
       const x = b.storeAutomation ?? {};
-      const platforms: string[] = (Array.isArray(x.platforms) ? x.platforms as unknown[] : [])
-        .filter((p): p is string => typeof p === "string" && ["facebook", "instagram", "linkedin", "google_business"].includes(p));
+      const allowedPlatforms = ["facebook", "instagram", "linkedin", "google_business"] as const;
+      const rawPlatforms: unknown[] = Array.isArray(x.platforms) ? x.platforms : [];
+      const platforms = rawPlatforms.reduce<string[]>((valid, platform) => {
+        if (typeof platform === "string" && allowedPlatforms.includes(platform as (typeof allowedPlatforms)[number])) {
+          valid.push(platform);
+        }
+        return valid;
+      }, []);
       if (!!x.enabled && process.env.VERCEL_ENV !== "production") return bad("Store autopilot can be enabled only after the Production release. Staging cannot activate real social publishing.", 403);
       if (!!x.enabled && !platforms.length) return bad("Select at least one supported social platform before enabling store autopilot.");
       const value: StorePromoSettings = {
         enabled: !!x.enabled,
         dailyCount: Math.max(1, Math.min(5, Math.floor(Number(x.dailyCount) || 5))),
-        platforms: Array.from(new Set<string>(platforms)),
+        platforms: Array.from(new Set<string>(platforms)) as string[],
       };
       await setSetting("mk_store_promo", value);
       await log("updated store product autopilot", `${value.enabled ? "enabled" : "disabled"} · ${value.dailyCount} products/day · ${value.platforms.join(", ")} · 8:00 PM Asia/Manila`);
