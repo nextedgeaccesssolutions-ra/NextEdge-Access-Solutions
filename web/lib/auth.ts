@@ -20,16 +20,26 @@ export async function getUser(): Promise<SessionUser | null> {
   await loadConfig().catch(() => {});
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
+
+  let keys: Uint8Array[];
+  try {
+    keys = verifyKeys();
+  } catch {
+    // Missing session configuration must never turn an anonymous request into a 500.
+    return null;
+  }
+
   let uid: number | null = null;
-  for (const k of verifyKeys()) {
+  for (const key of keys) {
     try {
-      const { payload } = await jwtVerify(token, k);
+      const { payload } = await jwtVerify(token, key);
       uid = Number(payload.uid);
       break;
     } catch {
-      // Try the next accepted key; a cookie signed with the legacy key is still valid.
+      // Invalid or expired session tokens are unauthenticated.
     }
   }
+
   if (uid === null || !Number.isSafeInteger(uid)) return null;
   const rows = await sql`select id, email, name, phone, role from users where id = ${uid}`;
   return (rows[0] as unknown as SessionUser) ?? null;
