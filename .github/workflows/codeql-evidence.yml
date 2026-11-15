@@ -17,17 +17,17 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           build-mode: none
           queries: security-extended
 
       - name: Analyze without uploading to Code Scanning
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:javascript-typescript"
           output: results
@@ -57,7 +57,7 @@ jobs:
             const location = result.locations?.[0]?.physicalLocation;
             const uri = location?.artifactLocation?.uri || "unknown";
             const line = location?.region?.startLine || "?";
-            return "- [" + (result.level || "unknown") + "] " + result.ruleId + " " + uri + ":" + line + " — " + (result.message?.text || "");
+            return "- [" + (result.level || "unknown") + "] " + result.ruleId + " " + uri + ":" + line + " â€” " + (result.message?.text || "");
           });
           const summary = [
             "## NEAS CodeQL evidence",
