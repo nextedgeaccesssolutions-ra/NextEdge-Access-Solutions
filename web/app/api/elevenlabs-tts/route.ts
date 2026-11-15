@@ -7,7 +7,7 @@ export const maxDuration = 30;
 // ElevenLabs voice ID for the NEAS AI Voice Agent
 // Agent ID: agent_4401m7e4gjxfejwbvx9t4vgr8bth
 // Using the default ElevenLabs voice associated with the agent (Rachel - calm, professional)
-const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM"; // Rachel (default)
+const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "cjVigY5qzO86Huf0OWal"; // NEAS AI Voice Agent voice
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const MAX_TEXT_LENGTH = 1000;
 
