@@ -26,6 +26,7 @@ type State = {
   members?: { id: number; name: string; email: string; status: string; ref: string; at: string | null; until?: string | null }[];
   reach7?: { fetchedAt?: string; reached: number; views: number } | null;
   scheduler?: { url: string; hasCronSecret: boolean; last: { at?: string; published?: number; failed?: number } };
+  storeAutomation?: { enabled: boolean; dailyCount: number; platforms: string[] } | null;
 };
 type Mod = "dashboard" | "compose" | "calendar" | "inbox" | "analytics" | "brands" | "accounts" | "reports" | "strategy" | "feeds" | "automation" | "studio" | "bio" | "team" | "settings";
 
@@ -80,7 +81,20 @@ export default function MarketingClient() {
   useEffect(() => { try { const m = new URLSearchParams(location.search).get("m") as Mod | null; if (m) setMod(m); setCollapsed(localStorage.getItem("mkCollapsed") === "1"); } catch {} }, []);
   const go = (m: Mod) => { setMod(m); setMobileNav(false); try { history.replaceState(null, "", "?m=" + m); } catch {} };
   const flash = (t: string) => { setToast(t); setTimeout(() => setToast(""), 3500); };
-  const run = async (body: unknown, okMsg: string) => { try { const r = await call(body); flash(okMsg); await load(); return r; } catch (e) { flash("⚠ " + (e as Error).message); return null; } };
+  const run = async (body: unknown, okMsg: string) => {
+    try {
+      const r = await call(body);
+      const action = body && typeof body === "object" ? (body as { action?: string }).action : "";
+      if (action === "publishNow") {
+        const result = r as { allOk?: boolean; results?: { platform: string; name?: string; ok: boolean; error?: string }[] };
+        const successes = (result.results ?? []).filter((x) => x.ok).length;
+        const failures = (result.results ?? []).filter((x) => !x.ok);
+        flash(result.allOk ? `Published successfully to ${successes} connected account(s) ✓` : `Publishing incomplete: ${successes} succeeded, ${failures.length} failed. ${failures.slice(0, 2).map((x) => x.platform + ": " + (x.error || "failed")).join(" · ")}`);
+      } else flash(okMsg);
+      await load();
+      return r;
+    } catch (e) { flash("⚠ " + (e as Error).message); return null; }
+  };
 
   if (err) return <div className="mk"><Style /><div className="mk-main"><div className="mk-card">⚠ {err}</div></div></div>;
   if (!s) return <div className="mk"><Style /><div className="mk-main"><div className="mk-card">Loading Marketing Command Center…</div></div></div>;
@@ -160,6 +174,7 @@ function Dashboard({ s, go, openCompose, can, run, refresh }: { s: State; go: (m
   const today = s.posts.filter((p) => p.scheduled_at && sameDay(new Date(p.scheduled_at), now));
   const pending = s.posts.filter((p) => p.status === "pending");
   const failed = s.posts.filter((p) => p.status === "failed");
+  const readyToPublish = s.posts.filter((p) => p.status === "approved").slice(0, 6);
   const pubMonth = s.posts.filter((p) => p.status === "published" && new Date(p.updated_at).getMonth() === now.getMonth() && new Date(p.updated_at).getFullYear() === now.getFullYear()).length;
   const hr = now.getHours(); const greet = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
   const goal = s.brand.goal || 0;
@@ -182,14 +197,20 @@ function Dashboard({ s, go, openCompose, can, run, refresh }: { s: State; go: (m
       <button type="button" className="mk-btn ghost" onClick={() => go("calendar")}>▤ View Calendar</button>
       <button type="button" className="mk-btn ghost" onClick={() => go("reports")}>⎙ Run Report</button>
       <button type="button" className="mk-btn ghost" onClick={() => go("strategy")}>✦ AI Content</button>
+      <button type="button" className="mk-btn ghost" onClick={() => go("automation")}>⚡ Store Autopilot</button>
     </div></div>
     <div className="mk-card"><div className="mk-label between">Connection health <button type="button" className="mk-link" onClick={() => go("accounts")}>Manage connections →</button></div>
-      <div className="mk-grid3">{s.platforms.map((p) => <div key={p.id} className="mk-item"><div><b>{p.name}</b><small>{p.ready ? "Credentials configured" : p.needs || "Not configured"}</small></div><span className={"mk-pill " + (p.ready ? "st-published" : "st-failed")}>{p.ready ? "Ready" : "Needs setup"}</span></div>)}</div>
+      <div className="mk-grid3">{s.platforms.map((p) => {
+        const records = (s.accounts ?? []).filter((a) => a.platform === p.id);
+        const healthy = records.filter((a) => a.status === "ok").length;
+        const label = healthy ? `${healthy} connected account(s) healthy` : records.length ? "Connected account needs attention" : p.ready ? "Credentials set · account not connected" : p.needs || "Not configured";
+        return <div key={p.id} className="mk-item"><div><b>{p.name}</b><small>{label}</small></div><span className={"mk-pill " + (healthy ? "st-published" : records.length || !p.ready ? "st-failed" : "st-draft")}>{healthy ? "Connected" : records.length ? "Error" : p.ready ? "Not connected" : "Needs setup"}</span></div>;
+      })}</div>
       {accountErrors.length > 0 && <div className="mk-note" style={{ marginTop: 12 }}>{accountErrors.length} connected account(s) need attention. Open Social Accounts for details.</div>}
       {(s.accounts ?? []).length > 0 && <div className="mk-mini" style={{ marginTop: 10 }}>{connectedCount} of {s.accounts!.length} account records are healthy.</div>}
     </div>
-    {(pending.length > 0 || failed.length > 0) && <div className="mk-card"><div className="mk-label">Action items <span className="mk-badge">{pending.length + failed.length}</span></div>
-      {[...failed, ...pending].map((p) => <div key={p.id} className={"mk-item " + (p.status === "failed" ? "bad" : "warn")}><div><b>{p.status === "failed" ? "Failed: " : "Waiting for approval: "}{p.title || "Untitled"}</b><small>{p.author} · updated {fmt(p.updated_at)}</small></div><PostActions p={p} can={can} run={run} onEdit={() => openCompose(p)} /></div>)}
+    {(pending.length > 0 || failed.length > 0 || readyToPublish.length > 0) && <div className="mk-card"><div className="mk-label">Action items <span className="mk-badge">{pending.length + failed.length + readyToPublish.length}</span></div>
+      {[...failed, ...pending, ...readyToPublish].map((p) => <div key={p.id} className={"mk-item " + (p.status === "failed" ? "bad" : p.status === "approved" ? "warn" : "")}><div><b>{p.status === "failed" ? "Publishing failed: " : p.status === "approved" ? "Ready for real publishing: " : "Waiting for approval: "}{p.title || "Untitled"}</b><small>{p.author} · {p.platforms.map((x) => PLAT[x]).join(", ") || "No platform selected"} · updated {fmt(p.updated_at)}</small></div><PostActions p={p} can={can} run={run} onEdit={() => openCompose(p)} /></div>)}
     </div>}
     <div className="mk-grid4">
       <div className="mk-card mk-kpi"><small>Posts published · this month</small><b>{pubMonth}</b></div>
@@ -657,31 +678,52 @@ function Automation({ s, can, run }: { s: State; can: Can; run: Run }) {
   const sc = s.scheduler; const connected = (s.accounts ?? []).some((a) => a.status === "ok");
   const due = s.posts.filter((p) => p.status === "scheduled").length;
   const [copied, setCopied] = useState(false);
+  const [storeAuto, setStoreAuto] = useState(s.storeAutomation ?? { enabled: false, dailyCount: 5, platforms: ["facebook", "instagram"] });
+  const ro = !can("admin");
   const autoCard = <div className="mk-card"><div className="mk-row between"><div className="mk-label" style={{ margin: 0 }}>Publish scheduled posts automatically</div>
-      <span className={"mk-pill " + (connected && sc?.last?.at ? "st-published" : connected ? "st-approved" : "st-draft")}>{connected && sc?.last?.at ? "Active" : connected ? "Ready: start the scheduler" : "Waiting for a connected account"}</span></div>
+      <span className={"mk-pill " + (connected && sc?.last?.at ? "st-published" : connected ? "st-approved" : "st-draft")}>{connected && sc?.last?.at ? "Scheduler has run" : connected ? "Ready: waiting for scheduler run" : "Waiting for a connected account"}</span></div>
     <p className="mk-mini">Posts set to <b>Scheduled</b> with a date and time are picked up by the scheduler. Publishing is attempted only for due posts and results are recorded per platform. {due} post(s) currently scheduled.</p>
     <table className="mk-t"><tbody>
       <tr><td>Last run</td><td>{sc?.last?.at ? `${fmt(sc.last.at)} · ${sc.last.published ?? 0} published, ${sc.last.failed ?? 0} failed` : "Not run yet"}</td></tr>
-      <tr><td>Daily run (free, built in)</td><td>Every day at 9:00 AM PH via Vercel Cron. {sc?.hasCronSecret ? "✅ CRON_SECRET is set." : <>Add a <code>CRON_SECRET</code> setting in Vercel (any 32+ random characters), then Redeploy, to switch it on.</>}</td></tr>
-      <tr><td>On-time runs (optional)</td><td>Use an external scheduler every 5–15 minutes with an <code>Authorization: Bearer</code> header containing your CRON_SECRET. Keep the secret in Vercel environment settings; do not put it in a public URL.</td></tr>
+      <tr><td>Daily run</td><td>8:00 PM Philippines time (12:00 UTC) after the staging changes are released to Production. Preview deployments do not execute Vercel Cron.</td></tr>
+      <tr><td>Scheduler secret</td><td>{sc?.hasCronSecret ? "CRON_SECRET is set." : "CRON_SECRET is not configured; the existing server-side token fallback remains in use."}</td></tr>
     </tbody></table>
     {sc?.url ? <div className="mk-row" style={{ marginTop: 8 }}><code style={{ wordBreak: "break-all", fontSize: 12, flex: 1, minWidth: 0 }}>{sc.url}</code><button type="button" className="mk-btn sm ghost" onClick={() => { navigator.clipboard?.writeText(sc.url).then(() => setCopied(true)).catch(() => {}); }}>{copied ? "Copied ✓" : "Copy"}</button></div>
       : <p className="mk-mini">Only marketing admins can see the scheduler address.</p>}
     <p className="mk-mini">The endpoint is not a publishing credential. Authentication remains server-side; never share CRON_SECRET or include it in a public link.</p>
+  </div>;
+  const storeCard = <div className="mk-card">
+    <div className="mk-row between"><div><div className="mk-label" style={{ margin: 0 }}>NEAS Store Product Autopilot</div><div className="mk-mini">Promote every active item in the live store, five products per day, rotating through the full catalogue.</div></div>
+      <span className={"mk-pill " + (storeAuto.enabled ? "st-published" : "st-draft")}>{storeAuto.enabled ? "Enabled in settings" : "Off"}</span></div>
+    <div className="mk-grid2" style={{ marginTop: 14 }}>
+      <div className="mk-stat"><small>Live store catalogue</small><b>{s.site.products.toLocaleString("en-PH")}</b><span>active product records · duplicate public listings are deduplicated</span></div>
+      <div className="mk-stat"><small>Daily publishing target</small><b>{storeAuto.dailyCount} / day</b><span>Every day at 8:00 PM · Asia/Manila</span></div>
+    </div>
+    <label className="mk-row" style={{ marginTop: 14, justifyContent: "flex-start" }}>
+      <span className="mk-switch"><input type="checkbox" disabled={ro} checked={storeAuto.enabled} onChange={(e) => setStoreAuto({ ...storeAuto, enabled: e.target.checked })} /><span /></span>
+      <b>Enable automatic store product publishing</b>
+    </label>
+    <label className="mk-f" style={{ marginTop: 12 }}>Products per day (maximum 5)<input type="number" min={1} max={5} disabled={ro} value={storeAuto.dailyCount} onChange={(e) => setStoreAuto({ ...storeAuto, dailyCount: Math.max(1, Math.min(5, Number(e.target.value) || 5)) })} /></label>
+    <div className="mk-f">Publish to connected accounts<div className="mk-row">
+      {([["facebook","Facebook Pages"],["instagram","Instagram Business"],["linkedin","LinkedIn"],["google_business","Google Business Profile"]] as [string,string][]).map(([id,name]) => <label key={id} className={"mk-chip" + (storeAuto.platforms.includes(id) ? " on" : "")}><input type="checkbox" disabled={ro} checked={storeAuto.platforms.includes(id)} onChange={(e) => setStoreAuto({ ...storeAuto, platforms: e.target.checked ? [...storeAuto.platforms, id] : storeAuto.platforms.filter((x) => x !== id) })} />{name}</label>)}
+    </div></div>
+    {!ro && <button type="button" className="mk-btn" onClick={() => run({ action: "saveStoreAutomation", storeAutomation: storeAuto }, "Store product autopilot settings saved ✓")}>Save store autopilot settings</button>}
+    <p className="mk-mini" style={{ marginTop: 10 }}>AI writes a fresh product description from the catalogue facts, includes the product link and NEAS enquiry call-to-action, and avoids inventing technical specifications. Products without images are excluded from Instagram but can still publish as text/link posts on other selected platforms. YouTube and TikTok are excluded because their current NEAS publishing integrations require video files.</p>
+    <p className="mk-mini">The staging build will not publish to real accounts. Vercel Cron runs only after a Production release; the Production release remains untouched until separately approved.</p>
   </div>;
   const rules = [
     ["Weekly marketing report by email", "Needs an email provider key and Vercel Cron."],
     ["RSS-to-social drafts", "Available now manually in Feed Reader; automatic mode needs Vercel Cron."],
     ["Webhooks (n8n / Zapier)", "Needs a webhook URL to send events to."],
   ];
-  return <><H t="Automation" sub="Each rule will have on/off control, an execution log and failure handling." />
+  return <><H t="Automation" sub="Control automatic publishing, product rotation and notification workflows." />
+    {storeCard}
     {autoCard}
     <EmailAutomations s={s} can={can} run={run} />
     <div className="mk-card"><table className="mk-t"><thead><tr><th>Rule</th><th>Status</th><th>What it needs</th></tr></thead><tbody>
       {rules.map(([r, n]) => <tr key={r}><td>{r}</td><td><span className="mk-pill st-draft">Not active</span></td><td className="mk-mini">{n}</td></tr>)}
     </tbody></table><p className="mk-mini">These aren't built yet. Recent manual workflow actions are in Settings &amp; Logs ({s.activity.length}).</p></div></>;
 }
-
 function EmailAutomations({ s, can, run }: { s: State; can: Can; run: Run }) {
   const [a, setA] = useState(s.automation ?? { orderAlert: true, orderConfirm: true, orderStatus: true, approval: true, publishFail: true, alertEmail: "" });
   const ro = !can("admin");
