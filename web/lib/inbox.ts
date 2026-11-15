@@ -21,7 +21,13 @@ export async function loadInbox(ws: number | null = null): Promise<{ threads: In
   const accounts = await sql`select id, external_id, name, token_enc from mk_social_accounts where platform = 'facebook' and status = 'ok' and ${ws == null ? sql`ws is null` : sql`ws = ${ws}`}`;
   const threads: InboxThread[] = [], errors: string[] = [];
   for (const a of accounts) {
-    const token = decrypt(a.token_enc);
+    let token: string;
+    try {
+      token = decrypt(a.token_enc);
+    } catch {
+      errors.push(`${a.name} token could not be decrypted. Reconnect this Facebook Page to restore inbox access.`);
+      continue;
+    }
     try {
       const conv = await g(`${a.external_id}/conversations?platform=messenger&limit=25&fields=id,updated_time,snippet,unread_count,participants,messages.limit(20){id,message,from,created_time}`, token);
       for (const c of conv.data ?? []) {

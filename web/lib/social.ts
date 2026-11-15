@@ -13,7 +13,9 @@ const GRAPH = () => `https://graph.facebook.com/${process.env.META_GRAPH_VERSION
 const LI_VERSION = () => process.env.LINKEDIN_API_VERSION || "202608";
 
 function encKey() {
-  const base = process.env.TOKEN_ENCRYPTION_KEY || process.env.SESSION_SECRET || process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  // Preserve legacy ciphertext when a dedicated SESSION_SECRET is introduced.
+  // TOKEN_ENCRYPTION_KEY is preferred for a separately managed key after controlled re-encryption.
+  const base = process.env.TOKEN_ENCRYPTION_KEY || process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SESSION_SECRET;
   if (!base) throw new Error("No secret available to encrypt tokens.");
   return createHash("sha256").update("neas-token-v1:" + base).digest();
 }
