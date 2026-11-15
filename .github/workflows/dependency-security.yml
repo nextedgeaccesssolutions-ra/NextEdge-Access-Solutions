@@ -78,6 +78,9 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
+      - name: Verify package.json/package-lock.json synchronization
+        run: npm run test:lockfile
+        working-directory: web
       - name: Install exactly from lockfile
         run: npm ci
         working-directory: web
