@@ -61,6 +61,7 @@ async function loadState(u: MkUser) {
     emailLog: (await sql`select recipient, subject, kind, ok, error, created_at from mk_email_log where ${!u.tenant} order by id desc limit 40`.catch(() => [])).map((e) => ({ to: e.recipient, subject: e.subject, kind: e.kind, ok: e.ok, error: e.error ?? "", at: new Date(e.created_at).toISOString() })),
     media: (await sql`select id, url, title, width, height, created_at from mk_media where ${inWs(u.ws)} order by id desc limit 200`.catch(() => [])).map((m) => ({ id: m.id, url: m.url, title: m.title, width: m.width, height: m.height, at: new Date(m.created_at).toISOString() })),
     scheduler: { url: u.role === "admin" && !u.tenant ? `${process.env.SITE_URL?.replace(/\/$/, "") || "https://www.nextedge-access-solutions.com"}/api/cron/publish` : "", hasCronSecret: !!process.env.CRON_SECRET, last: await getSetting<{ at?: string; published?: number; failed?: number }>("mk_cron_last", {}) },
+    storeAutomation: u.role === "admin" && !u.tenant ? await getSetting<StorePromoSettings>("mk_store_promo", DEFAULT_STORE_PROMO) : null,
     tenant: u.tenant,
     dailyLimit: u.tenant ? memberLimit() : null,
     publishedToday: u.tenant ? (await sql`select count(distinct r.post_id)::int n from mk_post_results r join mk_posts p on p.id = r.post_id where p.ws = ${u.ws} and r.ok and r.created_at >= (date_trunc('day', now() at time zone 'Asia/Manila') at time zone 'Asia/Manila')`)[0].n : null,
@@ -273,6 +274,21 @@ export async function POST(req: Request) {
       await sql`insert into mk_inbox_meta (thread_key, status, assigned_to, note, updated_by) values (${key}, ${status}, ${assigned}, ${txt(b.note, 2000) || null}, ${u.id})
         on conflict (thread_key) do update set status = excluded.status, assigned_to = excluded.assigned_to, note = excluded.note, updated_by = excluded.updated_by, updated_at = now()`;
       return ok();
+    }
+    case "saveStoreAutomation": {
+      if (u.tenant || !need("admin")) return deny();
+      const x = b.storeAutomation ?? {};
+      const platforms = (Array.isArray(x.platforms) ? x.platforms : [])
+        .filter((p: string) => ["facebook", "instagram", "linkedin", "google_business"].includes(p));
+      if (!!x.enabled && !platforms.length) return bad("Select at least one supported social platform before enabling store autopilot.");
+      const value: StorePromoSettings = {
+        enabled: !!x.enabled,
+        dailyCount: Math.max(1, Math.min(5, Math.floor(Number(x.dailyCount) || 5))),
+        platforms: [...new Set(platforms)],
+      };
+      await setSetting("mk_store_promo", value);
+      await log("updated store product autopilot", `${value.enabled ? "enabled" : "disabled"} · ${value.dailyCount} products/day · ${value.platforms.join(", ")} · 8:00 PM Asia/Manila`);
+      return ok({ storeAutomation: value });
     }
     case "saveAutomation": {
       if (!need("admin")) return deny();
