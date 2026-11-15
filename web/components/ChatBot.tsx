@@ -30,7 +30,8 @@ export default function ChatBot() {
   const recognitionRef = useRef<any>(null);
   const [voiceSupported, setVoiceSupported] = useState(false);
   useEffect(() => { setVoiceSupported("webkitSpeechRecognition" in window || "SpeechRecognition" in window); }, []);
-  const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -39,37 +40,56 @@ export default function ChatBot() {
     }
   }, [open, msgs]);
 
-  // Stop speech when chat closes
+  // Stop ElevenLabs audio when the chat closes.
   useEffect(() => {
     if (!open && speaking) {
-      window.speechSynthesis?.cancel();
+      audioRef.current?.pause();
+      audioRef.current = null;
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
       setSpeaking(false);
     }
   }, [open, speaking]);
 
-  const speak = useCallback((text: string) => {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const clean = text.replace(/[*_#`]/g, "").replace(/\n+/g, ". ");
-    const utter = new SpeechSynthesisUtterance(clean);
-    utter.rate = 0.95;
-    utter.pitch = 1.05;
-    utter.volume = 1;
-    // Pick a good English voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("female"))
-      || voices.find(v => v.lang.startsWith("en"))
-      || voices[0];
-    if (preferred) utter.voice = preferred;
-    utter.onstart = () => setSpeaking(true);
-    utter.onend = () => setSpeaking(false);
-    utter.onerror = () => setSpeaking(false);
-    synthRef.current = utter;
-    window.speechSynthesis.speak(utter);
+  const speak = useCallback(async (text: string) => {
+    const clean = text.replace(/[*_`#]/g, "").replace(/\n+/g, ". ").trim();
+    if (!clean) return;
+    audioRef.current?.pause();
+    if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    audioRef.current = null;
+    audioUrlRef.current = null;
+    setSpeaking(true);
+    try {
+      const response = await fetch("/api/elevenlabs-tts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: clean }),
+      });
+      if (!response.ok) throw new Error("ElevenLabs TTS request failed");
+      const audioUrl = URL.createObjectURL(await response.blob());
+      audioUrlRef.current = audioUrl;
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      const finish = () => {
+        URL.revokeObjectURL(audioUrl);
+        if (audioUrlRef.current === audioUrl) audioUrlRef.current = null;
+        if (audioRef.current === audio) audioRef.current = null;
+        setSpeaking(false);
+      };
+      audio.onended = finish;
+      audio.onerror = finish;
+      await audio.play();
+    } catch (error) {
+      console.error("[NEAS chat] ElevenLabs playback failed:", error);
+      setSpeaking(false);
+    }
   }, []);
 
   const stopSpeaking = () => {
-    window.speechSynthesis?.cancel();
+    audioRef.current?.pause();
+    audioRef.current = null;
+    if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    audioUrlRef.current = null;
     setSpeaking(false);
   };
 
