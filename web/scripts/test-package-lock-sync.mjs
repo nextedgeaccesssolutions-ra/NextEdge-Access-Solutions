@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 
 const manifest = JSON.parse(readFileSync("package.json", "utf8"));
 const lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
@@ -9,6 +10,14 @@ const errors = [];
 if (existsSync("pnpm-lock.yaml")) {
   errors.push(
     "pnpm-lock.yaml is obsolete in web/: this app installs with npm ci and package-lock.json; remove the nested pnpm lockfile to avoid Next.js workspace-root ambiguity"
+  );
+}
+
+const nextConfig = (await import("../next.config.mjs")).default;
+const expectedWorkspaceRoot = path.resolve(process.cwd(), "..");
+if (nextConfig.turbopack?.root !== expectedWorkspaceRoot) {
+  errors.push(
+    `next.config.mjs must pin turbopack.root to the repository workspace root (${expectedWorkspaceRoot})`
   );
 }
 
@@ -38,9 +47,9 @@ if (!root || !lock.packages) {
 }
 
 if (errors.length > 0) {
-  console.error("web dependency lockfile validation failed:");
+  console.error("web dependency/workspace configuration validation failed:");
   for (const error of errors) console.error(`- ${error}`);
   process.exitCode = 1;
 } else {
-  console.log("web npm manifest and package-lock are synchronized; no competing pnpm lockfile exists.");
+  console.log("web npm manifest and package-lock are synchronized; no nested pnpm lockfile exists; Turbopack root is pinned.");
 }
