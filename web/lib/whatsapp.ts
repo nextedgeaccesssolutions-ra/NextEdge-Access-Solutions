@@ -5,6 +5,7 @@ import { sql } from "./db";
  *  Env: WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_VERIFY_TOKEN (any phrase you choose). Signatures are checked with META_APP_SECRET. */
 const env = (k: string) => (process.env[k] ?? "").trim().replace(/^["']|["']$/g, "").trim();
 const GRAPH = () => `https://graph.facebook.com/${process.env.META_GRAPH_VERSION || "v25.0"}`;
+const GRAPH_REQUEST_TIMEOUT_MS = 8_000;
 export const waReady = () => !!(env("WHATSAPP_TOKEN") && env("WHATSAPP_PHONE_NUMBER_ID"));
 
 export function validSignature(raw: string, header: string | null) {
@@ -47,7 +48,7 @@ export async function waReply(to: string, text: string) {
   const last = (await sql`select max(created_at) t from mk_wa_messages where wa_id = ${to} and not mine`)[0]?.t;
   if (!last || Date.now() - +new Date(last) > 24 * 3600 * 1000) throw new Error("WhatsApp only allows free replies within 24 hours of the customer's last message. Reply from the WhatsApp Business app instead.");
   const r = await fetch(`${GRAPH()}/${env("WHATSAPP_PHONE_NUMBER_ID")}/messages`, { method: "POST", headers: { authorization: `Bearer ${env("WHATSAPP_TOKEN")}`, "content-type": "application/json" },
-    body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to, type: "text", text: { preview_url: true, body: text } }) });
+    body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to, type: "text", text: { preview_url: true, body: text } }), signal: AbortSignal.timeout(GRAPH_REQUEST_TIMEOUT_MS) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j?.error?.message || `WhatsApp answered ${r.status}`);
   const id = String(j.messages?.[0]?.id ?? "");
