@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { sql } from "@/lib/db";
 import { createSession } from "@/lib/auth";
+import { hasStrongSessionSecret } from "@/lib/session-key";
 import { publicOrigin } from "@/lib/origin";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { loadConfig } from "@/lib/config";
@@ -28,6 +29,8 @@ function fail(req: Request, reason = "denied") {
 export async function GET(req: Request) {
   const limited = rateLimitRequest(req, "admin-google-callback", 30, 15 * 60_000);
   if (limited) return limited;
+  if (!hasStrongSessionSecret()) return fail(req, "unavailable");
+
   await loadConfig().catch(() => {});
   const jar = await cookies();
   let saved: { state?: string; nonce?: string; verifier?: string } = {};
