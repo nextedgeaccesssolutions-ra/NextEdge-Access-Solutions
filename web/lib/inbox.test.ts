@@ -12,7 +12,7 @@ vi.mock("./whatsapp", () => ({ waReply: vi.fn(), waThreads: mocks.waThreads }));
 
 import { loadInbox, sendReply } from "./inbox";
 
-describe("loadInbox token decryption", () => {
+describe("loadInbox token decryption and Graph request deadlines", () => {
   beforeEach(() => {
     mocks.sql.mockReset();
     mocks.decrypt.mockReset();
@@ -52,7 +52,8 @@ describe("loadInbox token decryption", () => {
       "Broken Page token could not be decrypted. Reconnect this Facebook Page to restore inbox access.",
     ]);
     expect(result.threads).toEqual([]);
-    expect(fetchMock).toHaveBeenCalledTime
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 
   it("sets an abort deadline on each Facebook Graph request", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
@@ -94,7 +95,5 @@ describe("loadInbox token decryption", () => {
 
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal);
-  });
-s(2);
   });
 });
