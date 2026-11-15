@@ -212,12 +212,22 @@ function Dashboard({ s, go, openCompose, can, run, refresh }: { s: State; go: (m
 }
 
 function Compose({ s, can, post, setPost, run }: { s: State; can: Can; post: Partial<Post> | null; setPost: (p: Partial<Post> | null) => void; run: Run }) {
+  const [previewPlatform, setPreviewPlatform] = useState("facebook");
   const p = post ?? { title: "", body: "", platforms: [], status: "draft" as Status, scheduled_at: null, media_url: "", campaign: "", notes: "" };
   const set = (k: keyof Post, v: unknown) => setPost({ ...p, [k]: v });
   const locked = p.status === "published" || (!can("manager") && !!p.id && !["draft", "failed"].includes(p.status as string)) || !can("editor");
   const history = p.id ? s.activity.filter((a) => a.post_id === p.id) : [];
   const limits: Record<string, number> = { instagram: 2200, linkedin: 3000, tiktok: 2200, facebook: 63206, youtube: 5000, google_business: 1500 };
   const over = (p.platforms ?? []).filter((x) => (p.body ?? "").length > limits[x]);
+  const selectedPlatforms = p.platforms ?? [];
+  const previewTarget = selectedPlatforms.includes(previewPlatform) ? previewPlatform : selectedPlatforms[0] ?? "facebook";
+  const previewLimit = limits[previewTarget] ?? 5000;
+  const qualityChecks = [
+    { label: "Post copy", ok: !!(p.body ?? "").trim() },
+    { label: "Platform selected", ok: selectedPlatforms.length > 0 },
+    { label: "Media attached", ok: !!(p.media_url ?? "").trim() },
+    { label: "Schedule set", ok: !!p.scheduled_at },
+  ];
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState("");
@@ -262,6 +272,26 @@ function Compose({ s, can, post, setPost, run }: { s: State; can: Can; post: Par
         <label className="mk-f">Post text<textarea rows={10} value={p.body ?? ""} disabled={locked} onChange={(e) => set("body", e.target.value)} placeholder="Write your post, or generate one with AI on the right →" /></label>
         <div className="mk-mini">{(p.body ?? "").length} characters{over.length > 0 && <span className="mk-warn"> · too long for {over.map((x) => PLAT[x]).join(", ")}</span>}</div>
         <div className="mk-f">Platforms<div className="mk-row">{Object.entries(PLAT).map(([id, name]) => <label key={id} className={"mk-chip" + ((p.platforms ?? []).includes(id) ? " on" : "")}><input type="checkbox" disabled={locked} checked={(p.platforms ?? []).includes(id)} onChange={(e) => set("platforms", e.target.checked ? [...(p.platforms ?? []), id] : (p.platforms ?? []).filter((x) => x !== id))} />{name}</label>)}</div></div>
+        <section className="mk-preview-panel" aria-label="Platform preview">
+          <div className="mk-row between">
+            <div><div className="mk-label" style={{ marginBottom: 3 }}>Live content preview</div><div className="mk-mini">Review the post before submitting it for approval.</div></div>
+            <span className="mk-pill st-approved">{PLAT[previewTarget]}</span>
+          </div>
+          <div className="mk-row mk-preview-tabs">{Object.entries(PLAT).filter(([id]) => !selectedPlatforms.length || selectedPlatforms.includes(id)).map(([id, name]) => <button key={id} type="button" className={"mk-btn sm " + (previewTarget === id ? "" : "ghost")} onClick={() => setPreviewPlatform(id)}>{name}</button>)}</div>
+          <div className={"mk-preview-card preview-" + previewTarget}>
+            <div className="mk-preview-head"><span className="mk-preview-avatar">N</span><span><b>NextEdge Access Solutions</b><small>NEAS OPC · {PLAT[previewTarget]} preview</small></span></div>
+            {p.media_url && /\.(png|jpe?g|gif|webp)(\?.*)?$/i.test(p.media_url) && <img className="mk-preview-image" src={p.media_url} alt="Selected post creative" />}
+            {p.media_url && /\.(mp4|webm|ogg)(\?.*)?$/i.test(p.media_url) && <video className="mk-preview-image" src={p.media_url} controls playsInline />}
+            <div className="mk-preview-copy">{(p.body ?? "").trim() || "Your post copy will appear here as you write."}</div>
+            {p.title && previewTarget === "youtube" && <div className="mk-preview-title">{p.title}</div>}
+            <div className="mk-preview-footer">{previewTarget === "linkedin" ? "Professional network post" : previewTarget === "youtube" ? "Video title and description preview" : previewTarget === "tiktok" ? "Short-form vertical video caption" : "Social post preview"} · {((p.body ?? "").length).toLocaleString("en-PH")} / {previewLimit.toLocaleString("en-PH")} characters</div>
+          </div>
+          <div className="mk-row between mk-preview-checks">
+            <div className="mk-row">{qualityChecks.map((item) => <span key={item.label} className={"mk-check " + (item.ok ? "ok" : "")}>{item.ok ? "✓" : "○"} {item.label}</span>)}</div>
+            <span className={over.includes(previewTarget) ? "mk-warn" : "mk-mini"}>{over.includes(previewTarget) ? "Over platform limit" : "Within text limit"}</span>
+          </div>
+          <p className="mk-mini">Preview is an editorial approximation. Each social network may crop media and render text differently.</p>
+        </section>
         <div className="mk-grid2">
           <label className="mk-f">Publish date &amp; time (Asia/Manila)<input type="datetime-local" disabled={locked} value={toLocalInput(p.scheduled_at ?? null)} onChange={(e) => set("scheduled_at", fromPhInput(e.target.value))} /><span className="mk-mini">Times are saved in Philippine time (UTC+8), regardless of your computer time zone.</span></label>
           <label className="mk-f">Campaign<input value={p.campaign ?? ""} disabled={locked} onChange={(e) => set("campaign", e.target.value)} placeholder="e.g. Q4 Wind Services" /></label>
@@ -1012,6 +1042,23 @@ function Style() {
 .mk-biobtn{width:100%;border:1px solid var(--gold);border-radius:999px;padding:10px;font-weight:700;font-size:13px}
 .mk-scroll{max-height:480px;overflow:auto}
 .mk-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0b1220;border:1px solid var(--gold);color:#fff;padding:10px 16px;border-radius:10px;z-index:100;font-size:14px}
+.mk-btn:not(.ghost){background:linear-gradient(135deg,#CA9332,#EBC07E);color:#071D29;box-shadow:0 5px 16px rgba(202,147,50,.16)}
+.mk-btn.ghost:hover,.mk-nav:hover{border-color:rgba(235,192,126,.55);background:rgba(202,147,50,.10)}
+.mk-btn:focus-visible,.mk-nav:focus-visible,.mk-link:focus-visible,.mk-f input:focus-visible,.mk-f textarea:focus-visible,.mk-f select:focus-visible{outline:2px solid var(--sand);outline-offset:2px}
+.mk-preview-panel{display:grid;gap:12px;padding:14px;margin:16px 0;background:rgba(7,29,41,.58);border:1px solid rgba(235,192,126,.22);border-radius:12px}
+.mk-preview-tabs{padding:2px 0}
+.mk-preview-card{max-width:560px;width:100%;margin:0 auto;background:#fff;color:#172235;border-radius:12px;overflow:hidden;box-shadow:0 8px 26px rgba(0,0,0,.18)}
+.mk-preview-head{display:flex;align-items:center;gap:10px;padding:12px 14px;color:#172235}
+.mk-preview-head b,.mk-preview-head small{display:block}
+.mk-preview-head b{font-size:13px}.mk-preview-head small{font-size:11px;color:#64748b}
+.mk-preview-avatar{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,#071D29,#CA9332);color:#EBC07E;font-weight:900}
+.mk-preview-image{display:block;width:100%;max-height:340px;object-fit:contain;background:#e2e8f0}
+.mk-preview-copy{padding:14px 16px;color:#172235;font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.mk-preview-title{padding:0 16px 12px;color:#0f172a;font-weight:800}
+.mk-preview-footer{border-top:1px solid #e2e8f0;padding:9px 14px;color:#64748b;font-size:10px}
+.mk-preview-checks{gap:8px}
+.mk-check{font-size:11px;color:#94a3b8}.mk-check.ok{color:#86efac}
+@media (max-width:760px){.mk-preview-panel{padding:10px}.mk-preview-tabs{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px}.mk-preview-tabs .mk-btn{white-space:nowrap}.mk-preview-card{max-width:100%}.mk-preview-image{max-height:240px}.mk-preview-checks{align-items:flex-start;flex-direction:column}}
 @media (max-width:1100px){.mk-grid4{grid-template-columns:1fr 1fr}.mk-grid3{grid-template-columns:1fr 1fr}.mk-grid2,.mk-grid2.wide{grid-template-columns:1fr}}
 @media (max-width:760px){.mk-side{position:fixed;left:-260px;transition:left .2s;width:248px!important}.mk-side.open{left:0}.mk-col .mk-hide{display:initial}.mk-burger{display:block}.mk-ws,.mk-hide-sm{display:none}
  .mk-main{padding:14px}.mk-stats,.mk-grid4,.mk-grid3{grid-template-columns:1fr 1fr}.mk-hero{grid-template-columns:1fr}.mk-cal.v-month .mk-day{min-height:58px}.mk-ev{font-size:10px}}
