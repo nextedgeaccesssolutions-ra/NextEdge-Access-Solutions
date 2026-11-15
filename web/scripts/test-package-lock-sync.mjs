@@ -1,10 +1,16 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const manifest = JSON.parse(readFileSync("package.json", "utf8"));
 const lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
 const root = lock.packages?.[""];
 const sections = ["dependencies", "devDependencies", "optionalDependencies"];
 const errors = [];
+
+if (existsSync("pnpm-lock.yaml")) {
+  errors.push(
+    "pnpm-lock.yaml is obsolete in web/: this app installs with npm ci and package-lock.json; remove the nested pnpm lockfile to avoid Next.js workspace-root ambiguity"
+  );
+}
 
 if (!root || !lock.packages) {
   errors.push("package-lock.json is missing its root package metadata");
@@ -32,9 +38,9 @@ if (!root || !lock.packages) {
 }
 
 if (errors.length > 0) {
-  console.error("package.json and package-lock.json are out of sync:");
+  console.error("web dependency lockfile validation failed:");
   for (const error of errors) console.error(`- ${error}`);
   process.exitCode = 1;
 } else {
-  console.log("package.json and package-lock.json are synchronized.");
+  console.log("web npm manifest and package-lock are synchronized; no competing pnpm lockfile exists.");
 }
