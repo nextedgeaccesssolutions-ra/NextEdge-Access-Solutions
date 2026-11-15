@@ -9,6 +9,7 @@ import Admin from "./pages/Admin";
 import StoreBooking from "./pages/StoreBooking";
 import CmsPage from "./pages/CmsPage";
 import GitHubConnector from "./pages/GitHubConnector";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function Router() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
+          <SpeedInsights />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
