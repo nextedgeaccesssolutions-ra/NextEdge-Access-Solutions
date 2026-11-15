@@ -31,12 +31,16 @@ describe("loadInbox token decryption", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    mocks.sql
-      .mockResolvedValueOnce([
-        { id: 1, external_id: "page-bad", name: "Broken Page", token_enc: "bad-ciphertext" },
-        { id: 2, external_id: "page-good", name: "Healthy Page", token_enc: "good-ciphertext" },
-      ])
-      .mockResolvedValueOnce([]);
+    mocks.sql.mockImplementation((strings: TemplateStringsArray) => {
+      const query = strings.join("");
+      if (query.includes("select id, external_id")) {
+        return Promise.resolve([
+          { id: 1, external_id: "page-bad", name: "Broken Page", token_enc: "bad-ciphertext" },
+          { id: 2, external_id: "page-good", name: "Healthy Page", token_enc: "good-ciphertext" },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
     mocks.decrypt.mockImplementation((blob: string) => {
       if (blob === "bad-ciphertext") throw new Error("Unsupported state or unable to authenticate data");
       return "valid-page-token";
