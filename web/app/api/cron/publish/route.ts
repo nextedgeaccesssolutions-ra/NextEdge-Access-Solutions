@@ -7,7 +7,7 @@ import { originOf } from "@/lib/reset";
 import { cronToken, publishPost } from "@/lib/publish";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { autoSyncSheet } from "@/lib/sheet-source";
-import { createDailyStorePosts } from "@/lib/store-marketing";
+import { createDailyStorePosts, type StoreDailyPostsResult } from "@/lib/store-marketing";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -26,7 +26,7 @@ async function run(req: Request) {
   await loadConfig().catch(() => {});
   const origin = originOf(req);
   const sheetPromise = autoSyncSheet().catch((e) => ({ error: String(e) }));
-  const store = await createDailyStorePosts(origin).catch((e) => ({ enabled: true, created: 0, error: String(e) }));
+  const store: StoreDailyPostsResult = await createDailyStorePosts(origin).catch((e): StoreDailyPostsResult => ({ enabled: true, created: 0, error: String(e) }));
   // Retry failed store-promotion posts for seven days. Successful account results are skipped by publishPost.
   if (store.enabled) await sql`update mk_posts set status = 'scheduled', scheduled_at = now(), updated_at = now()
     where ws is null and campaign like 'NEAS Store Product Daily %' and status = 'failed'
