@@ -286,7 +286,7 @@ export async function POST(req: Request) {
       const value: StorePromoSettings = {
         enabled: !!x.enabled,
         dailyCount: Math.max(1, Math.min(5, Math.floor(Number(x.dailyCount) || 5))),
-        platforms: [...new Set(platforms)],
+        platforms: Array.from(new Set<string>(platforms)),
       };
       await setSetting("mk_store_promo", value);
       await log("updated store product autopilot", `${value.enabled ? "enabled" : "disabled"} · ${value.dailyCount} products/day · ${value.platforms.join(", ")} · 8:00 PM Asia/Manila`);
