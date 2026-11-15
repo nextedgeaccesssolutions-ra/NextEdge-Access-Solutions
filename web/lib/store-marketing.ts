@@ -63,21 +63,22 @@ async function captionFor(p: Product, url: string, brand: Brand) {
 /** Creates one idempotent daily batch of store-product posts. The caller publishes the due queue. */
 export async function createDailyStorePosts(origin: string) {
   const cfg = await getSetting<StorePromoSettings>("mk_store_promo", DEFAULT_STORE_PROMO);
-  if (!cfg.enabled) return { skipped: "Store product autopilot is disabled.", created: 0 };
+  if (!cfg.enabled) return { enabled: false, skipped: "Store product autopilot is disabled.", created: 0 };
   const count = Math.max(1, Math.min(5, Math.floor(Number(cfg.dailyCount) || 5)));
   const requested = (Array.isArray(cfg.platforms) ? cfg.platforms : DEFAULT_STORE_PROMO.platforms)
     .filter((x) => ALLOWED.includes(x));
+  if (!requested.length) return { enabled: true, skipped: "Select at least one supported social platform.", created: 0 };
   const accounts = await sql`select distinct platform from mk_social_accounts where status = 'ok' and ws is null and platform in ${sql(requested)}`;
   const connected = new Set(accounts.map((a) => String(a.platform)));
   const activePlatforms = requested.filter((p) => connected.has(p));
-  if (!activePlatforms.length) return { skipped: "No selected social platform has a healthy connected NEAS account.", created: 0 };
+  if (!activePlatforms.length) return { enabled: true, skipped: "No selected social platform has a healthy connected NEAS account.", created: 0 };
 
   const products = dedupePublicProducts(await listProducts());
-  if (!products.length) return { skipped: "The live store returned no active products.", created: 0 };
+  if (!products.length) return { enabled: true, skipped: "The live store returned no active products.", created: 0 };
   const day = manilaDate();
   const campaign = `NEAS Store Product Daily ${day}`;
   const exists = await sql`select count(*)::int as n from mk_posts where ws is null and campaign = ${campaign}`;
-  if (Number(exists[0]?.n ?? 0) > 0) return { skipped: "Today's store product batch already exists.", created: 0, campaign };
+  if (Number(exists[0]?.n ?? 0) > 0) return { enabled: true, skipped: "Today's store product batch already exists.", created: 0, campaign };
 
   const cursorState = await getSetting<{ cursor?: number }>(CURSOR_KEY, {});
   const start = Math.max(0, Number(cursorState.cursor) || 0) % products.length;
@@ -94,7 +95,7 @@ export async function createDailyStorePosts(origin: string) {
     const media = image ? (image.startsWith("/") ? origin.replace(/\/$/, "") + image : image) : page;
     chosen.push({ product: p, platforms, url: page, media });
   }
-  if (!chosen.length) return { skipped: "No products have media compatible with the selected connected platforms.", created: 0 };
+  if (!chosen.length) return { enabled: true, skipped: "No products have media compatible with the selected connected platforms.", created: 0 };
 
   const brand = { ...DEFAULT_BRAND, ...(await getSetting<Brand>("mk_brand", DEFAULT_BRAND)) };
   const drafts = await Promise.all(chosen.map(async (x) => ({
@@ -121,6 +122,7 @@ export async function createDailyStorePosts(origin: string) {
     return ids;
   });
   return {
+    enabled: true,
     created: inserted.length,
     ids: inserted,
     campaign,
