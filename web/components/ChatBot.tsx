@@ -29,7 +29,12 @@ export default function ChatBot() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const [voiceSupported, setVoiceSupported] = useState(false);
-  useEffect(() => { setVoiceSupported("webkitSpeechRecognition" in window || "SpeechRecognition" in window); }, []);
+  const [speechOutputSupported, setSpeechOutputSupported] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
+  useEffect(() => {
+    setVoiceSupported(Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition));
+    setSpeechOutputSupported("speechSynthesis" in window && "SpeechSynthesisUtterance" in window);
+  }, []);
   const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
@@ -48,24 +53,39 @@ export default function ChatBot() {
   }, [open, speaking]);
 
   const speak = useCallback((text: string) => {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const clean = text.replace(/[*_#`]/g, "").replace(/\n+/g, ". ");
-    const utter = new SpeechSynthesisUtterance(clean);
-    utter.rate = 0.95;
-    utter.pitch = 1.05;
-    utter.volume = 1;
-    // Pick a good English voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("female"))
-      || voices.find(v => v.lang.startsWith("en"))
-      || voices[0];
-    if (preferred) utter.voice = preferred;
-    utter.onstart = () => setSpeaking(true);
-    utter.onend = () => setSpeaking(false);
-    utter.onerror = () => setSpeaking(false);
-    synthRef.current = utter;
-    window.speechSynthesis.speak(utter);
+    if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+      setVoiceError("Audio playback is not supported in this browser. Please use the text response.");
+      return;
+    }
+    try {
+      window.speechSynthesis.cancel();
+      const clean = text.replace(/[*_#`]/g, "").replace(/\n+/g, ". ").trim();
+      if (!clean) return;
+      const utter = new SpeechSynthesisUtterance(clean);
+      utter.lang = "en-PH";
+      utter.rate = 0.95;
+      utter.pitch = 1.05;
+      utter.volume = 1;
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = voices.find(v => v.lang.toLowerCase() === "en-ph")
+        || voices.find(v => v.lang.toLowerCase().startsWith("en"))
+        || voices[0];
+      if (preferred) utter.voice = preferred;
+      utter.onstart = () => { setSpeaking(true); setVoiceError(""); };
+      utter.onend = () => setSpeaking(false);
+      utter.onerror = (event) => {
+        setSpeaking(false);
+        if (event.error !== "canceled" && event.error !== "interrupted") {
+          setVoiceError("Audio playback could not start. Check your device volume and try again.");
+        }
+      };
+      synthRef.current = utter;
+      window.speechSynthesis.speak(utter);
+      window.speechSynthesis.resume();
+    } catch {
+      setSpeaking(false);
+      setVoiceError("Audio playback could not start. Please try again.");
+    }
   }, []);
 
   const stopSpeaking = () => {
@@ -77,26 +97,53 @@ export default function ChatBot() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
     const SpeechRecognition = w.SpeechRecognition || w.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-    const rec = new SpeechRecognition();
-    rec.lang = "en-US";
-    rec.continuous = false;
-    rec.interimResults = false;
-    rec.onstart = () => setListening(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rec.onresult = (e: any) => {
-      const transcript = e.results[0][0].transcript;
-      setInput(transcript);
+    if (!SpeechRecognition) {
+      setVoiceError("Voice input is not supported in this browser. You can still type your message.");
+      return;
+    }
+    if (!window.isSecureContext) {
+      setVoiceError("Microphone access requires a secure HTTPS connection.");
+      return;
+    }
+    try {
+      recognitionRef.current?.abort?.();
+      setVoiceError("");
+      const rec = new SpeechRecognition();
+      rec.lang = "en-PH";
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      rec.onstart = () => { setListening(true); setVoiceError(""); };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      rec.onresult = (e: any) => {
+        const transcript = e.results?.[0]?.[0]?.transcript?.trim();
+        if (transcript) setInput(transcript);
+        else setVoiceError("I couldn't hear a clear phrase. Please try again.");
+        setListening(false);
+      };
+      rec.onerror = (event: any) => {
+        setListening(false);
+        const messages: Record<string, string> = {
+          "not-allowed": "Microphone permission is blocked. Allow microphone access for this website in your browser settings, then try again.",
+          "service-not-allowed": "Your browser or network is blocking voice recognition. You can still type your message.",
+          "audio-capture": "No microphone was detected. Connect or select a microphone, then try again.",
+          "no-speech": "No speech was detected. Check your microphone and try again.",
+          "network": "Voice recognition could not connect. Check your internet connection or type your message.",
+          "language-not-supported": "Your browser does not support the selected voice language. Please type your message.",
+        };
+        setVoiceError(messages[event.error] || "Microphone could not start. Check browser permissions and try again.");
+      };
+      rec.onend = () => setListening(false);
+      recognitionRef.current = rec;
+      rec.start();
+    } catch {
       setListening(false);
-    };
-    rec.onerror = () => setListening(false);
-    rec.onend = () => setListening(false);
-    recognitionRef.current = rec;
-    rec.start();
+      setVoiceError("Microphone could not start. Allow microphone access and close other apps using it.");
+    }
   };
 
   const stopListening = () => {
-    recognitionRef.current?.stop();
+    try { recognitionRef.current?.stop(); } catch { /* recognition may already be stopped */ }
     setListening(false);
   };
 
@@ -323,28 +370,7 @@ export default function ChatBot() {
                   color: m.role === "user" ? "#fff" : "#0f172a",
                   fontSize: 13, lineHeight: 1.55, whiteSpace: "pre-wrap",
                 }}>{m.content}</div>
-                {/* TTS button for assistant messages */}
-                {m.role === "assistant" && i === msgs.length - 1 && (
-                  <button
-                    onClick={() => speaking ? stopSpeaking() : speak(m.content)}
-                    title={speaking ? "Stop speaking" : "Read aloud"}
-                    style={{
-                      background: "none", border: "none", cursor: "pointer",
-                      color: speaking ? "#f97316" : "#94a3b8", padding: 2, flexShrink: 0,
-                    }}
-                  >
-                    {speaking ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                        <rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" />
-                      </svg>
-                    ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                        <path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14" />
-                      </svg>
-                    )}
-                  </button>
-                )}
+
               </div>
             ))}
             {loading && (
@@ -412,24 +438,51 @@ export default function ChatBot() {
           {/* Input row */}
           <div style={{ padding: "10px 14px 14px", borderTop: "1px solid #f1f5f9", display: "flex", gap: 7, alignItems: "center" }}>
             {/* Voice input button */}
-            {voiceSupported ? (
-              <button
-                onClick={listening ? stopListening : startListening}
-                title={listening ? "Stop listening" : "Voice input"}
-                style={{
-                  width: 36, height: 36, borderRadius: "50%", border: "none", cursor: "pointer", flexShrink: 0,
-                  background: listening ? "linear-gradient(135deg,#ef4444,#dc2626)" : "#f1f5f9",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  animation: listening ? "chatPulse 1s ease-in-out infinite" : "none",
-                  transition: "background .2s",
-                }}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={listening ? "#fff" : "#64748b"} strokeWidth="2" strokeLinecap="round">
-                  <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                  <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8" />
+            <button
+              type="button"
+              onClick={listening ? stopListening : startListening}
+              aria-label={listening ? "Stop microphone" : "Speak your question"}
+              title={listening ? "Stop listening" : voiceSupported ? "Speak your question" : "Voice input is not supported in this browser"}
+              style={{
+                width: 42, height: 42, minWidth: 42, borderRadius: "50%",
+                border: listening ? "2px solid #ef4444" : "1px solid #e2e8f0",
+                cursor: "pointer", flexShrink: 0,
+                background: listening ? "linear-gradient(135deg,#ef4444,#dc2626)" : "#f1f5f9",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                animation: listening ? "chatPulse 1s ease-in-out infinite" : "none",
+                transition: "all .2s",
+              }}
+            >
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={listening ? "#fff" : "#475569"} strokeWidth="2" strokeLinecap="round">
+                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8" />
+              </svg>
+            </button>
+            {/* Read-aloud / stop-speaking button */}
+            <button
+              type="button"
+              onClick={() => speaking ? stopSpeaking() : speak([...msgs].reverse().find(m => m.role === "assistant")?.content || WELCOME.content)}
+              aria-label={speaking ? "Stop reading aloud" : "Read the last answer aloud"}
+              title={speaking ? "Stop speaking" : "Read the last answer aloud"}
+              style={{
+                width: 42, height: 42, minWidth: 42, borderRadius: "50%",
+                border: speaking ? "2px solid #f97316" : "1px solid #e2e8f0",
+                cursor: "pointer", flexShrink: 0,
+                background: speaking ? "#fff7ed" : "#f1f5f9",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              {speaking ? (
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" style={{color:"#f97316"}}>
+                  <rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" />
                 </svg>
-              </button>
-            ) : null}
+              ) : (
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14" />
+                </svg>
+              )}
+            </button>
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -455,6 +508,12 @@ export default function ChatBot() {
               Send
             </button>
           </div>
+
+          {voiceError && (
+            <div role="status" aria-live="polite" style={{ padding: "7px 14px", background: "#fff7ed", color: "#9a3412", borderTop: "1px solid #fed7aa", fontSize: 11, lineHeight: 1.45 }}>
+              {voiceError}
+            </div>
+          )}
 
           {/* Footer quick-call strip */}
           <div style={{
