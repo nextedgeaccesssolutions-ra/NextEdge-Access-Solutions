@@ -1,4 +1,12 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 /** @type {import('next').NextConfig} */
+
+// The Next.js app lives in web/ inside a repository with a separate root pnpm
+// workspace. Pin Turbopack to that repository root so lockfile discovery cannot
+// silently choose a different workspace when npm installs the web app.
+const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 /** Content-Security-Policy, shipped in Report-Only first.
  *
@@ -25,6 +33,7 @@ const csp = [
 ].join("; ");
 
 const nextConfig = {
+  turbopack: { root: workspaceRoot },
   outputFileTracingIncludes: { "/": ["./site/**/*"] },
   poweredByHeader: false,
   async headers() {
