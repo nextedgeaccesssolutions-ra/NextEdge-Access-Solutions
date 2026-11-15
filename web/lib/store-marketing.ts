@@ -7,16 +7,12 @@ import { DEFAULT_BRAND, generate, type Brand } from "./marketing";
 export type StorePromoSettings = {
   enabled: boolean;
   dailyCount: number;
-  hour: number;
-  minute: number;
   platforms: string[];
 };
 
 export const DEFAULT_STORE_PROMO: StorePromoSettings = {
   enabled: false,
   dailyCount: 5,
-  hour: 20,
-  minute: 0,
   platforms: ["facebook", "instagram"],
 };
 
