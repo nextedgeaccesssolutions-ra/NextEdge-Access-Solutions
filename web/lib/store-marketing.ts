@@ -53,7 +53,12 @@ async function captionFor(p: Product, url: string, brand: Brand) {
   ].filter(Boolean).join("\n");
   const prompt = `Write one polished NEAS product marketing caption (60–100 words) for this exact store item. Include a clear hook, the supplied product name and category, a concise description based only on the supplied source facts, the product page URL, and a quotation/availability call to action. Include the supplied item code when present. If a price is supplied, call it the listed store price and say availability is subject to confirmation. Do not invent certifications, standards, load ratings, compatibility, performance claims, specifications, stock status, discounts or warranty terms. Never imply that an item is suitable for a particular safety application unless the source details explicitly say so. Return only the ready-to-post caption.\n\nSOURCE FACTS:\n${source}`;
   const result = await generate("caption", prompt, { brand, tone: "Professional, accurate, conversion-focused, safety-conscious" });
-  return "text" in result && result.text.trim() ? result.text.trim() : fallbackCaption(p, url);
+  if (!("text" in result) || !result.text.trim()) return fallbackCaption(p, url);
+  let text = result.text.trim();
+  if (!text.includes(url)) text += `\\n\\nView product details: ${url}`;
+  if (!text.includes("+63 991 426 5886")) text += "\\n\\nFor availability and delivery, contact NEAS at +63 991 426 5886.";
+  if (!text.includes("#NEAS")) text += "\\n\\n#NEAS #RopeAccess #WorkAtHeight #HeightSafety #PPE";
+  return text;
 }
 
 /** Creates one idempotent daily batch of store-product posts. The caller publishes the due queue. */
