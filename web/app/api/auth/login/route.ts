@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
 import { createSession } from "@/lib/auth";
+import { hasStrongSessionSecret } from "@/lib/session-key";
 import { bad, ok, str } from "@/lib/http";
 import { rateLimitRequest } from "@/lib/rate-limit";
 
@@ -9,6 +10,9 @@ const DUMMY_HASH = bcrypt.hashSync("not-a-real-password", 12);
 export async function POST(req: Request) {
   const limited = rateLimitRequest(req, "auth-login", 10, 15 * 60_000);
   if (limited) return limited;
+  if (!hasStrongSessionSecret()) {
+    return bad("The sign-in service is temporarily unavailable. Please try again shortly.", 503);
+  }
 
   try {
     const rawBody = await req.json().catch(() => ({}));
