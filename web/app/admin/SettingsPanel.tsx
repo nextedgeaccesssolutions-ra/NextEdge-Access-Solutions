@@ -2,8 +2,9 @@
 import { useState } from "react";
 import type { Seo, Social, Business } from "@/lib/settings";
 import AnalyticsPanel from "./AnalyticsPanel";
+import CloudflareAnalyticsPanel from "./CloudflareAnalyticsPanel";
 
-type Tab = "seo" | "google" | "social" | "photos" | "analytics";
+type Tab = "seo" | "google" | "social" | "photos" | "analytics" | "cloudflare";
 
 const PHOTO_FIELDS = [
   ["hero", "Homepage hero image", "Main homepage banner image", "/img/hero-city.jpg"],
@@ -46,11 +47,12 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
     <div className="eyebrow" style={{ marginTop: 10 }}>Website settings</div>
     <h2 style={{ margin: "4px 0 12px" }}>SEO, Google &amp; Social Media</h2>
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-      {([["seo", "SEO (advanced)"], ["google", "Google Business"], ["social", "Social media"], ["photos", "Website Photos"], ["analytics", "Live Analytics"]] as const).map(([k, l]) => <button key={k} type="button" className={"btn " + (tab === k ? "btn-primary" : "btn-ghost")} onClick={() => { setTab(k); setMsg(""); }}>{l}</button>)}
+      {([["seo", "SEO (advanced)"], ["google", "Google Business"], ["social", "Social media"], ["photos", "Website Photos"], ["analytics", "Live Analytics"], ["cloudflare", "Cloudflare Analytics"]] as const).map(([k, l]) => <button key={k} type="button" className={"btn " + (tab === k ? "btn-primary" : "btn-ghost")} onClick={() => { setTab(k); setMsg(""); }}>{l}</button>)}
       {msg && <span className={msg.startsWith("Saved") ? "ok" : "err"} role="status" style={{ alignSelf: "center" }}>{msg}</span>}
     </div>
 
     {tab === "analytics" && <AnalyticsPanel />}
+    {tab === "cloudflare" && <CloudflareAnalyticsPanel />}
 
     {tab === "photos" && <div className="card" style={{ maxWidth: 980 }}>
       <h3 style={{ marginTop: 0 }}>Manage homepage photos</h3>
