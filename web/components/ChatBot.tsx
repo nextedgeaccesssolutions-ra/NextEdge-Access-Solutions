@@ -29,11 +29,9 @@ export default function ChatBot() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const [voiceSupported, setVoiceSupported] = useState(false);
-  const [speechOutputSupported, setSpeechOutputSupported] = useState(false);
   const [voiceError, setVoiceError] = useState("");
   useEffect(() => {
     setVoiceSupported(Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition));
-    setSpeechOutputSupported("speechSynthesis" in window && "SpeechSynthesisUtterance" in window);
   }, []);
   const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
 
