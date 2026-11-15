@@ -25,7 +25,7 @@ type State = {
   tenant?: boolean; dailyLimit?: number | null; publishedToday?: number | null;
   members?: { id: number; name: string; email: string; status: string; ref: string; at: string | null; until?: string | null }[];
   reach7?: { fetchedAt?: string; reached: number; views: number } | null;
-  scheduler?: { url: string; hasCronSecret: boolean; last: { at?: string; published?: number; failed?: number } };
+  scheduler?: { url: string; hasCronSecret: boolean; last: { at?: string; published?: number; failed?: number; store?: { created?: number; skipped?: string; error?: string; catalogCount?: number } } };
   storeAutomation?: { enabled: boolean; dailyCount: number; platforms: string[] } | null;
 };
 type Mod = "dashboard" | "compose" | "calendar" | "inbox" | "analytics" | "brands" | "accounts" | "reports" | "strategy" | "feeds" | "automation" | "studio" | "bio" | "team" | "settings";
@@ -688,6 +688,7 @@ function Automation({ s, can, run }: { s: State; can: Can; run: Run }) {
     <p className="mk-mini">Posts set to <b>Scheduled</b> with a date and time are picked up by the scheduler. Publishing is attempted only for due posts and results are recorded per platform. {due} post(s) currently scheduled.</p>
     <table className="mk-t"><tbody>
       <tr><td>Last run</td><td>{sc?.last?.at ? `${fmt(sc.last.at)} · ${sc.last.published ?? 0} published, ${sc.last.failed ?? 0} failed` : "Not run yet"}</td></tr>
+      <tr><td>Store product batch</td><td>{sc?.last?.store?.error ? <span className="mk-warn">{sc.last.store.error}</span> : sc?.last?.store?.created ? `${sc.last.store.created} product posts created from ${sc.last.store.catalogCount ?? "the"} catalogue items` : sc?.last?.store?.skipped ?? "Waiting for the first enabled 8 PM run."}</td></tr>
       <tr><td>Daily run</td><td>8:00 PM Philippines time (12:00 UTC) after the staging changes are released to Production. Preview deployments do not execute Vercel Cron.</td></tr>
       <tr><td>Scheduler secret</td><td>{sc?.hasCronSecret ? "CRON_SECRET is set." : "CRON_SECRET is not configured; the existing server-side token fallback remains in use."}</td></tr>
     </tbody></table>
