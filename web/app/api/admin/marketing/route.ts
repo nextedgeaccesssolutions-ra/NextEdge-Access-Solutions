@@ -280,6 +280,7 @@ export async function POST(req: Request) {
       const x = b.storeAutomation ?? {};
       const platforms = (Array.isArray(x.platforms) ? x.platforms : [])
         .filter((p: string) => ["facebook", "instagram", "linkedin", "google_business"].includes(p));
+      if (!!x.enabled && process.env.VERCEL_ENV !== "production") return bad("Store autopilot can be enabled only after the Production release. Staging cannot activate real social publishing.", 403);
       if (!!x.enabled && !platforms.length) return bad("Select at least one supported social platform before enabling store autopilot.");
       const value: StorePromoSettings = {
         enabled: !!x.enabled,
@@ -314,6 +315,7 @@ export async function POST(req: Request) {
       return ok();
     }
     case "publishNow": {
+      if (process.env.VERCEL_ENV !== "production") return bad("Real social publishing is disabled in staging and Preview deployments. Test the composer here; enable live publishing only after Production release.", 403);
       if (!need("manager")) return deny();
       const r = await publishPost(Number(b.id), u.id, originOf(req));
       return "error" in r ? bad(r.error) : ok(r);
