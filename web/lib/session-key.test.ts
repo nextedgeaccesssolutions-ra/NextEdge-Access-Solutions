@@ -24,11 +24,12 @@ describe("session signing keys", () => {
   });
 
   it("still accepts a cookie signed with the legacy key after SESSION_SECRET is set", async () => {
-    // A session issued before SESSION_SECRET existed.
+    // Simulate a session issued before the dedicated secret was configured.
     process.env.DATABASE_URL = DB;
-    const old = await new SignJWT({ uid: 7 }).setProtectedHeader({ alg: "HS256" }).setIssuedAt().setExpirationTime("30d").sign(signingKey());
+    const oldKey = legacyKey()!;
+    const old = await new SignJWT({ uid: 7 }).setProtectedHeader({ alg: "HS256" }).setIssuedAt().setExpirationTime("30d").sign(oldKey);
 
-    // The operator now sets SESSION_SECRET. That cookie must keep working.
+    // The operator now sets SESSION_SECRET. The legacy cookie remains verifiable during migration.
     process.env.SESSION_SECRET = LONG;
     const keys = verifyKeys();
     expect(keys).toHaveLength(2);
@@ -46,11 +47,19 @@ describe("session signing keys", () => {
     expect(accepted).toBe(false);
   });
 
+  it("fails closed when SESSION_SECRET is missing even if DATABASE_URL exists", () => {
+    process.env.DATABASE_URL = DB;
+    expect(strongKey()).toBeNull();
+    expect(() => signingKey()).toThrow(/SESSION_SECRET/);
+    expect(() => verifyKeys()).toThrow(/SESSION_SECRET/);
+  });
+
   it("treats a SESSION_SECRET under 32 characters as absent", () => {
     process.env.SESSION_SECRET = "tooshort";
     process.env.DATABASE_URL = DB;
     expect(strongKey()).toBeNull();
-    expect(buf(signingKey())).toEqual(buf(legacyKey()!));
+    expect(() => signingKey()).toThrow(/SESSION_SECRET/);
+    expect(() => verifyKeys()).toThrow(/SESSION_SECRET/);
   });
 
   it("throws when neither a secret nor a database URL exists", () => {
