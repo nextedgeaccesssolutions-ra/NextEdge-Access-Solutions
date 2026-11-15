@@ -283,7 +283,7 @@ export async function POST(req: Request) {
       const rawPlatforms: unknown[] = Array.isArray(x.platforms) ? x.platforms : [];
       const platforms: string[] = [];
       for (const platform of rawPlatforms) {
-        if (typeof platform === "string" && allowedPlatforms.includes(platform)) {
+        if (typeof platform === "string" && allowedPlatforms.includes(platform) && !platforms.includes(platform)) {
           platforms.push(platform);
         }
       }
@@ -292,7 +292,7 @@ export async function POST(req: Request) {
       const value: StorePromoSettings = {
         enabled: !!x.enabled,
         dailyCount: Math.max(1, Math.min(5, Math.floor(Number(x.dailyCount) || 5))),
-        platforms: Array.from(new Set<string>(platforms)) as string[],
+        platforms,
       };
       await setSetting("mk_store_promo", value);
       await log("updated store product autopilot", `${value.enabled ? "enabled" : "disabled"} · ${value.dailyCount} products/day · ${value.platforms.join(", ")} · 8:00 PM Asia/Manila`);
