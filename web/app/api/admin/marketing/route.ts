@@ -61,7 +61,7 @@ async function loadState(u: MkUser) {
     waReady: !u.tenant && !!(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID),
     emailLog: (await sql`select recipient, subject, kind, ok, error, created_at from mk_email_log where ${!u.tenant} order by id desc limit 40`.catch(() => [])).map((e) => ({ to: e.recipient, subject: e.subject, kind: e.kind, ok: e.ok, error: e.error ?? "", at: new Date(e.created_at).toISOString() })),
     media: (await sql`select id, url, title, width, height, created_at from mk_media where ${inWs(u.ws)} order by id desc limit 200`.catch(() => [])).map((m) => ({ id: m.id, url: m.url, title: m.title, width: m.width, height: m.height, at: new Date(m.created_at).toISOString() })),
-    scheduler: { url: u.role === "admin" && !u.tenant ? `${process.env.SITE_URL?.replace(/\/$/, "") || "https://www.nextedge-access-solutions.com"}/api/cron/publish` : "", hasCronSecret: !!process.env.CRON_SECRET, last: await getSetting<{ at?: string; published?: number; failed?: number }>("mk_cron_last", {}) },
+    scheduler: { url: u.role === "admin" && !u.tenant ? `${process.env.SITE_URL?.replace(/\/$/, "") || "https://www.nextedge-access-solutions.com"}/api/cron/publish` : "", hasCronSecret: !!process.env.CRON_SECRET, last: await getSetting<{ at?: string; published?: number; failed?: number; store?: { created?: number; skipped?: string; error?: string; catalogCount?: number } }>("mk_cron_last", {}) },
     storeAutomation: u.role === "admin" && !u.tenant ? await getSetting<StorePromoSettings>("mk_store_promo", DEFAULT_STORE_PROMO) : null,
     tenant: u.tenant,
     dailyLimit: u.tenant ? memberLimit() : null,
