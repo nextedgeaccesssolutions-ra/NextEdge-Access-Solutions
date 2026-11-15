@@ -45,6 +45,10 @@ jobs:
 
       # Deliberately use build:app. The web/package.json "build" script runs
       # database migrations; CI must never mutate a database.
+      - name: Verify package.json/package-lock.json synchronization
+        run: npm run test:lockfile
+        working-directory: web
+
       - name: Install Next.js application dependencies
         run: npm ci
         working-directory: web
