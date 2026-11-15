@@ -18,6 +18,7 @@ import {
   getMkUser, can, TRANSITIONS, STATUSES, PLATFORMS, ROLES, logActivity, generate, platformStatus,
   DEFAULT_BRAND, cleanUrl, inWs, brandKey, memberLimit, type Brand, type MkStatus, type MkRole, type MkUser,
 } from "@/lib/marketing";
+import { DEFAULT_STORE_PROMO, type StorePromoSettings } from "@/lib/store-marketing";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
