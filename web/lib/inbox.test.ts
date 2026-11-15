@@ -10,9 +10,9 @@ vi.mock("./db", () => ({ sql: mocks.sql }));
 vi.mock("./social", () => ({ decrypt: mocks.decrypt }));
 vi.mock("./whatsapp", () => ({ waReply: vi.fn(), waThreads: mocks.waThreads }));
 
-import { loadInbox } from "./inbox";
+import { loadInbox, sendReply } from "./inbox";
 
-describe("loadInbox token decryption", () => {
+describe("loadInbox token decryption and Graph request deadlines", () => {
   beforeEach(() => {
     mocks.sql.mockReset();
     mocks.decrypt.mockReset();
@@ -53,5 +53,47 @@ describe("loadInbox token decryption", () => {
     ]);
     expect(result.threads).toEqual([]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("sets an abort deadline on each Facebook Graph request", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    mocks.sql.mockImplementation((strings: TemplateStringsArray) => {
+      const query = strings.join("");
+      if (query.includes("select id, external_id")) {
+        return Promise.resolve([
+          { id: 3, external_id: "page-timeout", name: "Timeout Test Page", token_enc: "valid-ciphertext" },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+    mocks.decrypt.mockReturnValue("valid-page-token");
+
+    const result = await loadInbox();
+
+    expect(result.errors).toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const call of fetchMock.mock.calls) {
+      expect(call[1]?.signal).toBeInstanceOf(AbortSignal);
+    }
+  });
+
+  it("sets an abort deadline on Facebook inbox replies", async () => {
+    mocks.sql.mockResolvedValue([{ external_id: "page-1", token_enc: "valid-ciphertext" }]);
+    mocks.decrypt.mockReturnValue("valid-page-token");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ message_id: "sent" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await sendReply(1, "message", "recipient-1", "Hello");
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal);
   });
 });

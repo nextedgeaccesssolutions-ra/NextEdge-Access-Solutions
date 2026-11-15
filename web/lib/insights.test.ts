@@ -1,4 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 const mocks = vi.hoisted(() => ({
   sql: vi.fn(),
@@ -53,4 +57,32 @@ describe("loadInsights token decryption", () => {
     ]);
     expect(mocks.setSetting).toHaveBeenCalledOnce();
   });
+
+  it("sets abort deadlines on parallel Facebook Graph requests", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    mocks.sql.mockImplementation((strings: TemplateStringsArray) => {
+      const query = strings.join("");
+      if (query.includes("select external_id, name, token_enc")) {
+        return Promise.resolve([
+          { external_id: "page-timeout", name: "Timeout Test Page", token_enc: "valid-ciphertext" },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+    mocks.decrypt.mockReturnValue("valid-page-token");
+
+    const result = await loadInsights(28, true);
+
+    expect(result.pages).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    for (const call of fetchMock.mock.calls) {
+      expect(call[1]?.signal).toBeInstanceOf(AbortSignal);
+    }
+  });
+
 });
