@@ -34,7 +34,23 @@ export async function loadInsights(days = 28, force = false, ws: number | null =
   const until = Math.floor(Date.now() / 1000), since = until - days * 86400;
   const pages: PageInsights[] = [];
   for (const a of accounts) {
-    const token = decrypt(a.token_enc), errors: string[] = [];
+    const errors: string[] = [];
+    let token: string;
+    try {
+      token = decrypt(a.token_enc);
+    } catch {
+      pages.push({
+        page: a.name,
+        followers: null,
+        views: null,
+        reached: null,
+        engagements: null,
+        daily: [],
+        posts: [],
+        errors: ["Saved Facebook token could not be decrypted. Reconnect this Page to restore analytics access."],
+      });
+      continue;
+    }
     const sum = (d: Day[]) => d.reduce((x, y) => x + y.value, 0);
     let followers: number | null = null, views: number | null = null, reached: number | null = null, engagements: number | null = null, daily: Day[] = [];
     try { const p = await g(`${a.external_id}?fields=followers_count`, token); followers = p.followers_count ?? null; } catch (e) { errors.push("Followers: " + short(e)); }
