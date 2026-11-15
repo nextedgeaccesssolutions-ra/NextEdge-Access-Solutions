@@ -174,7 +174,7 @@ function Dashboard({ s, go, openCompose, can, run, refresh }: { s: State; go: (m
   const today = s.posts.filter((p) => p.scheduled_at && sameDay(new Date(p.scheduled_at), now));
   const pending = s.posts.filter((p) => p.status === "pending");
   const failed = s.posts.filter((p) => p.status === "failed");
-  const readyToPublish = s.posts.filter((p) => p.status === "approved").slice(0, 6);
+  const readyToPublish = s.posts.filter((p) => p.status === "approved" || p.status === "scheduled").slice(0, 6);
   const pubMonth = s.posts.filter((p) => p.status === "published" && new Date(p.updated_at).getMonth() === now.getMonth() && new Date(p.updated_at).getFullYear() === now.getFullYear()).length;
   const hr = now.getHours(); const greet = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
   const goal = s.brand.goal || 0;
@@ -210,7 +210,10 @@ function Dashboard({ s, go, openCompose, can, run, refresh }: { s: State; go: (m
       {(s.accounts ?? []).length > 0 && <div className="mk-mini" style={{ marginTop: 10 }}>{connectedCount} of {s.accounts!.length} account records are healthy.</div>}
     </div>
     {(pending.length > 0 || failed.length > 0 || readyToPublish.length > 0) && <div className="mk-card"><div className="mk-label">Action items <span className="mk-badge">{pending.length + failed.length + readyToPublish.length}</span></div>
-      {[...failed, ...pending, ...readyToPublish].map((p) => <div key={p.id} className={"mk-item " + (p.status === "failed" ? "bad" : p.status === "approved" ? "warn" : "")}><div><b>{p.status === "failed" ? "Publishing failed: " : p.status === "approved" ? "Ready for real publishing: " : "Waiting for approval: "}{p.title || "Untitled"}</b><small>{p.author} · {p.platforms.map((x) => PLAT[x]).join(", ") || "No platform selected"} · updated {fmt(p.updated_at)}</small></div><PostActions p={p} can={can} run={run} onEdit={() => openCompose(p)} /></div>)}
+      {[...failed, ...pending, ...readyToPublish].map((p) => {
+        const resultRows = (s.results ?? []).filter((r) => r.post_id === p.id);
+        return <div key={p.id} className={"mk-item " + (p.status === "failed" ? "bad" : p.status === "approved" || p.status === "scheduled" ? "warn" : "")}><div><b>{p.status === "failed" ? "Publishing failed: " : p.status === "approved" ? "Ready for real publishing: " : p.status === "scheduled" ? "Scheduled · publish now available: " : "Waiting for approval: "}{p.title || "Untitled"}</b><small>{p.author} · {p.platforms.map((x) => PLAT[x]).join(", ") || "No platform selected"} · updated {fmt(p.updated_at)}</small>{resultRows.length > 0 && <small>{resultRows.map((r) => `${PLAT[r.platform] ?? r.platform}: ${r.ok ? "published" : r.error || "failed"}`).join(" · ")}</small>}</div><PostActions p={p} can={can} run={run} onEdit={() => openCompose(p)} /></div>;
+      })}
     </div>}
     <div className="mk-grid4">
       <div className="mk-card mk-kpi"><small>Posts published · this month</small><b>{pubMonth}</b></div>
