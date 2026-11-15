@@ -24,9 +24,15 @@ describe("loadInsights token decryption", () => {
   });
 
   it("returns a page-level error instead of failing the whole report for an unreadable token", async () => {
-    mocks.sql.mockResolvedValueOnce([
-      { external_id: "page-bad", name: "Broken Page", token_enc: "bad-ciphertext" },
-    ]);
+    mocks.sql.mockImplementation((strings: TemplateStringsArray) => {
+      const query = strings.join("");
+      if (query.includes("select external_id, name, token_enc")) {
+        return Promise.resolve([
+          { external_id: "page-bad", name: "Broken Page", token_enc: "bad-ciphertext" },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
     mocks.decrypt.mockImplementation(() => {
       throw new Error("Unsupported state or unable to authenticate data");
     });
