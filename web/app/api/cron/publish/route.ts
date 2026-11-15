@@ -22,6 +22,7 @@ async function run(req: Request) {
   const url = new URL(req.url);
   const given = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "") || url.searchParams.get("token") || "";
   if (!given || !same(given, cronToken())) return bad("Not authorized.", 401);
+  if (process.env.VERCEL_ENV !== "production") return bad("Scheduled social publishing is disabled outside Production.", 403);
   await loadConfig().catch(() => {});
   const origin = originOf(req);
   const sheetPromise = autoSyncSheet().catch((e) => ({ error: String(e) }));
