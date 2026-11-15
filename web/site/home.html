@@ -1488,4 +1488,32 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){
 })();
 </script>
 
+
+<!-- NEAS AI Voice Agent: live microphone + spoken responses -->
+<style>
+  elevenlabs-convai {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    right: auto;
+    z-index: 10000;
+  }
+  @media (max-width: 600px) {
+    elevenlabs-convai {
+      bottom: 12px;
+      left: 12px;
+      right: auto;
+    }
+  }
+</style>
+<elevenlabs-convai
+  agent-id="agent_4401m7e4gjxfejwbvx9t4vgr8bth"
+  action-text="Talk to NEAS AI"
+  start-call-text="Start voice conversation"
+  end-call-text="End conversation"
+  listening-text="NEAS AI is listening"
+  speaking-text="NEAS AI is speaking"
+></elevenlabs-convai>
+<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+
 </body></html>
