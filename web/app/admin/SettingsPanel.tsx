@@ -35,9 +35,16 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
 
   async function save(body: unknown) {
     setBusy(true); setMsg("");
-    const r = await fetch("/api/admin/site", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-    setBusy(false);
-    setMsg(r.ok ? "Saved ✓ — live on the homepage within a minute." : ((await r.json().catch(() => ({}))).error || "Save failed"));
+    try {
+      const r = await fetch("/api/admin/site", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const result = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(result.error || "Save failed.");
+      setMsg("Saved ✓ — live on the homepage within a minute.");
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : "Save failed. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
   }
   const S = (k: keyof Seo) => ({ value: String(seo[k] ?? ""), onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setSeo({ ...seo, [k]: e.target.value }) });
   const So = (k: keyof Social) => ({ value: social[k] ?? "", onChange: (e: React.ChangeEvent<HTMLInputElement>) => setSocial({ ...social, [k]: e.target.value }), type: "url", placeholder: "https://…" });
@@ -72,15 +79,23 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
               const fd = new FormData(); fd.append("file", file); setMsg("Uploading " + label + "…");
               const response = await fetch("/api/admin/upload", { method: "POST", body: fd });
               const result = await response.json().catch(() => ({}));
-              if (response.ok && result.url) { setSitePhotos((current) => ({ ...current, [key]: result.url })); setMsg(label + " uploaded. Click Save Photos to publish it."); }
-              else setMsg(result.error || "Photo upload failed.");
+              if (response.ok && result.url) {
+                setSitePhotos((current) => ({ ...current, [key]: result.url }));
+                setPhotoUrlDrafts((current) => ({ ...current, [key]: result.url }));
+                setMsg(label + " uploaded. Click Save Photos to publish it.");
+              } else setMsg(result.error || "Photo upload failed.");
             }} /></label>
-            <button type="button" className="btn btn-ghost" onClick={() => setSitePhotos((current) => ({ ...current, [key]: fallback }))}>Use default</button>
+            <button type="button" className="btn btn-ghost" onClick={() => {
+              setSitePhotos((current) => ({ ...current, [key]: fallback }));
+              setPhotoUrlDrafts((current) => ({ ...current, [key]: fallback }));
+              setMsg(label + " reset to its default. Click Save Photos to publish it.");
+            }}>Use default</button>
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
             <input className="input" type="url" aria-label={`Image URL for ${label}`} placeholder="Paste public image URL (https://…)" value={photoUrlDrafts[key] ?? sitePhotos[key] ?? ""} onChange={(e) => setPhotoUrlDrafts((current) => ({ ...current, [key]: e.target.value }))} style={{ flex: "1 1 220px", minWidth: 0 }} />
             <button type="button" className="btn btn-ghost" disabled={busy} onClick={async () => {
-              const value = (photoUrlDrafts[key] ?? "").trim();
+              // The field displays the current image when no draft exists; use that same value on click.
+              const value = (photoUrlDrafts[key] ?? sitePhotos[key] ?? "").trim();
               let parsed: URL;
               try { parsed = new URL(value); } catch { setMsg("Enter a valid image URL for " + label + "."); return; }
               if (parsed.protocol !== "https:") { setMsg("Image URLs must use HTTPS."); return; }
@@ -88,6 +103,7 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
               const validImage = await new Promise<boolean>((resolve) => { const image = new Image(); image.onload = () => resolve(image.naturalWidth > 0); image.onerror = () => resolve(false); image.src = value; });
               if (!validImage) { setMsg("The URL did not load as an image. Use a public direct image URL."); return; }
               setSitePhotos((current) => ({ ...current, [key]: value }));
+              setPhotoUrlDrafts((current) => ({ ...current, [key]: value }));
               setMsg(label + " URL added. Click Save Photos to publish it.");
             }}>Use URL</button>
           </div>
