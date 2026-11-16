@@ -31,7 +31,7 @@ const GRAPHQL_ENDPOINT = "https://api.cloudflare.com/client/v4/graphql";
 const ZONE_DISCOVERY_QUERY = `
   query NeasDiscoverZones {
     viewer {
-      zones(filter: { zoneTag_gt: "" }) {
+      zones(filter: { zoneTag_gt: "00000000000000000000000000000000" }) {
         zoneTag
       }
     }
