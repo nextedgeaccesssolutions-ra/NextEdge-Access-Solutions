@@ -18,16 +18,18 @@ function dedicatedKey(): Buffer {
 }
 
 /**
- * Compatibility key for ciphertext written before CONFIG_ENCRYPTION_KEY existed.
- * It is decrypt-only: all new writes require the independent deployment secret.
+ * Compatibility keys for ciphertext written before CONFIG_ENCRYPTION_KEY existed.
+ * They are decrypt-only: all new writes require the independent deployment secret.
  * Never retain the historical hardcoded "neas" fallback as a migration key.
  */
-function legacyKey(): Buffer {
-  const base = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SESSION_SECRET;
-  if (!base) {
+function legacyKeys(): Buffer[] {
+  const bases = [process.env.DATABASE_URL, process.env.POSTGRES_URL, process.env.SESSION_SECRET]
+    .filter((base): base is string => Boolean(base));
+  const uniqueBases = [...new Set(bases)];
+  if (uniqueBases.length === 0) {
     throw new Error("Cannot decrypt legacy integration settings without the original deployment credential.");
   }
-  return createHash("sha256").update("neas-config-v1:" + base).digest();
+  return uniqueBases.map((base) => createHash("sha256").update("neas-config-v1:" + base).digest());
 }
 
 function decryptParts(parts: string[], key: Buffer): string {
@@ -64,7 +66,19 @@ export function decryptConfigBlob(blob: string): string {
     return decryptParts(parts.slice(1), dedicatedKey());
   }
   if (parts.length === 3) {
-    return decryptParts(parts, legacyKey());
+    let authenticated = false;
+    for (const key of legacyKeys()) {
+      try {
+        const plaintext = decryptParts(parts, key);
+        authenticated = true;
+        return plaintext;
+      } catch {
+        // Try the next configured legacy credential; never fall back to a static key.
+      }
+    }
+    if (!authenticated) {
+      throw new Error("Cannot authenticate legacy integration settings with the available deployment credentials.");
+    }
   }
   throw new Error("Unsupported encrypted integration settings version.");
 }
