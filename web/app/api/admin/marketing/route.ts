@@ -105,7 +105,14 @@ export async function POST(req: Request) {
   switch (b.action) {
     case "savePost": {
       if (!need("editor")) return deny();
-      const platforms = (Array.isArray(b.platforms) ? b.platforms : []).filter((p: string) => (PLATFORMS as readonly string[]).includes(p));
+      const allowedPlatforms: readonly string[] = PLATFORMS;
+      const rawPlatforms: unknown[] = Array.isArray(b.platforms) ? b.platforms : [];
+      const platforms: string[] = [];
+      for (const platform of rawPlatforms) {
+        if (typeof platform === "string" && allowedPlatforms.includes(platform)) {
+          platforms.push(platform);
+        }
+      }
       const when = parseDate(b.scheduled_at); if (when === "bad") return bad("Invalid date.");
       const media = b.media_url ? cleanUrl(b.media_url) ?? (String(b.media_url).startsWith("/api/img/") ? String(b.media_url) : null) : null;
       if (b.media_url && !media) return bad("Media link must start with https://");
