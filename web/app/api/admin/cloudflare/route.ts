@@ -16,7 +16,7 @@ type CloudflareBucket = {
 };
 
 const QUERY = `
-  query NeasZoneTraffic($zoneTag: String!, $start: Time!, $end: Time!) {
+  query NeasZoneTraffic($zoneTag: string!, $start: Time!, $end: Time!) {
     viewer {
       zones(filter: { zoneTag: $zoneTag }) {
         httpRequests1hGroups(
@@ -94,11 +94,14 @@ export async function GET() {
 
     if (!response.ok || payload?.errors?.length || !payload?.data) {
       const status = response.status || 502;
-      console.error("[admin cloudflare] Analytics API failed:", status, payload?.errors?.map((e) => e.message));
+      const messages = payload?.errors?.map((e) => e.message).filter(Boolean) ?? [];
+      console.error("[admin cloudflare] Analytics API failed:", status, messages);
       return bad(
         status === 401 || status === 403
           ? "Cloudflare rejected the API token. Verify Analytics Read permission and zone access."
-          : "Could not load Cloudflare analytics. Verify the token, zone ID and analytics API access.",
+          : messages.length
+            ? `Cloudflare GraphQL error: ${messages.slice(0, 2).join("; ").slice(0, 240)}`
+            : "Could not load Cloudflare analytics. Verify the token, zone ID and analytics API access.",
         status === 401 || status === 403 ? status : 502,
       );
     }
