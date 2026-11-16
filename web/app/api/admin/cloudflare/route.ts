@@ -15,8 +15,11 @@ type CloudflareBucket = {
   };
 };
 
+const CACHE_TTL_MS = 60_000;
+let cachedResponse: { expiresAt: number; body: unknown } | null = null;
+
 const QUERY = `
-  query NeasZoneTraffic($zoneTag: string!, $start: Time!, $end: Time!) {
+  query NeasZoneTraffic($zoneTag: String!, $start: Time!, $end: Time!) {
     viewer {
       zones(filter: { zoneTag: $zoneTag }) {
         httpRequests1hGroups(
@@ -46,7 +49,10 @@ const QUERY = `
 export async function GET() {
   if (!(await requireAdmin())) return bad("Admin access required.", 403);
 
-  const token = (process.env.CLOUDFLARE_API_TOKEN || "").trim();
+  const token = (process.env.CLOUDFLARE_API_TOKEN || "")
+    .trim()
+    .replace(/^Bearer\\s+/i, "")
+    .replace(/^["']|["']$/g, "");
   const zoneId = (process.env.CLOUDFLARE_ZONE_ID || "").trim();
 
   if (!token || !zoneId) {
@@ -61,6 +67,10 @@ export async function GET() {
 
   if (!/^[a-f0-9]{32}$/i.test(zoneId)) {
     return bad("Invalid Cloudflare zone ID configuration.", 500);
+  }
+
+  if (cachedResponse && cachedResponse.expiresAt > Date.now()) {
+    return ok(cachedResponse.body);
   }
 
   const end = new Date();
@@ -118,7 +128,7 @@ export async function GET() {
       return acc;
     }, { requests: 0, cachedRequests: 0, bytes: 0, cachedBytes: 0, threats: 0, pageViews: 0 });
 
-    return ok({
+    const result = {
       configured: true,
       zone: "nextedge-access-solutions.com",
       fetchedAt: end.toISOString(),
