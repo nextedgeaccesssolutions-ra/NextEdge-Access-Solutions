@@ -154,10 +154,10 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
-
 export default defineConfig({
-  plugins,
+  // Keep the plugin list inline: Wrangler’s Vite auto-configuration inspects
+  // this property and cannot reliably detect an aliased `plugins` variable.
+  plugins: [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
