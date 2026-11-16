@@ -26,6 +26,8 @@ const clients = [
     description: "A wind energy client relationship referenced in NEAS's wind-sector experience.",
     initials: "TE",
     photoKey: "clientTriconti",
+    fallbackImage: "/img/hero-wind.jpg",
+    imageCaption: "NEAS wind-energy capability image · illustrative, not a Triconti project photograph",
   },
   {
     name: "Atimonan Windkraft",
@@ -33,6 +35,8 @@ const clients = [
     description: "A wind energy client relationship referenced in NEAS's wind-sector experience.",
     initials: "AW",
     photoKey: "clientAtimonan",
+    fallbackImage: "/img/0ce37cb33507.jpg",
+    imageCaption: "NEAS wind-turbine service image · illustrative, not an Atimonan project photograph",
   },
   {
     name: "Philsurv Geodetic Engineer",
@@ -40,6 +44,8 @@ const clients = [
     description: "A client name added to NEAS's selected client references.",
     initials: "PG",
     photoKey: "clientPhilsurv",
+    fallbackImage: "/img/hero-metmast.jpg",
+    imageCaption: "NEAS wind-measurement and met-mast capability image · illustrative, not a Philsurv project photograph",
   },
 ];
 
@@ -75,7 +81,9 @@ export default async function OurClientsPage() {
         .neas-clients .client-card{min-width:0;overflow:hidden;border:1px solid rgba(255,255,255,.1);border-radius:18px;background:linear-gradient(155deg,#142d3a,#0d1e29 75%);box-shadow:0 18px 42px rgba(0,0,0,.16);transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease}
         .neas-clients .client-card:hover{transform:translateY(-5px);border-color:rgba(215,173,104,.48);box-shadow:0 24px 48px rgba(0,0,0,.25)}
         .neas-clients .client-photo{height:210px;position:relative;background:radial-gradient(circle at 75% 15%,rgba(215,173,104,.24),transparent 35%),linear-gradient(135deg,#173747,#0c1b27);display:grid;place-items:center;overflow:hidden}
-        .neas-clients .client-photo img{width:100%;height:100%;object-fit:cover;display:block}
+        .neas-clients .client-photo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .45s ease}
+        .neas-clients .client-card:hover .client-photo img{transform:scale(1.035)}
+        .neas-clients .image-caption{position:absolute;inset:auto 0 0;padding:22px 14px 10px;background:linear-gradient(transparent,rgba(4,13,20,.82));color:#f3e4c8;font-size:10px;line-height:1.45;font-weight:700;letter-spacing:.035em}
         .neas-clients .photo-placeholder{width:76px;height:76px;border-radius:22px;border:1px solid rgba(215,173,104,.45);background:rgba(215,173,104,.12);display:grid;place-items:center;color:#f0d29c;font-weight:900;font-size:25px;letter-spacing:.04em}
         .neas-clients .client-body{padding:24px 24px 26px}
         .neas-clients .client-sector{color:var(--gold);font-size:10px;font-weight:850;letter-spacing:.16em;text-transform:uppercase}
@@ -117,7 +125,16 @@ export default async function OurClientsPage() {
             {clients.map((client) => (
               <article className="client-card" key={client.name}>
                 <div className="client-photo">
-                  {photos[client.photoKey] ? <img src={photos[client.photoKey]} alt={client.name + " project or company photo"} /> : <div className="photo-placeholder" aria-hidden="true">{client.initials}</div>}
+                  {(() => {
+                    const hasApprovedPhoto = Boolean(photos[client.photoKey]);
+                    const imageSrc = hasApprovedPhoto ? photos[client.photoKey] : client.fallbackImage;
+                    return imageSrc ? (
+                      <>
+                        <img src={imageSrc} alt={hasApprovedPhoto ? client.name + " photo" : client.name + " industry capability illustration"} loading="lazy" />
+                        {!hasApprovedPhoto && <div className="image-caption">{client.imageCaption}</div>}
+                      </>
+                    ) : <div className="photo-placeholder" aria-hidden="true">{client.initials}</div>;
+                  })()}
                 </div>
                 <div className="client-body">
                   <div className="client-sector">{client.sector}</div>
