@@ -16,7 +16,12 @@ function number(value: unknown) {
   return Number(value ?? 0).toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 
-function metric(value: number | null | undefined) {\n  return value == null ? "Not available" : number(value);\n}\n\nfunction bytes(value: number | null | undefined) {\n  if (value == null) return "Not available";
+function metric(value: number | null | undefined) {
+  return value == null ? "Not available" : number(value);
+}
+
+function bytes(value: number | null | undefined) {
+  if (value == null) return "Not available";
   if (!Number.isFinite(value) || value <= 0) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];
   const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
