@@ -30,11 +30,19 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL("/admin/login?google_error=unavailable", req.url));
   }
 
+  // OAuth state cookies are host-scoped. When a visitor starts Google sign-in
+  // from a Vercel preview URL, move the browser to the canonical site first so
+  // both the state cookie and Google's callback stay on the same production host.
+  const canonicalOrigin = publicOrigin(req);
+  if (new URL(req.url).origin !== canonicalOrigin) {
+    return NextResponse.redirect(new URL("/api/auth/admin/google", canonicalOrigin), 307);
+  }
+
   const state = randomBytes(32).toString("base64url");
   const nonce = randomBytes(32).toString("base64url");
   const verifier = randomBytes(48).toString("base64url");
   const challenge = createHash("sha256").update(verifier).digest("base64url");
-  const redirectUri = `${publicOrigin(req)}/api/auth/admin/google/callback`;
+  const redirectUri = `${canonicalOrigin}/api/auth/admin/google/callback`;
 
   (await cookies()).set(COOKIE, JSON.stringify({ state, nonce, verifier }), {
     httpOnly: true,
