@@ -21,20 +21,28 @@ function logMissingConfig(where: string, clientId?: string, clientSecret?: strin
 export async function GET(req: Request) {
   const limited = rateLimitRequest(req, "admin-google-start", 20, 15 * 60_000);
   if (limited) return limited;
+  // Preview deployments must hand off to the canonical host before checking
+  // credentials or setting the OAuth state cookie. OAuth is configured on the
+  // production deployment, and cookies cannot be shared across preview hosts.
+  const canonicalOrigin = publicOrigin(req);
+  if (new URL(req.url).origin !== canonicalOrigin) {
+    return NextResponse.redirect(new URL("/api/auth/admin/google", canonicalOrigin), 307);
+  }
+
   await loadConfig().catch(() => {});
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const allowed = (process.env.ADMIN_GOOGLE_EMAILS || "").split(",").map((v) => v.trim().toLowerCase()).filter(Boolean);
   if (!clientId || !clientSecret || allowed.length === 0) {
     logMissingConfig("start", clientId, clientSecret, allowed.length);
-    return NextResponse.redirect(new URL("/admin/login?google_error=unavailable", req.url));
+    return NextResponse.redirect(new URL("/admin/login?google_error=unavailable", canonicalOrigin));
   }
 
   const state = randomBytes(32).toString("base64url");
   const nonce = randomBytes(32).toString("base64url");
   const verifier = randomBytes(48).toString("base64url");
   const challenge = createHash("sha256").update(verifier).digest("base64url");
-  const redirectUri = `${publicOrigin(req)}/api/auth/admin/google/callback`;
+  const redirectUri = `${canonicalOrigin}/api/auth/admin/google/callback`;
 
   (await cookies()).set(COOKIE, JSON.stringify({ state, nonce, verifier }), {
     httpOnly: true,
