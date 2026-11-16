@@ -1450,12 +1450,20 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){
     rec.start();
   });}
   var spk=document.getElementById('neas-chat-speak');
-  var _elAudio=null,_elPlaying=false,_elGreetingPending=true;
+  var _elAudio=null,_elPlaying=false,_elGreetingPending=true,_elGreetingInFlight=false,_elGreetingRetryAvailable=true;
   function _elStop(){if(_elAudio){_elAudio.pause();_elAudio.src='';_elAudio=null;}_elPlaying=false;if(spk)spk.style.background='';}
   function _elSpeak(text,isGreeting){
+    if(isGreeting){
+      if(_elGreetingInFlight)return;
+      _elGreetingInFlight=true;
+      _elGreetingPending=false;
+    }
     _elStop();
     var clean=text.replace(/[*_#`]/g,'').trim();
-    if(!clean)return;
+    if(!clean){
+      if(isGreeting){_elGreetingInFlight=false;_elGreetingRetryAvailable=false;}
+      return;
+    }
     _elPlaying=true;
     if(spk){spk.style.background='#7c3aed';}
     fetch('/api/elevenlabs-tts',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:clean})})
@@ -1465,17 +1473,33 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){
         _elAudio=new Audio(url);
         _elAudio.onended=function(){URL.revokeObjectURL(url);_elStop();};
         _elAudio.onerror=function(){URL.revokeObjectURL(url);_elStop();};
-        return _elAudio.play().then(function(){if(isGreeting)_elGreetingPending=false;});
+        return _elAudio.play().then(function(){
+          if(isGreeting){
+            _elGreetingPending=false;
+            _elGreetingInFlight=false;
+            _elGreetingRetryAvailable=false;
+          }
+        });
       })
-      .catch(function(){_elStop();if(isGreeting)_elGreetingPending=true;});
+      .catch(function(){
+        _elStop();
+        if(isGreeting){
+          _elGreetingInFlight=false;
+          _elGreetingPending=_elGreetingRetryAvailable;
+        }
+      });
   }
-  // Attempt the NEAS welcome greeting on page load. Browsers may block audible autoplay;
-  // if blocked, retry after the visitor's first click/tap/key interaction.
-  _elSpeak(MSGS[0].content,true);
+  // Attempt the NEAS welcome greeting on page load. If autoplay is blocked or
+  // the service is temporarily unavailable, allow at most one retry after interaction.
   function _elResumeGreeting(){
-    if(!_elGreetingPending)return;
+    if(!_elGreetingPending||_elGreetingInFlight||!_elGreetingRetryAvailable)return;
+    _elGreetingRetryAvailable=false;
+    _elGreetingPending=false;
+    document.removeEventListener('pointerdown',_elResumeGreeting,true);
+    document.removeEventListener('keydown',_elResumeGreeting,true);
     _elSpeak(MSGS[0].content,true);
   }
+  _elSpeak(MSGS[0].content,true);
   document.addEventListener('pointerdown',_elResumeGreeting,true);
   document.addEventListener('keydown',_elResumeGreeting,true);
   if(spk){spk.style.display='block';spk.addEventListener('click',function(){
