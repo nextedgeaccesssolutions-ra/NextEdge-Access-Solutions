@@ -6,8 +6,8 @@ import { decryptConfigBlob, decryptConfigObject, encryptConfigBlob } from "./con
 const envKeys = ["CONFIG_ENCRYPTION_KEY", "DATABASE_URL", "POSTGRES_URL", "SESSION_SECRET"] as const;
 const originalEnv = new Map<string, string | undefined>();
 
-function legacyEncrypt(plaintext: string): string {
-  const base = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SESSION_SECRET || "neas";
+function legacyEncrypt(plaintext: string, credential?: string): string {
+  const base = credential ?? process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? process.env.SESSION_SECRET ?? "neas";
   const key = createHash("sha256").update("neas-config-v1:" + base).digest();
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
@@ -56,6 +56,14 @@ describe("admin integration settings encryption", () => {
     process.env.DATABASE_URL = "postgres://legacy-user:legacy-password@db.example.test/neas";
     const legacy = legacyEncrypt(JSON.stringify({ LINKEDIN_CLIENT_SECRET: "legacy-value" }));
     process.env.CONFIG_ENCRYPTION_KEY = "b".repeat(64);
+    expect(decryptConfigObject(legacy)).toEqual({ LINKEDIN_CLIENT_SECRET: "legacy-value" });
+  });
+
+  it("tries the previous Postgres credential when DATABASE_URL has rotated", () => {
+    const previousUrl = "postgres://previous-user:previous-password@old-db.example.test/neas";
+    process.env.DATABASE_URL = "postgres://current-user:current-password@new-db.example.test/neas";
+    process.env.POSTGRES_URL = previousUrl;
+    const legacy = legacyEncrypt(JSON.stringify({ LINKEDIN_CLIENT_SECRET: "legacy-value" }), previousUrl);
     expect(decryptConfigObject(legacy)).toEqual({ LINKEDIN_CLIENT_SECRET: "legacy-value" });
   });
 
