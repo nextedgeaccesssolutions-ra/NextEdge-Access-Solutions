@@ -1428,6 +1428,8 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){
       var j=await r.json();
       var reply=j.reply||'I\'m having trouble right now. Please contact us at sales@nextedge-access-solutions.com or call +63 991 426 5886.';
       removeDots();MSGS.push({role:'assistant',content:reply});bubble(MSGS[MSGS.length-1]);
+      // Automatically speak each homepage chatbot reply using the NEAS ElevenLabs voice.
+      _elSpeak(reply);
       if(!open)unread.style.display='block';
       if(userCount>=2)contactEl.style.display='block';
     }catch(e){
