@@ -33,7 +33,7 @@ export default function ChatBot() {
   useEffect(() => {
     setVoiceSupported(Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition));
   }, []);
-  const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -42,52 +42,70 @@ export default function ChatBot() {
     }
   }, [open, msgs]);
 
-  // Stop speech when chat closes
+  // Stop ElevenLabs playback when the chat closes or the component unmounts.
   useEffect(() => {
-    if (!open && speaking) {
-      window.speechSynthesis?.cancel();
+    if (!open && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
       setSpeaking(false);
     }
-  }, [open, speaking]);
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
+    };
+  }, [open]);
 
-  const speak = useCallback((text: string) => {
-    if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
-      setVoiceError("Audio playback is not supported in this browser. Please use the text response.");
-      return;
+  const speak = useCallback(async (text: string) => {
+    const clean = text.replace(/[*_#`]/g, "").replace(/\n+/g, ". ").trim();
+    if (!clean) return;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
     }
+    setVoiceError("");
+    setSpeaking(true);
     try {
-      window.speechSynthesis.cancel();
-      const clean = text.replace(/[*_#`]/g, "").replace(/\n+/g, ". ").trim();
-      if (!clean) return;
-      const utter = new SpeechSynthesisUtterance(clean);
-      utter.lang = "en-PH";
-      utter.rate = 0.95;
-      utter.pitch = 1.05;
-      utter.volume = 1;
-      const voices = window.speechSynthesis.getVoices();
-      const preferred = voices.find(v => v.lang.toLowerCase() === "en-ph")
-        || voices.find(v => v.lang.toLowerCase().startsWith("en"))
-        || voices[0];
-      if (preferred) utter.voice = preferred;
-      utter.onstart = () => { setSpeaking(true); setVoiceError(""); };
-      utter.onend = () => setSpeaking(false);
-      utter.onerror = (event) => {
+      const response = await fetch("/api/elevenlabs-tts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: clean }),
+      });
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({}));
+        throw new Error(typeof detail.error === "string" ? detail.error : "ElevenLabs audio request failed");
+      }
+      const audioUrl = URL.createObjectURL(await response.blob());
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        if (audioRef.current === audio) audioRef.current = null;
         setSpeaking(false);
-        if (event.error !== "canceled" && event.error !== "interrupted") {
-          setVoiceError("Audio playback could not start. Check your device volume and try again.");
-        }
       };
-      synthRef.current = utter;
-      window.speechSynthesis.speak(utter);
-      window.speechSynthesis.resume();
-    } catch {
+      audio.onerror = () => {
+        URL.revokeObjectURL(audioUrl);
+        if (audioRef.current === audio) audioRef.current = null;
+        setSpeaking(false);
+        setVoiceError("ElevenLabs audio playback failed. Please try again.");
+      };
+      await audio.play();
+    } catch (error) {
       setSpeaking(false);
-      setVoiceError("Audio playback could not start. Please try again.");
+      setVoiceError(error instanceof Error ? error.message : "ElevenLabs voice service is unavailable.");
     }
   }, []);
 
   const stopSpeaking = () => {
-    window.speechSynthesis?.cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
     setSpeaking(false);
   };
 
@@ -163,6 +181,8 @@ export default function ChatBot() {
         j.reply ||
         `I'm here to help! For immediate assistance, call us at ${PHONE_PRIMARY} or WhatsApp us. Our team is ready to assist you.`;
       setMsgs([...newMsgs, { role: "assistant", content: reply }]);
+      // Automatically speak every assistant response with the configured NEAS ElevenLabs voice.
+      void speak(reply);
       if (!open) setUnread(true);
       if (newMsgs.filter((m) => m.role === "user").length >= 2) setShowContact(true);
     } catch {
