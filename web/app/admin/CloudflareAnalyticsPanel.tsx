@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-type Bucket = { hour: string; requests: number; cachedRequests: number; bytes: number; threats: number };
+type Bucket = { hour: string; requests: number; cachedRequests: number | null; bytes: number; threats: number | null };
 type Data = {
   configured: boolean;
   missing?: string[];
   fetchedAt?: string;
   period?: { start: string; end: string };
-  totals?: { requests: number; cachedRequests: number; bytes: number; cachedBytes: number; threats: number; pageViews: number; cacheHitRate: number };
+  totals?: { requests: number; cachedRequests: number | null; bytes: number; cachedBytes: number | null; threats: number | null; pageViews: number; cacheHitRate: number | null };
   series?: Bucket[];
 };
 
@@ -16,7 +16,7 @@ function number(value: unknown) {
   return Number(value ?? 0).toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 
-function bytes(value: number) {
+function metric(value: number | null | undefined) {\n  return value == null ? "Not available" : number(value);\n}\n\nfunction bytes(value: number | null | undefined) {\n  if (value == null) return "Not available";
   if (!Number.isFinite(value) || value <= 0) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];
   const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
@@ -91,9 +91,9 @@ export default function CloudflareAnalyticsPanel() {
         <Metric label="HTTP REQUESTS" value={number(totals?.requests)} note="Last 24 hours" />
         <Metric label="PAGEVIEWS" value={number(totals?.pageViews)} note="Cloudflare edge estimate" />
         <Metric label="DATA TRANSFER" value={bytes(totals?.bytes ?? 0)} note="Response bytes" />
-        <Metric label="CACHED REQUESTS" value={number(totals?.cachedRequests)} note="Served from cache" />
-        <Metric label="CACHE HIT RATE" value={number(totals?.cacheHitRate) + "%"} note="Cached / total requests" />
-        <Metric label="THREATS" value={number(totals?.threats)} note="Threat events reported in request aggregates" />
+        <Metric label="CACHED REQUESTS" value={metric(totals?.cachedRequests)} note="Not provided by the current traffic query" />
+        <Metric label="CACHE HIT RATE" value={totals?.cacheHitRate == null ? "Not available" : number(totals.cacheHitRate) + "%"} note="Requires a separate cache-status query" />
+        <Metric label="THREATS" value={metric(totals?.threats)} note="Requires a separate firewall-events query" />
       </div>
 
       <div style={{ marginTop: 22, border: "1px solid var(--line)", borderRadius: 12, padding: 16 }}>
@@ -104,9 +104,9 @@ export default function CloudflareAnalyticsPanel() {
             <tbody>{[...data.series].reverse().map((item) => <tr key={item.hour}>
               <td style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)", whiteSpace: "nowrap" }}>{item.hour ? new Date(item.hour).toLocaleString("en-PH", { timeZone: "Asia/Manila", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}</td>
               <td style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)" }}>{number(item.requests)}</td>
-              <td style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)" }}>{number(item.cachedRequests)}</td>
+              <td style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)" }}>{metric(item.cachedRequests)}</td>
               <td style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)" }}>{bytes(item.bytes)}</td>
-              <td style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)" }}>{number(item.threats)}</td>
+              <td style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)" }}>{metric(item.threats)}</td>
             </tr>)}</tbody>
           </table>
         </div> : <p className="muted" style={{ fontSize: 13 }}>No hourly traffic data returned for this period.</p>}
