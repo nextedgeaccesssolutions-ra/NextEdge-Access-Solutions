@@ -83,8 +83,11 @@ describe("admin integration settings encryption", () => {
   it("rejects tampered ciphertext instead of returning an empty settings object", () => {
     process.env.CONFIG_ENCRYPTION_KEY = "d".repeat(64);
     const blob = encryptConfigBlob(JSON.stringify({ RESEND_API_KEY: "test-value" }));
-    const tampered = blob.slice(0, -1) + (blob.endsWith("A") ? "B" : "A");
-    expect(() => decryptConfigObject(tampered)).toThrow();
+    const parts = blob.split(".");
+    const ciphertext = Buffer.from(parts[3], "base64url");
+    ciphertext[0] ^= 1;
+    parts[3] = ciphertext.toString("base64url");
+    expect(() => decryptConfigObject(parts.join("."))).toThrow();
   });
 
   it("does not swallow saved-settings decryption failures before an admin save", () => {
