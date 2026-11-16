@@ -26,7 +26,6 @@ export const CONFIG_KEYS: { key: string; label: string; group: string; secret: b
   { key: "WHATSAPP_TOKEN", label: "WhatsApp permanent access token", group: "WhatsApp", secret: true },
   { key: "WHATSAPP_PHONE_NUMBER_ID", label: "WhatsApp phone number ID", group: "WhatsApp", secret: false },
   { key: "WHATSAPP_VERIFY_TOKEN", label: "WhatsApp webhook verify token (any phrase)", group: "WhatsApp", secret: true },
-  { key: "CRON_SECRET", label: "Scheduler secret (16+ characters, optional)", group: "Scheduler", secret: true },
   { key: "MK_MEMBER_FEE", label: "Member monthly fee in ₱ (default 100)", group: "Members", secret: false },
   { key: "MK_MEMBER_DAILY_LIMIT", label: "Member posts per day (default 10)", group: "Members", secret: false },
 ];
