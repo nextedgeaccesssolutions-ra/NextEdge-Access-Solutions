@@ -76,14 +76,19 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
             <label className="btn btn-ghost" style={{ cursor: "pointer" }}>Upload / Replace<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={async (e) => {
               const file = e.target.files?.[0]; e.target.value = ""; if (!file) return;
               if (file.size > 3 * 1024 * 1024) { setMsg("Each photo must be 3 MB or smaller."); return; }
-              const fd = new FormData(); fd.append("file", file); setMsg("Uploading " + label + "…");
-              const response = await fetch("/api/admin/upload", { method: "POST", body: fd });
-              const result = await response.json().catch(() => ({}));
-              if (response.ok && result.url) {
+              const fd = new FormData(); fd.append("file", file); setBusy(true); setMsg("Uploading " + label + "…");
+              try {
+                const response = await fetch("/api/admin/upload", { method: "POST", body: fd });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || !result.url) throw new Error(result.error || "Photo upload failed.");
                 setSitePhotos((current) => ({ ...current, [key]: result.url }));
                 setPhotoUrlDrafts((current) => ({ ...current, [key]: result.url }));
                 setMsg(label + " uploaded. Click Save Photos to publish it.");
-              } else setMsg(result.error || "Photo upload failed.");
+              } catch (error) {
+                setMsg(error instanceof Error ? error.message : "Photo upload failed. Check your connection and try again.");
+              } finally {
+                setBusy(false);
+              }
             }} /></label>
             <button type="button" className="btn btn-ghost" onClick={() => {
               setSitePhotos((current) => ({ ...current, [key]: fallback }));
@@ -93,18 +98,18 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
             <input className="input" type="url" aria-label={`Image URL for ${label}`} placeholder="Paste public image URL (https://…)" value={photoUrlDrafts[key] ?? sitePhotos[key] ?? ""} onChange={(e) => setPhotoUrlDrafts((current) => ({ ...current, [key]: e.target.value }))} style={{ flex: "1 1 220px", minWidth: 0 }} />
-            <button type="button" className="btn btn-ghost" disabled={busy} onClick={async () => {
+            <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => {
               // The field displays the current image when no draft exists; use that same value on click.
               const value = (photoUrlDrafts[key] ?? sitePhotos[key] ?? "").trim();
               let parsed: URL;
               try { parsed = new URL(value); } catch { setMsg("Enter a valid image URL for " + label + "."); return; }
               if (parsed.protocol !== "https:") { setMsg("Image URLs must use HTTPS."); return; }
-              setMsg("Checking image URL…");
-              const validImage = await new Promise<boolean>((resolve) => { const image = new Image(); image.onload = () => resolve(image.naturalWidth > 0); image.onerror = () => resolve(false); image.src = value; });
-              if (!validImage) { setMsg("The URL did not load as an image. Use a public direct image URL."); return; }
+              if (!parsed.hostname || parsed.username || parsed.password) { setMsg("Enter a public image URL without sign-in credentials."); return; }
+              // Do not pre-load the remote image here: hotlink protection and cross-origin policies
+              // can reject a probe even when the URL itself is a valid public image.
               setSitePhotos((current) => ({ ...current, [key]: value }));
               setPhotoUrlDrafts((current) => ({ ...current, [key]: value }));
-              setMsg(label + " URL added. Click Save Photos to publish it.");
+              setMsg(label + " URL applied. Check the preview, then click Save Photos to publish it.");
             }}>Use URL</button>
           </div>
         </div>)}
