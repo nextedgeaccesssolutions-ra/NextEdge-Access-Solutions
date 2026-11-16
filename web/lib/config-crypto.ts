@@ -20,9 +20,13 @@ function dedicatedKey(): Buffer {
 /**
  * Compatibility key for ciphertext written before CONFIG_ENCRYPTION_KEY existed.
  * It is decrypt-only: all new writes require the independent deployment secret.
+ * Never retain the historical hardcoded "neas" fallback as a migration key.
  */
 function legacyKey(): Buffer {
-  const base = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SESSION_SECRET || "neas";
+  const base = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SESSION_SECRET;
+  if (!base) {
+    throw new Error("Cannot decrypt legacy integration settings without the original deployment credential.");
+  }
   return createHash("sha256").update("neas-config-v1:" + base).digest();
 }
 
