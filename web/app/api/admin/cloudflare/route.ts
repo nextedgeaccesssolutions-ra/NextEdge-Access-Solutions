@@ -145,7 +145,7 @@ export async function GET() {
         ...new Set(
           (discovery.payload.data.viewer?.zones ?? [])
             .map((zone) => zone.zoneTag)
-            .filter((value): value is string => Boolean(value) && /^[a-f0-9]{32}$/i.test(value)),
+            .filter((value): value is string => typeof value === "string" && /^[a-f0-9]{32}$/i.test(value)),
         ),
       ];
 
