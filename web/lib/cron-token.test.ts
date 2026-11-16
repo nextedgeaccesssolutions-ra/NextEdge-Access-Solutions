@@ -39,7 +39,7 @@ describe("scheduled-publishing credential", () => {
     const config = readFileSync(new URL("./config.ts", import.meta.url), "utf8");
     const marketingUi = readFileSync(new URL("../app/admin/marketing/MarketingClient.tsx", import.meta.url), "utf8");
 
-    expect(config).not.toMatch(/key:\\s*"CRON_SECRET"/);
+    expect(config).not.toMatch(/key:\s*"CRON_SECRET"/);
     expect(marketingUi).toContain("scheduled publishing is disabled (HTTP 503)");
     expect(marketingUi).not.toContain("token fallback remains in use");
   });
