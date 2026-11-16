@@ -22,9 +22,8 @@ const QUERY = `
   query NeasZoneTraffic($zoneTag: String!, $start: Time!, $end: Time!) {
     viewer {
       zones(filter: { zoneTag: $zoneTag }) {
-        httpRequests1hGroups(
+        httpRequestsAdaptiveGroups(
           limit: 48
-          orderBy: [datetimeHour_ASC]
           filter: {
             datetime_geq: $start
             datetime_lt: $end
