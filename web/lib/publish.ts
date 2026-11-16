@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { sql } from "./db";
 import { publishTo } from "./social";
 import { logActivity, inWs, memberLimit } from "./marketing";
@@ -44,11 +43,4 @@ export async function publishPost(id: number, userId: number | null, origin: str
   await logActivity(userId as number, (userId ? "" : "auto-") + (allOk ? "published" : "publish failed"), out.map((r) => `${r.platform}${r.name ? " (" + r.name + ")" : ""}: ${r.ok ? "ok" : r.error}`).join("; "), id, post.ws);
   if (!allOk && post.ws == null) await notifyApproval(id, "failed", out.filter((r) => !r.ok).map((r) => `${r.platform}: ${r.error}`).join("; ")).catch(() => {});
   return { allOk, results: out };
-}
-
-/** Secret for the scheduler URL. Uses CRON_SECRET when set; otherwise derived from the session secret. */
-export function cronToken() {
-  if (process.env.CRON_SECRET && process.env.CRON_SECRET.length >= 16) return process.env.CRON_SECRET;
-  const base = process.env.SESSION_SECRET || process.env.DATABASE_URL || process.env.POSTGRES_URL || "";
-  return createHash("sha256").update("neas-cron-v1:" + base).digest("hex").slice(0, 40);
 }
