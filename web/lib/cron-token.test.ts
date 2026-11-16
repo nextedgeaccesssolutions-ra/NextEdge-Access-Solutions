@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cronToken } from "./cron-token";
 
@@ -32,6 +33,15 @@ describe("scheduled-publishing credential", () => {
     process.env.DATABASE_URL = "postgres://user:password@db.example.test/neas";
     process.env.POSTGRES_URL = "postgres://user:password@db.example.test/neas";
     expect(cronToken()).toBeNull();
+  });
+
+  it("keeps CRON_SECRET deployment-managed and reports missing configuration accurately", () => {
+    const config = readFileSync(new URL("./config.ts", import.meta.url), "utf8");
+    const marketingUi = readFileSync(new URL("../app/admin/marketing/MarketingClient.tsx", import.meta.url), "utf8");
+
+    expect(config).not.toMatch(/key:\\s*"CRON_SECRET"/);
+    expect(marketingUi).toContain("scheduled publishing is disabled (HTTP 503)");
+    expect(marketingUi).not.toContain("token fallback remains in use");
   });
 
   it("rejects a short CRON_SECRET and does not fall back to database or session credentials", () => {
