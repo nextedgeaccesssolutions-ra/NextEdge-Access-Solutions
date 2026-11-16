@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getSetting, DEFAULT_SEO, DEFAULT_SOCIAL, DEFAULT_BUSINESS, type Seo, type Social, type Business } from "./settings";
 import { getServiceMeta } from "./services";
-import { replaceSideSocialAnchor, safeHttpsUrl, safeImageUrl } from "./html-safety";
+import { addAccessibleLabelsToSideSocialAnchors, appendAfterSideSocialAnchor, replaceSideSocialAnchor, safeHttpsUrl, safeImageUrl } from "./html-safety";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 let cached: string | null = null;
@@ -126,13 +126,9 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
     googleBusinessUrl && `<a class="side-social" href="${esc(googleBusinessUrl)}" target="_blank" rel="noopener" title="Google Business"><b style="font:700 15px/1 Arial">G</b></a>`,
     xUrl && `<a class="side-social" href="${esc(xUrl)}" target="_blank" rel="noopener" title="X"><b style="font:700 15px/1 Arial">𝕏</b></a>`,
   ].filter(Boolean).join("");
-  if (extra) html = html.replace(/(<a class="side-social"[^>]*title="TikTok"[\s\S]*?<\/a>)/, `$1${extra}`);
+  if (extra) html = appendAfterSideSocialAnchor(html, "TikTok", extra);
   // Give icon-only social links a crawlable text label and an accessible name.
-  html = html.replace(/(<a\b[^>]*class="side-social"[^>]*title="([^"]+)"[^>]*>)([\s\S]*?)(<\/a>)/g, (_match, open, label, inner, close) => {
-    const namedOpen = /aria-label=/.test(open) ? open : open.replace(/>$/, ` aria-label="${esc(label)}">`);
-    const hiddenLabel = `<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">${esc(label)}</span>`;
-    return namedOpen + inner + hiddenLabel + close;
-  });
+  html = addAccessibleLabelsToSideSocialAnchors(html);
   const googleReviewUrl = safeHttpsUrl(social.googleReview);
   if (googleReviewUrl) html = html.replace('<div class="footer-bottom">', `<div style="text-align:center;margin:0 0 14px"><a href="${esc(googleReviewUrl)}" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:999px;padding:8px 16px;font-weight:700;font-size:13px;text-decoration:none">⭐ Review us on Google</a></div><div class="footer-bottom">`);
   return html;

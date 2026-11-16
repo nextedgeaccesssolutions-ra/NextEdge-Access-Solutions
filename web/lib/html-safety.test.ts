@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { replaceSideSocialAnchor, safeHttpsUrl, safeImageUrl } from "./html-safety";
+import { addAccessibleLabelsToSideSocialAnchors, appendAfterSideSocialAnchor, replaceSideSocialAnchor, safeHttpsUrl, safeImageUrl } from "./html-safety";
 
 describe("safeHttpsUrl", () => {
   it("accepts HTTPS URLs and normalizes them", () => {
@@ -50,5 +50,51 @@ describe("replaceSideSocialAnchor", () => {
       `<a class="side-social" href="#" title="Other${index}">x</a>`,
     ).join("");
     expect(replaceSideSocialAnchor(repeated, "Facebook", "https://example.com")).toBe(repeated);
+  });
+});
+
+describe("appendAfterSideSocialAnchor", () => {
+  it("inserts additional links immediately after the requested social anchor", () => {
+    const html =
+      '<a class="side-social" href="#" title="Facebook">f</a>' +
+      '<a class="side-social" href="#" title="TikTok">t</a>' +
+      '<a class="side-social" href="#" title="LinkedIn">in</a>';
+    const extra = '<a class="side-social" href="https://example.com" title="X">𝕏</a>';
+    expect(appendAfterSideSocialAnchor(html, "TikTok", extra)).toBe(
+      '<a class="side-social" href="#" title="Facebook">f</a>' +
+      '<a class="side-social" href="#" title="TikTok">t</a>' +
+      extra +
+      '<a class="side-social" href="#" title="LinkedIn">in</a>',
+    );
+  });
+
+  it("leaves markup unchanged when the target anchor is missing", () => {
+    const html = '<a class="side-social" href="#" title="Facebook">f</a>';
+    expect(appendAfterSideSocialAnchor(html, "TikTok", "<span>extra</span>")).toBe(html);
+  });
+});
+
+describe("addAccessibleLabelsToSideSocialAnchors", () => {
+  it("adds an escaped accessible name and visually hidden label from each title", () => {
+    const html = '<a class="side-social" href="#" title="Facebook">f</a>';
+    const result = addAccessibleLabelsToSideSocialAnchors(html);
+    expect(result).toContain('title="Facebook" aria-label="Facebook"');
+    expect(result).toContain(">Facebook</span>");
+  });
+
+  it("preserves existing aria-label values and unrelated anchors", () => {
+    const html =
+      '<a class="side-social" href="#" title="Facebook" aria-label="NEAS Facebook">f</a>' +
+      '<a class="ordinary-link" href="/about">About</a>';
+    expect(addAccessibleLabelsToSideSocialAnchors(html)).toBe(html);
+  });
+
+  it("handles long repeated social markup with a deterministic scan", () => {
+    const repeated = Array.from({ length: 3000 }, (_, index) =>
+      '<a class="side-social" href="#" title="Social' + index + '">x</a>',
+    ).join("");
+    const result = addAccessibleLabelsToSideSocialAnchors(repeated);
+    expect(result).toContain('aria-label="Social2999"');
+    expect(appendAfterSideSocialAnchor(repeated, "TikTok", "<span>extra</span>")).toBe(repeated);
   });
 });

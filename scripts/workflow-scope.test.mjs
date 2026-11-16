@@ -87,13 +87,30 @@ test("platform-specific workflows are not enabled without all required project m
   }
 });
 
-test("the maintained NEAS CI and CodeQL workflows remain present", () => {
+test("maintained NEAS CI and CodeQL evidence remain enabled without a duplicate SARIF uploader", () => {
   assert.ok(
     existsSync(workflow("ci.yml")),
     "NEAS CI workflow must remain enabled"
   );
   assert.ok(
+    existsSync(workflow("codeql-evidence.yml")),
+    "NEAS CodeQL evidence workflow must remain enabled"
+  );
+  assert.equal(
     existsSync(workflow("codeql.yml")),
-    "CodeQL workflow must remain enabled"
+    false,
+    "advanced CodeQL SARIF uploader conflicts with GitHub default CodeQL setup and must remain absent"
+  );
+
+  const evidenceWorkflow = readFileSync(workflow("codeql-evidence.yml"), "utf8");
+  assert.match(
+    evidenceWorkflow,
+    /upload:\s*never/,
+    "NEAS CodeQL evidence must not upload duplicate SARIF results"
+  );
+  assert.match(
+    evidenceWorkflow,
+    /workflow_dispatch:/,
+    "NEAS CodeQL evidence must remain manually dispatchable"
   );
 });
