@@ -46,20 +46,42 @@ export async function GET() {
     .trim()
     .replace(/^Bearer\s+/i, "")
     .replace(/^[\"']|[\"']$/g, "");
-  const zoneId = (process.env.CLOUDFLARE_ZONE_ID || "").trim();
+  const configuredZoneId = (process.env.CLOUDFLARE_ZONE_ID || "").trim();
+  const zoneName = (process.env.CLOUDFLARE_ZONE_NAME || "nextedge-access-solutions.com").trim();
 
-  if (!token || !zoneId) {
-    return ok({
-      configured: false,
-      missing: [
-        ...(!token ? ["CLOUDFLARE_API_TOKEN"] : []),
-        ...(!zoneId ? ["CLOUDFLARE_ZONE_ID"] : []),
-      ],
-    });
+  if (!token) {
+    return ok({ configured: false, missing: ["CLOUDFLARE_API_TOKEN"] });
   }
 
-  if (!/^[a-f0-9]{32}$/i.test(zoneId)) {
-    return bad("Invalid Cloudflare zone ID configuration.", 500);
+  // Prefer resolving the zone by its DNS name. This prevents an account ID or
+  // stale zone ID from silently breaking analytics after an environment change.
+  let zoneId = /^[a-f0-9]{32}$/i.test(configuredZoneId) ? configuredZoneId : "";
+  try {
+    const zonesResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/zones?name=${encodeURIComponent(zoneName)}&status=active`,
+      {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(8_000),
+      },
+    );
+    const zonesPayload = await zonesResponse.json().catch(() => null) as {
+      success?: boolean;
+      result?: Array<{ id?: string; name?: string }>;
+    } | null;
+    const matchingZone = zonesPayload?.result?.find((zone) => zone.name?.toLowerCase() === zoneName.toLowerCase());
+    if (zonesResponse.ok && zonesPayload?.success && matchingZone?.id && /^[a-f0-9]{32}$/i.test(matchingZone.id)) {
+      zoneId = matchingZone.id;
+    }
+  } catch (error) {
+    console.warn("[admin cloudflare] Zone-name lookup unavailable; using configured zone ID:", error);
+  }
+
+  if (!zoneId) {
+    return bad(
+      "Could not resolve the Cloudflare zone. Grant this API token Zone:Read and Analytics:Read for nextedge-access-solutions.com, or configure a valid CLOUDFLARE_ZONE_ID.",
+      503,
+    );
   }
 
   if (cachedResponse && cachedResponse.expiresAt > Date.now()) {
