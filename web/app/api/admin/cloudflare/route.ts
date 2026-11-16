@@ -4,14 +4,11 @@ import { bad, ok } from "@/lib/http";
 export const dynamic = "force-dynamic";
 
 type CloudflareBucket = {
+  count?: number;
   dimensions?: { datetimeHour?: string };
   sum?: {
-    requests?: number;
-    cachedRequests?: number;
-    bytes?: number;
-    cachedBytes?: number;
-    threats?: number;
-    pageViews?: number;
+    edgeResponseBytes?: number;
+    visits?: number;
   };
 };
 
@@ -30,14 +27,11 @@ const QUERY = `
             requestSource: "eyeball"
           }
         ) {
+          count
           dimensions { datetimeHour }
           sum {
-            requests
-            cachedRequests
-            bytes
-            cachedBytes
-            threats
-            pageViews
+            edgeResponseBytes
+            visits
           }
         }
       }
@@ -51,7 +45,7 @@ export async function GET() {
   const token = (process.env.CLOUDFLARE_API_TOKEN || "")
     .trim()
     .replace(/^Bearer\s+/i, "")
-    .replace(/^["']|["']$/g, "");
+    .replace(/^[\"']|[\"']$/g, "");
   const zoneId = (process.env.CLOUDFLARE_ZONE_ID || "").trim();
 
   if (!token || !zoneId) {
@@ -96,7 +90,7 @@ export async function GET() {
     });
 
     const payload = await response.json().catch(() => null) as {
-      data?: { viewer?: { zones?: Array<{ httpRequests1hGroups?: CloudflareBucket[] }> } };
+      data?: { viewer?: { zones?: Array<{ httpRequestsAdaptiveGroups?: CloudflareBucket[] }> } };
       errors?: Array<{ message?: string }>;
       success?: boolean;
     } | null;
@@ -115,17 +109,13 @@ export async function GET() {
       );
     }
 
-    const buckets = payload.data.viewer?.zones?.[0]?.httpRequests1hGroups ?? [];
+    const buckets = payload.data.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups ?? [];
     const totals = buckets.reduce((acc, bucket) => {
-      const sum = bucket.sum ?? {};
-      acc.requests += Number(sum.requests ?? 0);
-      acc.cachedRequests += Number(sum.cachedRequests ?? 0);
-      acc.bytes += Number(sum.bytes ?? 0);
-      acc.cachedBytes += Number(sum.cachedBytes ?? 0);
-      acc.threats += Number(sum.threats ?? 0);
-      acc.pageViews += Number(sum.pageViews ?? 0);
+      acc.requests += Number(bucket.count ?? 0);
+      acc.bytes += Number(bucket.sum?.edgeResponseBytes ?? 0);
+      acc.visits += Number(bucket.sum?.visits ?? 0);
       return acc;
-    }, { requests: 0, cachedRequests: 0, bytes: 0, cachedBytes: 0, threats: 0, pageViews: 0 });
+    }, { requests: 0, bytes: 0, visits: 0 });
 
     const result = {
       configured: true,
@@ -133,15 +123,22 @@ export async function GET() {
       fetchedAt: end.toISOString(),
       period: { start: start.toISOString(), end: end.toISOString() },
       totals: {
-        ...totals,
-        cacheHitRate: totals.requests > 0 ? Number(((totals.cachedRequests / totals.requests) * 100).toFixed(1)) : 0,
+        requests: totals.requests,
+        bytes: totals.bytes,
+        pageViews: totals.visits,
+        // These metrics are not provided by this Cloudflare dataset.
+        cachedRequests: null,
+        cachedBytes: null,
+        threats: null,
+        cacheHitRate: null,
       },
       series: buckets.map((bucket) => ({
         hour: bucket.dimensions?.datetimeHour ?? "",
-        requests: Number(bucket.sum?.requests ?? 0),
-        cachedRequests: Number(bucket.sum?.cachedRequests ?? 0),
-        bytes: Number(bucket.sum?.bytes ?? 0),
-        threats: Number(bucket.sum?.threats ?? 0),
+        requests: Number(bucket.count ?? 0),
+        bytes: Number(bucket.sum?.edgeResponseBytes ?? 0),
+        pageViews: Number(bucket.sum?.visits ?? 0),
+        cachedRequests: null,
+        threats: null,
       })),
     };
 
