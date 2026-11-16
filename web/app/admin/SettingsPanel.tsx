@@ -15,9 +15,9 @@ const PHOTO_FIELDS = [
   ["metMast", "Met Mast & Telecom photo", "Met mast and telecom card", "/img/0cc8f91dab71.jpg"],
   ["training", "Training & PPE photo", "Training and PPE card", "/img/390f5ed3244c.jpg"],
   ["windEnergy", "Wind Energy service photo", "Wind turbine service card", "/img/0ce37cb33507.jpg"],
-  ["clientTriconti", "Triconti ECC client photo", "Displayed on the Our Clients page", ""],
-  ["clientAtimonan", "Atimonan Windkraft client photo", "Displayed on the Our Clients page", ""],
-  ["clientPhilsurv", "Philsurv Geodetic Engineer photo", "Displayed on the Our Clients page", ""],
+  ["clientTriconti", "Triconti ECC client photo", "Displayed on the Our Clients page", "/img/hero-wind.jpg"],
+  ["clientAtimonan", "Atimonan Windkraft client photo", "Displayed on the Our Clients page", "/img/0ce37cb33507.jpg"],
+  ["clientPhilsurv", "Philsurv Geodetic Engineer photo", "Displayed on the Our Clients page", "/img/hero-metmast.jpg"],
 ] as const;
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
