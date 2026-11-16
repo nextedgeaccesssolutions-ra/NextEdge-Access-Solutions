@@ -100,6 +100,25 @@ export default function ChatBot() {
     }
   }, []);
 
+  // Automatically open the NEAS assistant and attempt a welcome announcement once per browser tab.
+  // Browsers may block audible autoplay until the visitor interacts; the speaker control remains available.
+  const autoWelcomeStarted = useRef(false);
+  useEffect(() => {
+    if (autoWelcomeStarted.current) return;
+    autoWelcomeStarted.current = true;
+    try {
+      if (window.sessionStorage.getItem("neas-auto-welcome-played") === "1") return;
+      window.sessionStorage.setItem("neas-auto-welcome-played", "1");
+    } catch {
+      // Continue without session storage when browser privacy settings block it.
+    }
+    setOpen(true);
+    const timer = window.setTimeout(() => {
+      void speak(WELCOME.content);
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [speak]);
+
   const stopSpeaking = () => {
     if (audioRef.current) {
       audioRef.current.pause();
