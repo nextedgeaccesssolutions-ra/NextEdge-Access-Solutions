@@ -2,9 +2,9 @@ name: NEAS CodeQL Evidence (no SARIF upload)
 
 on:
   push:
-    branches: ["fix/**"]
+    branches: ["main", "fix/**", "repair/**"]
+  # Include stacked repair PRs as well as PRs targeting main.
   pull_request:
-    branches: [main, "fix/scheduled-publish-rate-limit"]
   workflow_dispatch:
 
 permissions:
