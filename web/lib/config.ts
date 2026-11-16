@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { decryptConfigObject, encryptConfigBlob } from "./config-crypto";
 import { sql } from "./db";
 
 /** API keys and integration settings that admins manage in the Marketing Command Center (Settings & Logs).
@@ -32,19 +32,13 @@ export const CONFIG_KEYS: { key: string; label: string; group: string; secret: b
 const ALLOWED = new Set(CONFIG_KEYS.map((k) => k.key));
 const ORIGINAL: Record<string, string | undefined> = Object.fromEntries(CONFIG_KEYS.map((k) => [k.key, process.env[k.key]]));
 
-function key() {
-  const base = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SESSION_SECRET || "neas";
-  return createHash("sha256").update("neas-config-v1:" + base).digest();
-}
-const enc = (s: string) => { const iv = randomBytes(12), c = createCipheriv("aes-256-gcm", key(), iv); const d = Buffer.concat([c.update(s, "utf8"), c.final()]); return [iv, c.getAuthTag(), d].map((b) => b.toString("base64url")).join("."); };
-const dec = (s: string) => { const [iv, t, d] = s.split(".").map((x) => Buffer.from(x, "base64url")); const c = createDecipheriv("aes-256-gcm", key(), iv); c.setAuthTag(t); return Buffer.concat([c.update(d), c.final()]).toString("utf8"); };
 
 let cache: { at: number; vals: Record<string, string> } | null = null;
 async function readSaved(): Promise<Record<string, string>> {
-  const r = (await sql`select value from settings where key = 'integrations'`.catch(() => []))[0];
+  const r = (await sql`select value from settings where key = 'integrations'`)[0];
   const blob = r?.value as string | undefined;
   if (!blob) return {};
-  try { return JSON.parse(dec(blob)); } catch { return {}; }
+  return decryptConfigObject(blob);
 }
 function effectiveValue(k: string, vals: Record<string, string>) {
   // Website Google sign-in must use the deployment's explicitly configured OAuth
@@ -84,7 +78,7 @@ export async function saveConfig(changes: Record<string, string | null>) {
     const clean = typeof v === "string" ? v.trim().replace(/^["']|["']$/g, "").trim() : "";
     if (v === null || clean === "") delete vals[k]; else vals[k] = clean.slice(0, 4000);
   }
-  await sql`insert into settings (key, value) values ('integrations', ${enc(JSON.stringify(vals))}) on conflict (key) do update set value = excluded.value`;
+  await sql`insert into settings (key, value) values ('integrations', ${encryptConfigBlob(JSON.stringify(vals))}) on conflict (key) do update set value = excluded.value`;
   cache = null;
   await loadConfig(true);
 }
