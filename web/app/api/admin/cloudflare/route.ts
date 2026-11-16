@@ -16,7 +16,7 @@ type CloudflareBucket = {
 };
 
 const QUERY = `
-  query NeasZoneTraffic($zoneTag: string!, $start: Time!, $end: Time!) {
+  query NeasZoneTraffic($zoneTag: String!, $start: Time!, $end: Time!) {
     viewer {
       zones(filter: { zoneTag: $zoneTag }) {
         httpRequests1hGroups(
