@@ -690,7 +690,7 @@ function Automation({ s, can, run }: { s: State; can: Can; run: Run }) {
       <tr><td>Last run</td><td>{sc?.last?.at ? `${fmt(sc.last.at)} · ${sc.last.published ?? 0} published, ${sc.last.failed ?? 0} failed` : "Not run yet"}</td></tr>
       <tr><td>Store product batch</td><td>{sc?.last?.store?.error ? <span className="mk-warn">{sc.last.store.error}</span> : sc?.last?.store?.created ? `${sc.last.store.created} product posts created from ${sc.last.store.catalogCount ?? "the"} catalogue items` : sc?.last?.store?.skipped ?? "Waiting for the first enabled 8 PM run."}</td></tr>
       <tr><td>Daily run</td><td>8:00 PM Philippines time (12:00 UTC) after the staging changes are released to Production. Preview deployments do not execute Vercel Cron.</td></tr>
-      <tr><td>Scheduler secret</td><td>{sc?.hasCronSecret ? "CRON_SECRET is set." : "CRON_SECRET is not configured; the existing server-side token fallback remains in use."}</td></tr>
+      <tr><td>Scheduler secret</td><td>{sc?.hasCronSecret ? "CRON_SECRET is set." : "CRON_SECRET is not configured; scheduled publishing is disabled (HTTP 503) until a dedicated secret is set in Vercel."}</td></tr>
     </tbody></table>
     {sc?.url ? <div className="mk-row" style={{ marginTop: 8 }}><code style={{ wordBreak: "break-all", fontSize: 12, flex: 1, minWidth: 0 }}>{sc.url}</code><button type="button" className="mk-btn sm ghost" onClick={() => { navigator.clipboard?.writeText(sc.url).then(() => setCopied(true)).catch(() => {}); }}>{copied ? "Copied ✓" : "Copy"}</button></div>
       : <p className="mk-mini">Only marketing admins can see the scheduler address.</p>}
