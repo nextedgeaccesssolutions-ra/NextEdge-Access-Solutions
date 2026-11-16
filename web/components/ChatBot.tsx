@@ -30,6 +30,7 @@ export default function ChatBot() {
   const recognitionRef = useRef<any>(null);
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [voiceError, setVoiceError] = useState("");
+  const [needsAudioGesture, setNeedsAudioGesture] = useState(false);
   useEffect(() => {
     setVoiceSupported(Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition));
   }, []);
@@ -94,11 +95,44 @@ export default function ChatBot() {
         setVoiceError("ElevenLabs audio playback failed. Please try again.");
       };
       await audio.play();
+      setNeedsAudioGesture(false);
     } catch (error) {
       setSpeaking(false);
-      setVoiceError(error instanceof Error ? error.message : "ElevenLabs voice service is unavailable.");
+      // Keep generated audio ready when browser autoplay policy blocks sound.
+      if (audioRef.current) {
+        setNeedsAudioGesture(true);
+        setVoiceError("Your browser blocked automatic sound. Tap or click anywhere once to hear the NEAS welcome message.");
+      } else {
+        setVoiceError(error instanceof Error ? error.message : "ElevenLabs voice service is unavailable.");
+      }
     }
   }, []);
+
+  useEffect(() => {
+    if (!needsAudioGesture) return;
+    const resume = () => {
+      const audio = audioRef.current;
+      if (!audio) {
+        void speak(WELCOME.content);
+        setNeedsAudioGesture(false);
+        return;
+      }
+      // Invoke play directly from the visitor gesture to satisfy browser autoplay policy.
+      void audio.play().then(() => {
+        setNeedsAudioGesture(false);
+        setVoiceError("");
+        setSpeaking(true);
+      }).catch(() => {
+        setVoiceError("Audio is still blocked. Use the speaker button in the chat to play the welcome message.");
+      });
+    };
+    window.addEventListener("pointerdown", resume, { once: true, capture: true });
+    window.addEventListener("keydown", resume, { once: true, capture: true });
+    return () => {
+      window.removeEventListener("pointerdown", resume, true);
+      window.removeEventListener("keydown", resume, true);
+    };
+  }, [needsAudioGesture, speak]);
 
   // Automatically open the NEAS assistant and attempt a welcome announcement once per browser tab.
   // Browsers may block audible autoplay until the visitor interacts; the speaker control remains available.
@@ -106,13 +140,14 @@ export default function ChatBot() {
   useEffect(() => {
     if (autoWelcomeStarted.current) return;
     autoWelcomeStarted.current = true;
+    // Always open the assistant on page entry, even if the welcome was already played in this tab.
+    setOpen(true);
     try {
       if (window.sessionStorage.getItem("neas-auto-welcome-played") === "1") return;
       window.sessionStorage.setItem("neas-auto-welcome-played", "1");
     } catch {
       // Continue without session storage when browser privacy settings block it.
     }
-    setOpen(true);
     const timer = window.setTimeout(() => {
       void speak(WELCOME.content);
     }, 900);
