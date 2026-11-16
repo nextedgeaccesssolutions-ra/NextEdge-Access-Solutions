@@ -44,7 +44,7 @@ export async function GET() {
 
   const token = (process.env.CLOUDFLARE_API_TOKEN || "")
     .trim()
-    .replace(/^Bearer\\s+/i, "")
+    .replace(/^Bearer\s+/i, "")
     .replace(/^[\"']|[\"']$/g, "");
   const zoneId = (process.env.CLOUDFLARE_ZONE_ID || "").trim();
 
