@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { Seo, Social, Business } from "@/lib/settings";
+import { safeHttpsUrl, safeImageUrl } from "@/lib/html-safety";
 import AnalyticsPanel from "./AnalyticsPanel";
 import CloudflareAnalyticsPanel from "./CloudflareAnalyticsPanel";
 
@@ -42,6 +43,9 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
   const So = (k: keyof Social) => ({ value: social[k] ?? "", onChange: (e: React.ChangeEvent<HTMLInputElement>) => setSocial({ ...social, [k]: e.target.value }), type: "url", placeholder: "https://…" });
   const B = (k: keyof Business) => ({ value: biz[k] ?? "", onChange: (e: React.ChangeEvent<HTMLInputElement>) => setBiz({ ...biz, [k]: e.target.value }) });
   const titleLen = seo.title.length, descLen = seo.description.length;
+  const safeLogo = safeImageUrl(biz.logo);
+  const safeSemrushUrl = safeHttpsUrl(seo.semrushUrl);
+  const safeSitePhotos = Object.fromEntries(PHOTO_FIELDS.map(([key]) => [key, safeImageUrl(sitePhotos[key], "")])) as Record<string, string>;
 
   return <div className="wrap" style={{ padding: "0 20px 40px" }}>
     <div className="eyebrow" style={{ marginTop: 10 }}>Website settings</div>
@@ -60,7 +64,7 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 14 }}>
         {PHOTO_FIELDS.map(([key, label, hint, fallback]) => <div key={key} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12, minWidth: 0 }}>
           <b>{label}</b><p className="muted" style={{ fontSize: 12, margin: "3px 0 10px" }}>{hint}</p>
-          {sitePhotos[key] ? <img src={sitePhotos[key]} alt={label} style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: 8, background: "#eef2f4", border: "1px solid var(--line)" }} /> : <div style={{ width: "100%", height: 150, display: "grid", placeItems: "center", borderRadius: 8, background: "linear-gradient(135deg,#102b39,#091722)", border: "1px dashed var(--line)", color: "#d7ad68", fontWeight: 700, fontSize: 13 }}>No client photo uploaded</div>}
+          {safeSitePhotos[key] ? <img src={safeSitePhotos[key]} alt={label} style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: 8, background: "#eef2f4", border: "1px solid var(--line)" }} /> : <div style={{ width: "100%", height: 150, display: "grid", placeItems: "center", borderRadius: 8, background: "linear-gradient(135deg,#102b39,#091722)", border: "1px dashed var(--line)", color: "#d7ad68", fontWeight: 700, fontSize: 13 }}>No client photo uploaded</div>}
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
             <label className="btn btn-ghost" style={{ cursor: "pointer" }}>Upload / Replace<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={async (e) => {
               const file = e.target.files?.[0]; e.target.value = ""; if (!file) return;
@@ -94,7 +98,7 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
 
     {tab === "seo" && <div className="card" style={{ maxWidth: 820 }}>
       <div style={{ display: "flex", gap: 14, alignItems: "center", border: "1px solid var(--line)", borderRadius: 10, padding: 12, marginBottom: 14, flexWrap: "wrap" }}>
-        <img src={biz.logo || "/img/logo.png"} alt="Logo" style={{ width: 72, height: 72, objectFit: "contain", borderRadius: 10, background: "#f8fafc", border: "1px solid var(--line)" }} />
+        <img src={safeLogo} alt="Logo" style={{ width: 72, height: 72, objectFit: "contain", borderRadius: 10, background: "#f8fafc", border: "1px solid var(--line)" }} />
         <div style={{ flex: 1, minWidth: 220 }}>
           <b>Company logo</b>
           <div className="muted" style={{ fontSize: 12, margin: "2px 0 8px" }}>Used by Google (business logo in search), Facebook/LinkedIn link previews when no share image is set, and your Link-in-Bio page. Square PNG, at least 512×512.</div>
@@ -121,7 +125,7 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
       <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12, margin: "6px 0 12px", background: "#fff7ed" }}>
         <b>Semrush</b>
         <Field label="Semrush report link" hint="Paste your Semrush On-Page SEO Checker / Site Audit link. Opens from here in one click (you stay signed in to Semrush in your browser)."><input type="url" placeholder="https://www.semrush.com/on-page-seo-checker/…" {...S("semrushUrl")} /></Field>
-        {seo.semrushUrl && <a className="btn btn-ghost" href={seo.semrushUrl} target="_blank" rel="noopener">Open Semrush report ↗</a>}
+        {safeSemrushUrl && <a className="btn btn-ghost" href={safeSemrushUrl} target="_blank" rel="noopener">Open Semrush report ↗</a>}
         <Field label="Other verification tags (one per line, name=code)" hint="For Semrush, Yandex, Pinterest, Facebook domain verification, etc. Example: facebook-domain-verification=abc123"><textarea rows={3} placeholder="facebook-domain-verification=abc123" {...S("extraMeta")} /></Field>
       </div>
       <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14, margin: "6px 0 14px" }}><input type="checkbox" checked={seo.robotsIndex} onChange={(e) => setSeo({ ...seo, robotsIndex: e.target.checked })} /> Allow Google and other search engines to list the website</label>
@@ -131,7 +135,7 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
 
     {tab === "google" && <div className="card" style={{ maxWidth: 820 }}>
       <div style={{ display: "flex", gap: 14, alignItems: "center", border: "1px solid var(--line)", borderRadius: 10, padding: 12, marginBottom: 14, flexWrap: "wrap" }}>
-        <img src={biz.logo || "/img/logo.png"} alt="Logo" style={{ width: 72, height: 72, objectFit: "contain", borderRadius: 10, background: "#f8fafc", border: "1px solid var(--line)" }} />
+        <img src={safeLogo} alt="Logo" style={{ width: 72, height: 72, objectFit: "contain", borderRadius: 10, background: "#f8fafc", border: "1px solid var(--line)" }} />
         <div style={{ flex: 1, minWidth: 220 }}>
           <b>Company logo</b>
           <div className="muted" style={{ fontSize: 12, margin: "2px 0 8px" }}>Used by Google (business logo in search), Facebook/LinkedIn link previews when no share image is set, and your Link-in-Bio page. Square PNG, at least 512×512.</div>
@@ -160,7 +164,7 @@ export default function SettingsPanel(props: { seo: Seo; social: Social; busines
 
     {tab === "social" && <div className="card" style={{ maxWidth: 820 }}>
       <div style={{ display: "flex", gap: 14, alignItems: "center", border: "1px solid var(--line)", borderRadius: 10, padding: 12, marginBottom: 14, flexWrap: "wrap" }}>
-        <img src={biz.logo || "/img/logo.png"} alt="Logo" style={{ width: 72, height: 72, objectFit: "contain", borderRadius: 10, background: "#f8fafc", border: "1px solid var(--line)" }} />
+        <img src={safeLogo} alt="Logo" style={{ width: 72, height: 72, objectFit: "contain", borderRadius: 10, background: "#f8fafc", border: "1px solid var(--line)" }} />
         <div style={{ flex: 1, minWidth: 220 }}>
           <b>Company logo</b>
           <div className="muted" style={{ fontSize: 12, margin: "2px 0 8px" }}>Used by Google (business logo in search), Facebook/LinkedIn link previews when no share image is set, and your Link-in-Bio page. Square PNG, at least 512×512.</div>
