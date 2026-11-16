@@ -1180,12 +1180,26 @@ function openCheckout(){
    '<form id="sm-form" class="sm-form"><input name="name" placeholder="Full name / Company" required><input name="phone" placeholder="Mobile number" required><input name="email" type="email" placeholder="Email"><textarea name="addr" placeholder="Delivery address" rows="2" required></textarea><label class="sm-slip"><span>📎 Upload payment slip <small>(photo or PDF of your deposit/transfer receipt)</small></span><input type="file" name="slip" accept="image/*,application/pdf"></label><div class="sm-slip-prev" id="sm-slip-prev"></div>'+
    '<button type="submit" class="sp-buy">SEND ORDER</button></form><p class="sm-fine">Prices subject to stock confirmation. Payment is verified manually by NEAS before release.</p>');
   wireCopy();
-  var slipIn=MB.querySelector('input[name=slip]');slipIn.onchange=function(){var fl=slipIn.files[0],pv=$('sm-slip-prev');pv.innerHTML='';if(!fl)return;if(fl.size>10*1024*1024){pv.textContent='File is over 10 MB — please choose a smaller photo.';slipIn.value='';return}if(/^image\//.test(fl.type)){var im=document.createElement('img');im.src=URL.createObjectURL(fl);pv.appendChild(im)}var t=document.createElement('span');t.textContent='✓ '+fl.name;pv.appendChild(t)};
+  var slipIn=MB.querySelector('input[name=slip]');slipIn.onchange=function(){var fl=slipIn.files[0],pv=$('sm-slip-prev');pv.replaceChildren();if(!fl)return;if(fl.size>10*1024*1024){pv.textContent='File is over 10 MB — please choose a smaller photo.';slipIn.value='';return}if(/^image\//.test(fl.type)){var im=document.createElement('img');im.src=URL.createObjectURL(fl);pv.appendChild(im)}var t=document.createElement('span');t.textContent='✓ '+fl.name;pv.appendChild(t)};
   $('sm-form').onsubmit=function(e){e.preventDefault();var f=e.target;var slip=slipIn.files[0];
     var lines=Object.keys(cart).map(function(id){var p=byId(id);return '- '+cart[id]+' x '+p.name+(p.code?' ('+p.code+')':'')+' = '+peso(cart[id]*price(p))});
     var body='Order reference: '+ref+'\n\n'+lines.join('\n')+'\nTOTAL: '+peso(x.t)+'\n\nPayment: Bank transfer to '+BANK.bank+' '+BANK.acct+'\n\nName: '+f.name.value+'\nMobile: '+f.phone.value+'\nEmail: '+f.email.value+'\nDelivery address: '+f.addr.value;
     body+='\nPayment slip: '+(slip?'attached ('+slip.name+')':'to follow');
-    var done=function(how){MB.querySelector('.sm-form').outerHTML='<div class="sm-done">✓ Order '+how+'. Reference <b>'+ref+'</b>.'+(slip&&how!=='shared'?'<br><b>Please attach your payment slip ('+esc(slip.name)+') to that email before sending</b> — browsers cannot attach files automatically.':'')+'<br>You can also send the slip by Viber to +63 991 426 5886 or email '+ORDER_EMAIL+'.</div>'};
+    var done=function(how){
+      var form=MB.querySelector('.sm-form');if(!form)return;
+      var message=document.createElement('div');message.className='sm-done';
+      message.appendChild(document.createTextNode('✓ Order '+how+'. Reference '));
+      var reference=document.createElement('b');reference.textContent=ref;message.appendChild(reference);
+      if(slip&&how!=='shared'){
+        message.appendChild(document.createElement('br'));
+        var reminder=document.createElement('b');reminder.textContent='Please attach your payment slip ('+slip.name+') to that email before sending';
+        message.appendChild(reminder);
+        message.appendChild(document.createTextNode(' — browsers cannot attach files automatically.'));
+      }
+      message.appendChild(document.createElement('br'));
+      message.appendChild(document.createTextNode('You can also send the slip by Viber to +63 991 426 5886 or email '+ORDER_EMAIL+'.'));
+      form.replaceWith(message);
+    };
     if(slip&&navigator.canShare&&navigator.canShare({files:[slip]})){navigator.share({files:[slip],title:'Online order '+ref,text:'To: '+ORDER_EMAIL+'\n\n'+body}).then(function(){done('shared')},function(){location.href='mailto:'+ORDER_EMAIL+'?subject='+encodeURIComponent('Online order '+ref)+'&body='+encodeURIComponent(body);done('opened in your email app')});return}
     location.href='mailto:'+ORDER_EMAIL+'?subject='+encodeURIComponent('Online order '+ref)+'&body='+encodeURIComponent(body);done('opened in your email app');
   };

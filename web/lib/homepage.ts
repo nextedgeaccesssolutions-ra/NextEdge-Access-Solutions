@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getSetting, DEFAULT_SEO, DEFAULT_SOCIAL, DEFAULT_BUSINESS, type Seo, type Social, type Business } from "./settings";
 import { getServiceMeta } from "./services";
+import { replaceSideSocialAnchor, safeHttpsUrl, safeImageUrl } from "./html-safety";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 let cached: string | null = null;
@@ -23,48 +24,52 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
   const [seo, social, biz, sitePhotos] = await Promise.all([
     getSetting<Seo>("seo", DEFAULT_SEO), getSetting<Social>("social", DEFAULT_SOCIAL), getSetting<Business>("business", DEFAULT_BUSINESS), getSetting<Record<string, string>>("site_photos", {}),
   ]);
-  const origin = (() => { try { return new URL(seo.canonical).origin; } catch { return "https://www.nextedge-access-solutions.com"; } })();
+  const canonical = safeHttpsUrl(seo.canonical) ?? DEFAULT_SEO.canonical;
+  const origin = new URL(canonical).origin;
   // Apply administrator-managed homepage photos while preserving the built-in defaults.
   const photoSources: Record<string, string> = {
-    "/img/hero-city.jpg": sitePhotos.hero || "/img/hero-city.jpg",
-    "/img/ce6c22d9bace.jpg": sitePhotos.ropeAccess || "/img/ce6c22d9bace.jpg",
-    "/img/877206fcf5ba.jpg": sitePhotos.inspection || "/img/877206fcf5ba.jpg",
-    "/img/6447ca2a761e.jpg": sitePhotos.coatings || "/img/6447ca2a761e.jpg",
-    "/img/0cc8f91dab71.jpg": sitePhotos.metMast || "/img/0cc8f91dab71.jpg",
-    "/img/390f5ed3244c.jpg": sitePhotos.training || "/img/390f5ed3244c.jpg",
-    "/img/0ce37cb33507.jpg": sitePhotos.windEnergy || "/img/0ce37cb33507.jpg",
+    "/img/hero-city.jpg": safeImageUrl(sitePhotos.hero, "/img/hero-city.jpg"),
+    "/img/ce6c22d9bace.jpg": safeImageUrl(sitePhotos.ropeAccess, "/img/ce6c22d9bace.jpg"),
+    "/img/877206fcf5ba.jpg": safeImageUrl(sitePhotos.inspection, "/img/877206fcf5ba.jpg"),
+    "/img/6447ca2a761e.jpg": safeImageUrl(sitePhotos.coatings, "/img/6447ca2a761e.jpg"),
+    "/img/0cc8f91dab71.jpg": safeImageUrl(sitePhotos.metMast, "/img/0cc8f91dab71.jpg"),
+    "/img/390f5ed3244c.jpg": safeImageUrl(sitePhotos.training, "/img/390f5ed3244c.jpg"),
+    "/img/0ce37cb33507.jpg": safeImageUrl(sitePhotos.windEnergy, "/img/0ce37cb33507.jpg"),
   };
   for (const [original, replacement] of Object.entries(photoSources)) {
-    if (replacement !== original) html = html.split(original).join(replacement);
+    if (replacement !== original) html = html.split(original).join(esc(replacement));
   }
   // Normalize the legacy public contact record to the verified NEAS business details.
   if (!biz.street?.trim()) biz.street = "B 15 Lot 6, Marilao Grand Villas, Barangay Loma de Gato";
   if (!biz.city?.trim()) biz.city = "Marilao";
   if (!biz.region?.trim()) biz.region = "Bulacan";
   if (!biz.postal?.trim()) biz.postal = "3019";
-  const ogSrc = seo.ogImage || biz.logo || "/img/logo.png";
+  const ogSrc = safeImageUrl(seo.ogImage || biz.logo || "/img/logo.png");
   const ogImage = ogSrc.startsWith("/") ? origin + ogSrc : ogSrc;
-  const sameAs = [social.facebook, social.instagram, social.linkedin, social.youtube, social.tiktok, social.x, social.googleBusiness].filter(Boolean);
+  const logoSrc = safeImageUrl(biz.logo || "/img/logo.png");
+  const googleMapsUrl = safeHttpsUrl(social.googleMaps);
+  const sameAs = [social.facebook, social.instagram, social.linkedin, social.youtube, social.tiktok, social.x, social.googleBusiness]
+    .map(safeHttpsUrl).filter((value): value is string => value !== null);
   const ld = {
-    "@context": "https://schema.org", "@type": "LocalBusiness", name: biz.name, url: seo.canonical, image: ogImage,
-    logo: (biz.logo || "/img/logo.png").startsWith("/") ? origin + (biz.logo || "/img/logo.png") : biz.logo, telephone: biz.phone, email: biz.email, description: seo.description,
+    "@context": "https://schema.org", "@type": "LocalBusiness", name: biz.name, url: canonical, image: ogImage,
+    logo: logoSrc.startsWith("/") ? origin + logoSrc : logoSrc, telephone: biz.phone, email: biz.email, description: seo.description,
     areaServed: { "@type": "Country", name: "Philippines" },
     ...(biz.street || biz.city ? { address: { "@type": "PostalAddress", streetAddress: biz.street, addressLocality: biz.city, addressRegion: biz.region, postalCode: biz.postal, addressCountry: biz.country } } : {}),
     ...(biz.hours ? { openingHours: biz.hours } : {}),
-    ...(social.googleMaps ? { hasMap: social.googleMaps } : {}),
+    ...(googleMapsUrl ? { hasMap: googleMapsUrl } : {}),
     ...(sameAs.length ? { sameAs } : {}),
   };
   const service = getServiceMeta(serviceId);
   const pageTitle = service ? `${service.title} | ${biz.name}` : seo.title;
   const pageDesc = service ? service.desc : seo.description;
   const pageImage = service ? origin + service.image : ogImage;
-  const pageUrl = service ? `${seo.canonical.replace(/\/$/, "")}/?service=${encodeURIComponent(serviceId as string)}` : seo.canonical;
+  const pageUrl = service ? `${canonical.replace(/\/$/, "")}/?service=${encodeURIComponent(serviceId as string)}` : canonical;
   const head = [
     `<title>${esc(pageTitle)}</title>`,
     `<meta name="description" content="${esc(pageDesc)}">`,
     seo.keywords && `<meta name="keywords" content="${esc(seo.keywords)}">`,
-    `<link rel="canonical" href="${esc(seo.canonical)}">`,
-    `<link rel="alternate" hreflang="en-PH" href="${esc(seo.canonical)}">`,
+    `<link rel="canonical" href="${esc(canonical)}">`,
+    `<link rel="alternate" hreflang="en-PH" href="${esc(canonical)}">`,
     `<meta name="robots" content="${seo.robotsIndex ? "index,follow" : "noindex,nofollow"}">`,
     `<meta property="og:type" content="website"><meta property="og:site_name" content="${esc(biz.name)}">`,
     `<meta property="og:title" content="${esc(pageTitle)}"><meta property="og:description" content="${esc(pageDesc)}">`,
@@ -114,13 +119,12 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
   }
   // social links in the side panel
   const map: [string, string][] = [["Facebook", social.facebook], ["LinkedIn", social.linkedin], ["YouTube", social.youtube], ["Instagram", social.instagram], ["TikTok", social.tiktok]];
-  for (const [title, url] of map) {
-    const re = new RegExp(`(<a class="side-social" href=")[^"]*(" [^>]*title="${title}")`);
-    html = url ? html.replace(re, `$1${esc(url)}$2`) : html.replace(new RegExp(`<a class="side-social"[^>]*title="${title}"[\\s\\S]*?</a>`), "");
-  }
+  for (const [title, url] of map) html = replaceSideSocialAnchor(html, title, url);
+  const googleBusinessUrl = safeHttpsUrl(social.googleBusiness);
+  const xUrl = safeHttpsUrl(social.x);
   const extra = [
-    social.googleBusiness && `<a class="side-social" href="${esc(social.googleBusiness)}" target="_blank" rel="noopener" title="Google Business"><b style="font:700 15px/1 Arial">G</b></a>`,
-    social.x && `<a class="side-social" href="${esc(social.x)}" target="_blank" rel="noopener" title="X"><b style="font:700 15px/1 Arial">𝕏</b></a>`,
+    googleBusinessUrl && `<a class="side-social" href="${esc(googleBusinessUrl)}" target="_blank" rel="noopener" title="Google Business"><b style="font:700 15px/1 Arial">G</b></a>`,
+    xUrl && `<a class="side-social" href="${esc(xUrl)}" target="_blank" rel="noopener" title="X"><b style="font:700 15px/1 Arial">𝕏</b></a>`,
   ].filter(Boolean).join("");
   if (extra) html = html.replace(/(<a class="side-social"[^>]*title="TikTok"[\s\S]*?<\/a>)/, `$1${extra}`);
   // Give icon-only social links a crawlable text label and an accessible name.
@@ -129,6 +133,7 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
     const hiddenLabel = `<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">${esc(label)}</span>`;
     return namedOpen + inner + hiddenLabel + close;
   });
-  if (social.googleReview) html = html.replace('<div class="footer-bottom">', `<div style="text-align:center;margin:0 0 14px"><a href="${esc(social.googleReview)}" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:999px;padding:8px 16px;font-weight:700;font-size:13px;text-decoration:none">⭐ Review us on Google</a></div><div class="footer-bottom">`);
+  const googleReviewUrl = safeHttpsUrl(social.googleReview);
+  if (googleReviewUrl) html = html.replace('<div class="footer-bottom">', `<div style="text-align:center;margin:0 0 14px"><a href="${esc(googleReviewUrl)}" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:999px;padding:8px 16px;font-weight:700;font-size:13px;text-decoration:none">⭐ Review us on Google</a></div><div class="footer-bottom">`);
   return html;
 }
