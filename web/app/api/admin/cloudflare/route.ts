@@ -93,7 +93,7 @@ export async function GET() {
   const token = (process.env.CLOUDFLARE_API_TOKEN || "")
     .trim()
     .replace(/^Bearer\s+/i, "")
-    .replace(/^["\']|["\']$/g, "");
+    .replace(/^["']|["']$/g, "");
   const configuredZoneId = (process.env.CLOUDFLARE_ZONE_ID || "").trim();
 
   if (!token || !configuredZoneId) {
