@@ -106,13 +106,14 @@ export default function ChatBot() {
   useEffect(() => {
     if (autoWelcomeStarted.current) return;
     autoWelcomeStarted.current = true;
+    // Always open the assistant on page entry, even if the welcome was already played in this tab.
+    setOpen(true);
     try {
       if (window.sessionStorage.getItem("neas-auto-welcome-played") === "1") return;
       window.sessionStorage.setItem("neas-auto-welcome-played", "1");
     } catch {
       // Continue without session storage when browser privacy settings block it.
     }
-    setOpen(true);
     const timer = window.setTimeout(() => {
       void speak(WELCOME.content);
     }, 900);
