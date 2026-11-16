@@ -18,7 +18,7 @@ in the repository root — nothing here changes it.
 1. **Vercel → Add New → Project**, import `nextedgeaccesssolutions-ra/NextEdge-Access-Solutions`,
    branch `vercel-rebuild`, **Root Directory `web`**. Framework: Next.js (auto).
 2. **Storage → Create Database → Neon (Postgres)**, connect it to the project. This sets `DATABASE_URL`.
-3. **Settings → Environment Variables**: `SESSION_SECRET` (random, 32+ chars), `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
+3. **Settings → Environment Variables**: `SESSION_SECRET` (random, 32+ chars), `CRON_SECRET` (a separate random 32+ character secret for scheduled publishing), `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
 4. **Redeploy.** The build creates the tables, loads the 99-item KH Trading catalog (once), and creates the admin.
 5. **Settings → Domains**: add `nextedge-access-solutions.com` and `www.nextedge-access-solutions.com`.
 6. **Namecheap → Advanced DNS** (web records only — leave MX/email/TXT records untouched):
