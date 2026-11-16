@@ -6,8 +6,8 @@ export const maxDuration = 30;
 
 // ElevenLabs voice ID for the NEAS AI Voice Agent
 // Agent ID: agent_4401m7e4gjxfejwbvx9t4vgr8bth
-// Using the default ElevenLabs voice associated with the agent (Rachel - calm, professional)
-const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM"; // Rachel (default)
+// Match the published NEAS AI Voice Agent voice. Keep the API key server-side.
+const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "cjVigY5qzO86Huf0OWal";
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const MAX_TEXT_LENGTH = 1000;
 
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   const ttsUrl = `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`;
   const ttsBody = {
     text,
-    model_id: "eleven_turbo_v2_5",
+    model_id: "eleven_v4_turbo",
     voice_settings: {
       stability: 0.5,
       similarity_boost: 0.75,
