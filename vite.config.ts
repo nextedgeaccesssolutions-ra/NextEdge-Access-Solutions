@@ -155,9 +155,15 @@ function vitePluginManusDebugCollector(): Plugin {
 }
 
 export default defineConfig({
-  // Keep the plugin list inline: Wrangler’s Vite auto-configuration inspects
-  // this property and cannot reliably detect an aliased `plugins` variable.
-  plugins: [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()],
+  // Keep the plugin list inline so Wrangler's Vite auto-configuration can
+  // safely inspect and extend it during Cloudflare Workers builds.
+  plugins: [
+    react(),
+    tailwindcss(),
+    jsxLocPlugin(),
+    vitePluginManusRuntime(),
+    vitePluginManusDebugCollector(),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
