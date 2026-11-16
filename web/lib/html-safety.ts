@@ -77,3 +77,82 @@ export function replaceSideSocialAnchor(html: string, title: string, url: unknow
 
   return html;
 }
+
+/** Insert markup after one known social anchor using a linear string scan. */
+export function appendAfterSideSocialAnchor(html: string, title: string, addition: string): string {
+  if (!addition) return html;
+  let cursor = 0;
+
+  while (cursor < html.length) {
+    const start = html.indexOf('<a class="side-social"', cursor);
+    if (start < 0) return html;
+
+    const openEnd = html.indexOf(">", start);
+    if (openEnd < 0) return html;
+
+    const closeEnd = html.indexOf("</a>", openEnd + 1);
+    if (closeEnd < 0) return html;
+
+    const openTag = html.slice(start, openEnd + 1);
+    if (openTag.includes('title="' + title + '"')) {
+      const end = closeEnd + 4;
+      return html.slice(0, end) + addition + html.slice(end);
+    }
+
+    cursor = closeEnd + 4;
+  }
+
+  return html;
+}
+
+/** Add accessible names to known social anchors without regex backtracking. */
+export function addAccessibleLabelsToSideSocialAnchors(html: string): string {
+  const chunks: string[] = [];
+  let cursor = 0;
+
+  while (cursor < html.length) {
+    const start = html.indexOf('<a class="side-social"', cursor);
+    if (start < 0) break;
+
+    const openEnd = html.indexOf(">", start);
+    if (openEnd < 0) break;
+
+    const closeEnd = html.indexOf("</a>", openEnd + 1);
+    if (closeEnd < 0) break;
+
+    const openTag = html.slice(start, openEnd + 1);
+    const titleStart = openTag.indexOf('title="');
+    const titleEnd = titleStart < 0 ? -1 : openTag.indexOf('"', titleStart + 7);
+
+    if (titleStart < 0 || titleEnd < 0 || openTag.includes("aria-label=")) {
+      chunks.push(html.slice(cursor, closeEnd + 4));
+      cursor = closeEnd + 4;
+      continue;
+    }
+
+    const label = openTag.slice(titleStart + 7, titleEnd);
+    if (!label) {
+      chunks.push(html.slice(cursor, closeEnd + 4));
+      cursor = closeEnd + 4;
+      continue;
+    }
+
+    const namedOpen = openTag.slice(0, -1) + ' aria-label="' + escapeHtmlAttribute(label) + '">';
+    const hiddenLabel =
+      '<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">' +
+      escapeHtmlAttribute(label) +
+      "</span>";
+
+    chunks.push(
+      html.slice(cursor, start),
+      namedOpen,
+      html.slice(openEnd + 1, closeEnd),
+      hiddenLabel,
+      html.slice(closeEnd, closeEnd + 4),
+    );
+    cursor = closeEnd + 4;
+  }
+
+  chunks.push(html.slice(cursor));
+  return chunks.join("");
+}
