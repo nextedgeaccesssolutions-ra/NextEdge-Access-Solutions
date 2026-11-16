@@ -53,6 +53,10 @@ export async function GET() {
     return ok({ configured: false, missing: ["CLOUDFLARE_API_TOKEN"] });
   }
 
+  if (cachedResponse && cachedResponse.expiresAt > Date.now()) {
+    return ok(cachedResponse.body);
+  }
+
   // Prefer resolving the zone by its DNS name. This prevents an account ID or
   // stale zone ID from silently breaking analytics after an environment change.
   let zoneId = /^[a-f0-9]{32}$/i.test(configuredZoneId) ? configuredZoneId : "";
@@ -82,10 +86,6 @@ export async function GET() {
       "Could not resolve the Cloudflare zone. Grant this API token Zone:Read and Analytics:Read for nextedge-access-solutions.com, or configure a valid CLOUDFLARE_ZONE_ID.",
       503,
     );
-  }
-
-  if (cachedResponse && cachedResponse.expiresAt > Date.now()) {
-    return ok(cachedResponse.body);
   }
 
   const end = new Date();
@@ -124,8 +124,10 @@ export async function GET() {
       return bad(
         status === 401 || status === 403
           ? "Cloudflare rejected the API token. Verify Analytics Read permission and zone access."
-          : messages.length
-            ? `Cloudflare GraphQL error: ${messages.slice(0, 2).join("; ").slice(0, 240)}`
+          : messages.some((message) => /zone not found/i.test(message || ""))
+            ? "Cloudflare could not find this zone. Verify the domain is in this Cloudflare account and grant the token Zone:Read plus Analytics:Read, or set the correct CLOUDFLARE_ZONE_ID."
+            : messages.length
+              ? `Cloudflare GraphQL error: ${messages.slice(0, 2).join("; ").slice(0, 240)}`
             : "Could not load Cloudflare analytics. Verify the token, zone ID and analytics API access.",
         status === 401 || status === 403 ? status : 502,
       );
