@@ -66,19 +66,14 @@ export function decryptConfigBlob(blob: string): string {
     return decryptParts(parts.slice(1), dedicatedKey());
   }
   if (parts.length === 3) {
-    let authenticated = false;
     for (const key of legacyKeys()) {
       try {
-        const plaintext = decryptParts(parts, key);
-        authenticated = true;
-        return plaintext;
+        return decryptParts(parts, key);
       } catch {
         // Try the next configured legacy credential; never fall back to a static key.
       }
     }
-    if (!authenticated) {
-      throw new Error("Cannot authenticate legacy integration settings with the available deployment credentials.");
-    }
+    throw new Error("Cannot authenticate legacy integration settings with the available deployment credentials.");
   }
   throw new Error("Unsupported encrypted integration settings version.");
 }
