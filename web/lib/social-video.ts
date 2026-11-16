@@ -1,5 +1,5 @@
 import { sql } from "./db";
-import { encrypt, decrypt } from "./social";
+import { encrypt, decrypt } from "./social-token-crypto";
 
 /** Google (YouTube + Business Profile) and TikTok: OAuth with refresh tokens, plus publishing.
  *  Tokens are stored encrypted as JSON { a: access, r: refresh, e: expiry ms }. */

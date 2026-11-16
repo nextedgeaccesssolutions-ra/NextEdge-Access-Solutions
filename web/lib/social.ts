@@ -1,4 +1,5 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { decrypt, encrypt } from "./social-token-crypto";
+export { decrypt, encrypt };
 import { sql } from "./db";
 import { googleAuthUrl, tiktokAuthUrl, connectGoogle, connectTikTok, publishVideoPlatform } from "./social-video";
 
@@ -11,24 +12,6 @@ export type ConnectPlatform = (typeof SOCIAL_PLATFORMS)[number];
 const env = (k: string) => (process.env[k] ?? "").trim().replace(/^["']|["']$/g, "").trim();
 const GRAPH = () => `https://graph.facebook.com/${process.env.META_GRAPH_VERSION || "v25.0"}`;
 const LI_VERSION = () => process.env.LINKEDIN_API_VERSION || "202608";
-
-function encKey() {
-  // Preserve legacy ciphertext when a dedicated SESSION_SECRET is introduced.
-  // TOKEN_ENCRYPTION_KEY is preferred for a separately managed key after controlled re-encryption.
-  const base = process.env.TOKEN_ENCRYPTION_KEY || process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SESSION_SECRET;
-  if (!base) throw new Error("No secret available to encrypt tokens.");
-  return createHash("sha256").update("neas-token-v1:" + base).digest();
-}
-export function encrypt(text: string) {
-  const iv = randomBytes(12), c = createCipheriv("aes-256-gcm", encKey(), iv);
-  const data = Buffer.concat([c.update(text, "utf8"), c.final()]);
-  return [iv, c.getAuthTag(), data].map((b) => b.toString("base64url")).join(".");
-}
-export function decrypt(blob: string) {
-  const [iv, tag, data] = blob.split(".").map((s) => Buffer.from(s, "base64url"));
-  const d = createDecipheriv("aes-256-gcm", encKey(), iv); d.setAuthTag(tag);
-  return Buffer.concat([d.update(data), d.final()]).toString("utf8");
-}
 
 /** Page permissions by default; Instagram ones only when META_INSTAGRAM=1 (after that use case is added). META_SCOPES overrides all. */
 export function metaScopes() {
