@@ -30,136 +30,54 @@ export default function ChatBot() {
   const recognitionRef = useRef<any>(null);
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [voiceError, setVoiceError] = useState("");
-  const [needsAudioGesture, setNeedsAudioGesture] = useState(false);
   useEffect(() => {
     setVoiceSupported(Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition));
   }, []);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
   useEffect(() => {
     if (open) {
       setUnread(false);
       endRef.current?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      window.speechSynthesis?.cancel();
+      setSpeaking(false);
     }
   }, [open, msgs]);
 
-  // Stop ElevenLabs playback when the chat closes or the component unmounts.
-  useEffect(() => {
-    if (!open && audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-      audioRef.current = null;
-      setSpeaking(false);
-    }
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
-        audioRef.current = null;
-      }
-    };
-  }, [open]);
-
-  const speak = useCallback(async (text: string) => {
+  // Free browser-native speech synthesis: no API key, external request, or usage quota.
+  const speak = useCallback((text: string) => {
     const clean = text.replace(/[*_#`]/g, "").replace(/\n+/g, ". ").trim();
     if (!clean) return;
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-      audioRef.current = null;
+    if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
+      setVoiceError("Read-aloud is not supported by this browser. You can still read the chat or contact our team.");
+      return;
     }
+    window.speechSynthesis.cancel();
     setVoiceError("");
-    setSpeaking(true);
-    try {
-      const response = await fetch("/api/elevenlabs-tts", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: clean }),
-      });
-      if (!response.ok) {
-        const detail = await response.json().catch(() => ({}));
-        throw new Error(typeof detail.error === "string" ? detail.error : "ElevenLabs audio request failed");
-      }
-      const audioUrl = URL.createObjectURL(await response.blob());
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        if (audioRef.current === audio) audioRef.current = null;
-        setSpeaking(false);
-      };
-      audio.onerror = () => {
-        URL.revokeObjectURL(audioUrl);
-        if (audioRef.current === audio) audioRef.current = null;
-        setSpeaking(false);
-        setVoiceError("ElevenLabs audio playback failed. Please try again.");
-      };
-      await audio.play();
-      setNeedsAudioGesture(false);
-    } catch (error) {
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.lang = "en-PH";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    const voices = window.speechSynthesis.getVoices();
+    utterance.voice = voices.find((voice) => voice.lang.toLowerCase() === "en-ph")
+      || voices.find((voice) => voice.lang.toLowerCase().startsWith("en-"))
+      || null;
+    utterance.onstart = () => setSpeaking(true);
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => {
       setSpeaking(false);
-      // Keep generated audio ready when browser autoplay policy blocks sound.
-      if (audioRef.current) {
-        setNeedsAudioGesture(true);
-        setVoiceError("Your browser blocked automatic sound. Tap or click anywhere once to hear the NEAS welcome message.");
-      } else {
-        setVoiceError(error instanceof Error ? error.message : "ElevenLabs voice service is unavailable.");
-      }
-    }
+      setVoiceError("Your device could not play speech. Please try another browser or device.");
+    };
+    setSpeaking(true);
+    window.speechSynthesis.speak(utterance);
   }, []);
 
+  // Expand the assistant on page entry; speech starts only after the visitor presses the speaker.
   useEffect(() => {
-    if (!needsAudioGesture) return;
-    const resume = () => {
-      const audio = audioRef.current;
-      if (!audio) {
-        void speak(WELCOME.content);
-        setNeedsAudioGesture(false);
-        return;
-      }
-      // Invoke play directly from the visitor gesture to satisfy browser autoplay policy.
-      void audio.play().then(() => {
-        setNeedsAudioGesture(false);
-        setVoiceError("");
-        setSpeaking(true);
-      }).catch(() => {
-        setVoiceError("Audio is still blocked. Use the speaker button in the chat to play the welcome message.");
-      });
-    };
-    window.addEventListener("pointerdown", resume, { once: true, capture: true });
-    window.addEventListener("keydown", resume, { once: true, capture: true });
-    return () => {
-      window.removeEventListener("pointerdown", resume, true);
-      window.removeEventListener("keydown", resume, true);
-    };
-  }, [needsAudioGesture, speak]);
-
-  // Automatically open the NEAS assistant and attempt a welcome announcement once per browser tab.
-  // Browsers may block audible autoplay until the visitor interacts; the speaker control remains available.
-  const autoWelcomeStarted = useRef(false);
-  useEffect(() => {
-    if (autoWelcomeStarted.current) return;
-    autoWelcomeStarted.current = true;
-    // Always open the assistant on page entry, even if the welcome was already played in this tab.
     setOpen(true);
-    try {
-      if (window.sessionStorage.getItem("neas-auto-welcome-played") === "1") return;
-      window.sessionStorage.setItem("neas-auto-welcome-played", "1");
-    } catch {
-      // Continue without session storage when browser privacy settings block it.
-    }
-    const timer = window.setTimeout(() => {
-      void speak(WELCOME.content);
-    }, 900);
-    return () => window.clearTimeout(timer);
-  }, [speak]);
+  }, []);
 
   const stopSpeaking = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-      audioRef.current = null;
-    }
+    window.speechSynthesis?.cancel();
     setSpeaking(false);
   };
 
