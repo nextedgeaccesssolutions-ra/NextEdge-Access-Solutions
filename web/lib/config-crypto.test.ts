@@ -59,6 +59,11 @@ describe("admin integration settings encryption", () => {
     expect(decryptConfigObject(legacy)).toEqual({ LINKEDIN_CLIENT_SECRET: "legacy-value" });
   });
 
+  it("does not accept legacy ciphertext protected only by the historical hardcoded fallback", () => {
+    const legacy = legacyEncrypt(JSON.stringify({ RESEND_API_KEY: "legacy-value" }));
+    expect(() => decryptConfigObject(legacy)).toThrow(/original deployment credential/);
+  });
+
   it("requires the dedicated key to decrypt v2 data and never falls back to the database URL", () => {
     process.env.CONFIG_ENCRYPTION_KEY = "c".repeat(64);
     const blob = encryptConfigBlob("{}");
