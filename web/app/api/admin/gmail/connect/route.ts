@@ -6,11 +6,6 @@ import { loadConfig } from "@/lib/config";
 import { ensureAiwGmailAccountsTable, GMAIL_ACCOUNTS, gmailSendScopeApproved } from "@/lib/aiw-gmail";
 
 export const dynamic = "force-dynamic";
-const ACCOUNTS = {
-  info: "info.nextedgeaccesssolutions@gmail.com",
-  operations: "nextedgeaccesssolutions@gmail.com",
-} as const;
-
 function getCanonicalCallback(origin: string) {
   const configured = process.env.SITE_URL?.trim() || origin;
   const base = new URL(configured);
