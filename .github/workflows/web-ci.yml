@@ -43,7 +43,7 @@ jobs:
         run: npm ci
         working-directory: web
 
-      - name: Test Gmail recipient validation
+      - name: Test bounded Gmail recipient validation
         run: npm run test:aiw-email-validation
         working-directory: web
 

@@ -196,6 +196,14 @@ await sql`create table if not exists aiw_gmail_accounts (
   updated_at timestamptz not null default now()
 )`;
 await sql`create index if not exists aiw_gmail_accounts_status_idx on aiw_gmail_accounts(status)`;
+await sql`create table if not exists aiw_gmail_send_audit (
+  id bigserial primary key, account_key text not null check (account_key in ('info','operations')),
+  actor_id int references users(id) on delete set null, recipient text not null, template_key text not null,
+  subject text not null, idempotency_key text not null unique,
+  status text not null check (status in ('sent','blocked','failed')),
+  provider_message_id text, error_code text, created_at timestamptz not null default now()
+)`;
+await sql`create index if not exists aiw_gmail_send_audit_daily_idx on aiw_gmail_send_audit(account_key, created_at desc)`;
 await sql`create table if not exists aiw_gmail_audit (
   id bigserial primary key,
   account_key text check (account_key in ('info','operations')),

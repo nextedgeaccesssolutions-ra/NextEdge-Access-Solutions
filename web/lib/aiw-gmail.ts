@@ -1,4 +1,5 @@
 import { sql } from "@/lib/db";
+import { decrypt, encrypt } from "@/lib/social-token-crypto";
 
 let ready: Promise<void> | null = null;
 
@@ -19,6 +20,20 @@ export function ensureAiwGmailAccountsTable(): Promise<void> {
       updated_at timestamptz not null default now()
     )`;
     await sql`create index if not exists aiw_gmail_accounts_status_idx on aiw_gmail_accounts(status)`;
+    await sql`create table if not exists aiw_gmail_send_audit (
+      id bigserial primary key,
+      account_key text not null check (account_key in ('info','operations')),
+      actor_id int references users(id) on delete set null,
+      recipient text not null,
+      template_key text not null,
+      subject text not null,
+      idempotency_key text not null unique,
+      status text not null check (status in ('sent','blocked','failed')),
+      provider_message_id text,
+      error_code text,
+      created_at timestamptz not null default now()
+    )`;
+    await sql`create index if not exists aiw_gmail_send_audit_daily_idx on aiw_gmail_send_audit(account_key, created_at desc)`;
     await sql`create table if not exists aiw_gmail_audit (
       id bigserial primary key,
       account_key text check (account_key in ('info','operations')),
@@ -55,4 +70,80 @@ export async function recordAiwGmailAudit(input: {
   await ensureAiwGmailAccountsTable();
   await sql`insert into aiw_gmail_audit (account_key,actor_id,action,outcome,provider_code,detail)
     values (${input.accountKey ?? null},${input.actorId ?? null},${input.action},${input.outcome},${input.providerCode ?? null},${(input.detail ?? "").slice(0,500)})`;
+}
+
+export const GMAIL_ACCOUNTS = {
+  info: "info.nextedgeaccesssolutions@gmail.com",
+  operations: "nextedgeaccesssolutions@gmail.com",
+} as const;
+export type GmailAccountKey = keyof typeof GMAIL_ACCOUNTS;
+
+export function gmailSendScopeApproved() {
+  return process.env.NEAS_GMAIL_AUTOMATIC_SEND_ENABLED === "true" &&
+    process.env.NEAS_GMAIL_SEND_ENABLED === "true" &&
+    process.env.GOOGLE_GMAIL_COMPOSE_SCOPE_APPROVED === "true";
+}
+export function hasGmailSendScope(scope: string) {
+  return scope.split(/\s+/).includes("https://www.googleapis.com/auth/gmail.compose");
+}
+export function approvedRecipient(email: string) {
+  const allowed = (process.env.NEAS_GMAIL_APPROVED_RECIPIENTS ?? "")
+    .split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+  return allowed.includes(email.trim().toLowerCase());
+}
+export function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]!));
+}
+export const GMAIL_TEMPLATES = {
+  quote_followup: {
+    subject: "Following up on your NEAS quotation",
+    render: (v: { contact: string; company: string; reference: string }) =>
+      `<p>Dear ${escapeHtml(v.contact)},</p><p>We are following up on NEAS quotation <strong>${escapeHtml(v.reference)}</strong> prepared for ${escapeHtml(v.company)}.</p><p>Please let us know if you would like to discuss the scope, schedule, or technical requirements.</p><p>Regards,<br/>NextEdge Access Solutions (NEAS)</p>`,
+    renderText: (v: { contact: string; company: string; reference: string }) =>
+      `Dear ${v.contact},\n\nWe are following up on NEAS quotation ${v.reference} prepared for ${v.company}.\n\nPlease let us know if you would like to discuss the scope, schedule, or technical requirements.\n\nRegards,\nNextEdge Access Solutions (NEAS)`,
+  },
+  training_information: {
+    subject: "Your NEAS training enquiry",
+    render: (v: { contact: string; company: string; reference: string }) =>
+      `<p>Dear ${escapeHtml(v.contact)},</p><p>Thank you for your interest in NEAS training services for ${escapeHtml(v.company)}.</p><p>Our team can provide further information about course availability, prerequisites, and registration. Enquiry reference: ${escapeHtml(v.reference)}.</p><p>Regards,<br/>NextEdge Access Solutions (NEAS)</p>`,
+    renderText: (v: { contact: string; company: string; reference: string }) =>
+      `Dear ${v.contact},\n\nThank you for your interest in NEAS training services for ${v.company}.\n\nOur team can provide further information about course availability, prerequisites, and registration. Enquiry reference: ${v.reference}.\n\nRegards,\nNextEdge Access Solutions (NEAS)`,
+  },
+} as const;
+
+type TokenBundle = { refresh_token: string; access_token?: string; token_type?: string; scope?: string; expires_at?: number };
+export async function getGmailAccessToken(accountKey: GmailAccountKey, actorId?: number) {
+  const rows = await sql`select token_enc, scope, email, status from aiw_gmail_accounts where account_key=${accountKey} limit 1`;
+  const row = rows[0];
+  if (!row || row.status !== "connected" || row.email !== GMAIL_ACCOUNTS[accountKey]) throw new Error("mailbox_not_connected");
+  const bundle = JSON.parse(decrypt(String(row.token_enc))) as TokenBundle;
+  if (!bundle.refresh_token) throw new Error("refresh_token_missing");
+  if (bundle.access_token && Number(bundle.expires_at ?? 0) > Date.now() + 120_000) {
+    return { accessToken: bundle.access_token, scope: String(row.scope || bundle.scope || "") };
+  }
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim() ?? "";
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() ?? "";
+  if (!clientId || !clientSecret) throw new Error("oauth_client_missing");
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: bundle.refresh_token, grant_type: "refresh_token" }),
+    cache: "no-store",
+  });
+  const fresh = await response.json().catch(() => ({}));
+  if (!response.ok || !fresh.access_token) {
+    await sql`update aiw_gmail_accounts set status='reauth_required', last_error='token_refresh_failed', updated_at=now() where account_key=${accountKey}`;
+    await recordAiwGmailAudit({ accountKey, actorId, action: "token_refresh", outcome: "failure", detail: "Google refresh token was rejected; mailbox requires reauthorization." }).catch(() => {});
+    throw new Error("token_refresh_failed");
+  }
+  const next: TokenBundle = {
+    ...bundle,
+    access_token: String(fresh.access_token),
+    refresh_token: String(fresh.refresh_token || bundle.refresh_token),
+    token_type: String(fresh.token_type || bundle.token_type || "Bearer"),
+    scope: String(fresh.scope || bundle.scope || row.scope || ""),
+    expires_at: Date.now() + Number(fresh.expires_in || 3600) * 1000,
+  };
+  await sql`update aiw_gmail_accounts set token_enc=${encrypt(JSON.stringify(next))}, scope=${next.scope ?? ""}, expires_at=now() + (${Number(fresh.expires_in || 3600)} * interval '1 second'), updated_at=now() where account_key=${accountKey}`;
+  await recordAiwGmailAudit({ accountKey, actorId, action: "token_refresh", outcome: "success", detail: "Access token refreshed and encrypted token bundle updated." });
+  return { accessToken: String(fresh.access_token), scope: String(next.scope || row.scope || bundle.scope || "") };
 }
