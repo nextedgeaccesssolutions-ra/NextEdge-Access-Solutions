@@ -26,6 +26,7 @@ export async function GET() {
   const user = await admin();
   if (!user) return json({ error: "Admin access required." }, 403);
   try {
+    await ensureSpecialistTaskTable();
     const [leads,drafts,runs,tasks,metrics] = await Promise.all([
       sql`select id, company, contact, email, phone, service, source, stage, estimated_value, next_step, contact_status, created_at from aiw_leads order by created_at desc limit 500`,
       sql`select d.id, d.lead_id, d.channel, d.subject, d.body, d.status, d.created_at, l.company from aiw_outreach_drafts d join aiw_leads l on l.id=d.lead_id order by d.created_at desc limit 200`,
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
   const b = await req.json().catch(()=>null);
   if (!b || typeof b !== "object") return json({ error: "Invalid request." }, 400);
   try {
+    await ensureSpecialistTaskTable();
     if (b.action === "createLead") {
       const company=text(b.company,160), contact=text(b.contact,120), email=text(b.email,240), phone=text(b.phone,60);
       const service=text(b.service,180), source=text(b.source,100) || "Manual entry";
