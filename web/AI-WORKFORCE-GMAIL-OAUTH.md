@@ -21,9 +21,9 @@ The connector requests:
 
 - `openid`, `email`, `profile` — identify the administrator-authorized Google account.
 - `https://www.googleapis.com/auth/gmail.metadata` — list message headers, dates, and labels for the authorized mailbox without reading message bodies (**restricted scope**).
-- `https://www.googleapis.com/auth/gmail.compose` — create drafts and, if separately enabled in the future, send messages (**sensitive scope**).
+- `https://www.googleapis.com/auth/gmail.compose` — create and manage drafts and, if separately enabled in the future, send messages (**restricted scope**).
 
-Request only scopes required by the actual features. Google review is required for sensitive/restricted scopes where no exception applies. Because `gmail.metadata` is a restricted Gmail scope, Google may require an independent Google-approved security assessment (CASA) and recurring reassessment when NEAS accesses the data through its servers. Do not represent the app as verified until Google confirms approval in the Verification Center.
+Request only scopes required by the actual features. Google review is required for sensitive/restricted scopes where no exception applies. Both `gmail.metadata` and `gmail.compose` are restricted Gmail scopes. Because NEAS accesses restricted Gmail data through its servers, Google requires restricted-scope verification and a Google-approved security assessment (CASA), with recurring assessment at least every 12 months when applicable. Do not represent the app as verified until Google confirms approval in the Verification Center.
 
 ## Vercel environment
 
