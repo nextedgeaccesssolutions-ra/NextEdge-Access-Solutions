@@ -27,8 +27,11 @@ for (const slug of ["home", "about", "services", "partners", "contact"]) {
   assert.ok(routeHandler.includes(slug + ": {"), "Next.js route handler is missing /" + slug);
 }
 
-for (const slug of ["about", "services", "partners", "contact"]) {
-  assert.ok(sitemap.includes("/" + slug), "sitemap is missing /" + slug);
+for (const route of ["/", "/store", "/our-clients", "/privacy-policy"]) {
+  assert.ok(sitemap.includes(route), "sitemap is missing " + route);
+}
+for (const obsolete of ["/about", "/services", "/partners", "/contact"]) {
+  assert.ok(!sitemap.includes(obsolete), "obsolete route remains in sitemap: " + obsolete);
 }
 
 assert.ok(storePage.includes('canonical: "https://www.nextedge-access-solutions.com/store"'), "store canonical URL must remain /store");
