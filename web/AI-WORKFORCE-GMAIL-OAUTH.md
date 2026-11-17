@@ -26,15 +26,9 @@ Configure the following on the intended Vercel project:
 
 Do not reuse `SESSION_SECRET`, `CONFIG_ENCRYPTION_KEY`, or database credentials as the token encryption key. Set secrets directly in Vercel; never commit them or paste them into chat.
 
-## Database migration
+## Database setup
 
-Run the existing migration command in the `web` app after deployment:
-
-```sh
-npm run migrate
-```
-
-This creates `aiw_gmail_accounts`. OAuth tokens are encrypted at rest using the existing AES-256-GCM social-token encryption helper.
+The admin connection page and OAuth routes idempotently create `aiw_gmail_accounts` on first use. The same table is also included in the existing `web/scripts/migrate.mjs` migration for environments that run the full migration. OAuth tokens are encrypted at rest using the existing AES-256-GCM social-token encryption helper.
 
 ## Connect and verify
 
