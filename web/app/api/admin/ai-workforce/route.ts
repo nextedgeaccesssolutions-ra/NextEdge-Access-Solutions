@@ -7,6 +7,7 @@ import { getAiwSkill, listAiwSkills } from "@/lib/aiw-skills";
 import { loadConfig } from "@/lib/config";
 import { resolveAiwSpecialistPermission } from "@/lib/aiw-authority";
 import { getAiwRuntimeReadiness } from "@/lib/aiw-readiness";
+import { generateAIGatewayText } from "@/lib/ai-gateway";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -176,6 +177,16 @@ Record only factual answers, objections, requested follow-up and contact prefere
       if (!row.length) return json({error:"Draft not found or no longer awaiting review."},409);
       await sql`insert into aiw_workflow_runs(workflow,status,summary,lead_id,actor_id) values('Human outreach review','completed',${"Outreach draft #"+id+" reviewed by an administrator"},${row[0].lead_id},${user.id})`;
       return json({ok:true});
+    }
+
+    if (b.action === "testGateway") {
+      const probe = await generateAIGatewayText(
+        { system: "You are the NEAS AI Gateway health check. Follow the user instruction exactly.", user: "Reply with exactly: NEAS_GATEWAY_OK" },
+        { request: req },
+      );
+      if ("error" in probe) return json({ error: probe.error, verified: false }, 503);
+      if (probe.text.trim() !== "NEAS_GATEWAY_OK") return json({ error: "Gateway inference returned text but failed the exact health-check response validation. No work order was created.", verified: false }, 503);
+      return json({ ok: true, verified: true, model: probe.model, message: "Live AI Gateway inference verified. No work order or external action was created." });
     }
 
     if (b.action === "specialistTask") {
