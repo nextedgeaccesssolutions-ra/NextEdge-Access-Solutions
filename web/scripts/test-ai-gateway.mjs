@@ -112,6 +112,31 @@ test("returns a diagnostic reference when a successful response has no recognise
   }
 });
 
+test("reports a network failure without attempting a provider fallback", async () => {
+  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+    token: "oidc",
+    fetchImpl: async () => { throw new TypeError("fetch failed"); },
+  });
+  assert.equal("error" in result, true);
+  if ("error" in result) assert.match(result.error, /Could not reach NEAS AI Gateway/i);
+});
+
+test("includes safe reasoning-token diagnostics when answer content is empty", async () => {
+  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+    token: "oidc",
+    fetchImpl: async () => new Response(JSON.stringify({
+      id: "req-reasoning-123",
+      choices: [{ message: { content: "" }, finish_reason: "length" }],
+      usage: { completion_tokens_details: { reasoning_tokens: 1900 } },
+    }), { status: 200, headers: { "x-request-id": "req-reasoning-123" } }),
+  });
+  assert.equal("error" in result, true);
+  if ("error" in result) {
+    assert.match(result.error, /reasoning tokens: 1900/);
+    assert.match(result.error, /req-reasoning-123/);
+  }
+});
+
 test("routes specialist and outreach work through the budgeted project Gateway", () => {
   assert.equal(usesProjectAIGateway("specialist"), true);
   assert.equal(usesProjectAIGateway("outreach"), true);
