@@ -53,7 +53,7 @@ export function gmailSendScopeApproved() {
     process.env.GOOGLE_GMAIL_COMPOSE_SCOPE_APPROVED === "true";
 }
 export function hasGmailSendScope(scope: string) {
-  return scope.split(/\s+/).includes("https://www.googleapis.com/auth/gmail.send");
+  return scope.split(/\s+/).includes("https://www.googleapis.com/auth/gmail.compose");
 }
 export function approvedRecipient(email: string) {
   const allowed = (process.env.NEAS_GMAIL_APPROVED_RECIPIENTS ?? "")
