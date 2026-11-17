@@ -73,7 +73,7 @@ test("normalises OpenAI-compatible string content", () => {
 });
 
 test("normalises multipart OpenAI-compatible content", () => {
-  assert.equal(extractGatewayText({ choices: [{ message: { content: [{ type: "text", text: "Hello" }, { type: "text", text: "NEAS" }] } }] }), "Hello\\nNEAS");
+  assert.equal(extractGatewayText({ choices: [{ message: { content: [{ type: "text", text: "Hello" }, { type: "text", text: "NEAS" }] } }] }), "Hello\nNEAS");
 });
 
 test("normalises Responses API output_text and output content", () => {
