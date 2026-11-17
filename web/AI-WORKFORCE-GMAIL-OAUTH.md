@@ -17,20 +17,22 @@ The OAuth callback uses the same canonical `SITE_URL` value for both authorizati
 
 ## Requested scopes and verification
 
-The connector requests:
+The connector requests only these scopes:
 
 - `openid`, `email`, `profile` — identify the administrator-authorized Google account.
 - `https://www.googleapis.com/auth/gmail.metadata` — list message headers, dates, and labels for the authorized mailbox without reading message bodies (**restricted scope**).
-- `https://www.googleapis.com/auth/gmail.compose` — create and manage drafts and, if separately enabled in the future, send messages (**restricted scope**).
+- `https://www.googleapis.com/auth/gmail.compose` — create and manage drafts; this scope also permits sending, but NEAS production sending remains disabled behind independent controls (**restricted scope**).
 
-Request only scopes required by the actual features. Google review is required for sensitive/restricted scopes where no exception applies. Both `gmail.metadata` and `gmail.compose` are restricted Gmail scopes. Because NEAS accesses restricted Gmail data through its servers, Google requires restricted-scope verification and a Google-approved security assessment (CASA), with recurring assessment at least every 12 months when applicable. Do not represent the app as verified until Google confirms approval in the Verification Center.
+The implementation does **not** request `gmail.readonly` or a separate `gmail.send` scope. The metadata scope is intentionally narrower than full mailbox read access and matches the inbox implementation, which requests message metadata only. Do not broaden the requested scopes unless the product features and privacy disclosures are updated first.
+
+Google review is required for sensitive/restricted scopes where no exception applies. The requested Gmail scopes are restricted. Because NEAS accesses restricted Gmail data through its servers, Google may require restricted-scope verification and an approved security assessment (such as CASA), with recurring assessment when applicable. Do not represent the app as verified until Google confirms approval in the Verification Center.
 
 ## Google verification scope justification
 
 Use the following truthful, least-privilege explanations in the Google Verification Center:
 
 - **Gmail metadata** — NEAS Information and NEAS Operations administrators need to see the sender, subject, date, and labels of incoming business emails to identify client enquiries, project correspondence, and operational messages and decide which item requires a response. The integration does not request message bodies, snippets, attachments, or mailbox settings.
-- **Gmail compose** — Authorized NEAS administrators use the integration to prepare a draft in the selected mailbox for human review. The draft is stored by Gmail. The application has a send API, but the production send feature remains disabled behind two independent controls and must not be activated until Google verification and acceptance testing are complete.
+- **Gmail compose** — Authorized NEAS administrators use the integration to prepare a draft in the selected mailbox for human review. The draft is stored by Gmail. Although the scope can permit sending, the NEAS send endpoint remains disabled by default and requires separate application and database controls. The production send feature must not be activated until Google verification and acceptance testing are complete.
 
 Do not claim that NEAS only accesses metadata if the implementation later adds message-body, attachment, or full-message processing. Update the declared scopes and privacy disclosures before enabling any expanded data access.
 
@@ -64,14 +66,16 @@ All endpoints require a NEAS administrator session:
 - `POST /api/admin/gmail/drafts` — creates a Gmail draft. JSON body: `{ "account": "info", "to": "recipient@example.com", "subject": "...", "body": "..." }`.
 - `POST /api/admin/gmail/send` — intentionally blocked by default. It requires **both** the Vercel environment flag `NEAS_GMAIL_AUTOMATIC_SEND_ENABLED=true` and the database policy row `automatic_send_enabled=true`. Neither gate is enabled by this implementation.
 
+The current send endpoint accepts a recipient, subject, and plain-text body. It does not implement the additional recipient allowlist, idempotency key, fixed-template restriction, or rolling daily send cap described in a future hardened-send design. Those safeguards must be implemented and tested before either sending control is enabled. Do not enable sending by changing environment variables or database policy as part of this release.
+
 ## Sending authority
 
 Automatic email sending remains disabled until all of the following are independently confirmed:
 
-1. Google has approved the exact production branding and scopes, including any restricted-scope security assessment.
+1. Google has approved the exact production branding and requested scopes, including any required restricted-scope security assessment.
 2. Both NEAS mailboxes have completed separate, verified OAuth grants.
-3. Token refresh, inbox access, draft creation, failure handling, and audit logging pass production acceptance tests.
-4. NEAS explicitly approves activation of the environment flag and database policy.
+3. Token refresh, inbox access, draft creation, failure handling, audit logging, recipient controls, and send safeguards pass production acceptance tests.
+4. NEAS explicitly approves activation of the environment flag and database policy after the safeguards are implemented.
 
 No background mailer or autonomous sending schedule is enabled. Draft creation is the active outbound workflow; humans remain responsible for reviewing and sending drafts until the separate activation criteria are met.
 
