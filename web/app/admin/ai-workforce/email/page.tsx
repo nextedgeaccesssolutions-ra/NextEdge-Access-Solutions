@@ -35,7 +35,7 @@ export default async function AIWorkforceEmailPage({ searchParams }: { searchPar
     <Link href="/admin/ai-workforce" style={{color:"#ebc07e",textDecoration:"none"}}>← AI Workforce</Link>
     <p style={{color:"#ca9332",letterSpacing:".16em",fontSize:11,marginTop:24}}>NEAS AI WORKFORCE / INTEGRATIONS</p>
     <h1 style={{fontSize:30,margin:"6px 0"}}>Gmail account connections</h1>
-    <p style={{color:"#9aabba",lineHeight:1.6}}>Connect both NEAS mailboxes separately. Google consent is required for each account. This integration is restricted to mailbox reading and draft preparation; it does not send email.</p>
+    <p style={{color:"#9aabba",lineHeight:1.6}}>Connect both NEAS mailboxes separately. Google consent is required for each account. This integration reads inbox metadata and prepares drafts; it does not read message bodies or send email.</p>
     {params.gmail && <p role="status" style={{padding:12,border:"1px solid #ca933255",borderRadius:10,color:"#ebc07e"}}>{messages[params.gmail] ?? "Gmail connection status updated."}</p>}
     <section style={{display:"grid",gap:12,marginTop:22}}>
       {MAILBOXES.map((m) => {
