@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   if (account !== "info" && account !== "operations") return NextResponse.json({ error: "Choose a valid NEAS mailbox." }, { status: 400 });
   try {
     await loadConfig(true);
-    const messages = await listAiwGmailInbox(account, user.id, Number(url.searchParams.get("maxResults") || 20), url.searchParams.get("q") || "");
+    const messages = await listAiwGmailInbox(account, user.id, Number(url.searchParams.get("maxResults") || 20));
     return NextResponse.json({ ok: true, account, messages });
   } catch (error) {
     const e = error instanceof AiwGmailError ? error : new AiwGmailError("Inbox retrieval failed.", 502);
