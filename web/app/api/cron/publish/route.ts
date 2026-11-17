@@ -30,10 +30,8 @@ async function run(req: Request) {
   const origin = originOf(req);
   const sheetPromise = autoSyncSheet().catch((e) => ({ error: String(e) }));
   const store: StoreDailyPostsResult = await createDailyStorePosts(origin).catch((e): StoreDailyPostsResult => ({ enabled: true, created: 0, error: String(e) }));
-  // Retry failed store-promotion posts for seven days. Successful account results are skipped by publishPost.
-  if (store.enabled) await sql`update mk_posts set status = 'scheduled', scheduled_at = now(), updated_at = now()
-    where ws is null and campaign like 'NEAS Store Product Daily %' and status = 'failed'
-      and updated_at > now() - interval '7 days'`;
+  // Failed posts are deliberately not re-queued here. Recovery must first classify the
+  // provider error and prove the underlying issue is resolved; blind daily retries can duplicate posts.
   // Claim due posts atomically so overlapping cron calls cannot claim the same scheduled row.
   const due = await sql`update mk_posts set status = 'approved', updated_at = now()
     where id in (select id from mk_posts where status = 'scheduled' and scheduled_at <= now() order by scheduled_at limit 20 for update skip locked)
