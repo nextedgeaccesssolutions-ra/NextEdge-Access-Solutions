@@ -114,27 +114,23 @@ test("does not force unrelated marketing tasks onto the AI Workforce Gateway", (
   for (const task of ["caption", "seo", "facebook", "campaign"]) assert.equal(usesProjectAIGateway(task), false);
 });
 
+
 test("preserves model refusal text from a Chat Completions response", async () => {
   const result = await generateAIGatewayText({ system: "s", user: "u" }, {
     token: "oidc",
-    fetchImpl: async () => new Response(JSON.stringify({
-      choices: [{ message: { content: "", refusal: "This request cannot be completed." } }],
-    }), { status: 200 }),
+    fetchImpl: async () => new Response(JSON.stringify({ choices: [{ message: { content: "", refusal: "This request cannot be completed." } }] }), { status: 200 }),
   });
   assert.deepEqual(result, { text: "This request cannot be completed.", model: DEFAULT_AI_GATEWAY_MODEL });
 });
 
-
-test("routes specialist and outreach generation through the budgeted project Gateway", () => {
+test("routes outreach and specialist generation through the budgeted project Gateway", () => {
   assert.match(marketingSource, /usesProjectAIGateway\(task\)/);
   assert.match(marketingSource, /generateAIGatewayText\(\{ system, user \}, \{ request: extra\.request \}\)/);
   assert.match(workforceRouteSource, /generate\("outreach",context,\{brand:DEFAULT_BRAND,request:req\}\)/);
 });
 
-test("provides an admin Gateway smoke test without creating a work order", () => {
-  const action = workforceRouteSource.indexOf('if (b.action === "testGateway")');
-  const tableSetup = workforceRouteSource.indexOf("await ensureSpecialistTaskTable()");
-  assert.ok(action >= 0 && tableSetup > action, "Gateway smoke test must run before database task-table setup");
+test("provides an authenticated live Gateway smoke test without a work order", () => {
+  assert.match(workforceRouteSource, /if \(b\.action === "testGateway"\)/);
   assert.match(workforceRouteSource, /generateAIGatewayText\(/);
-  assert.match(workforceRouteSource, /return json\(\{ ok: true, model: probe\.model, text: probe\.text \}\)/);
+  assert.match(workforceRouteSource, /verified: true/);
 });

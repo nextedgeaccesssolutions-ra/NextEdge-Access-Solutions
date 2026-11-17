@@ -34,8 +34,8 @@ export function extractGatewayText(payload: unknown): string {
     const message = record(item?.message);
     const content = collectText(message?.content ?? item?.text);
     if (content.trim()) return content.trim();
-    const refusal = record(message?.refusal);
-    if (typeof message?.refusal === "string" && message.refusal.trim()) return message.refusal.trim();
+    const refusal = message?.refusal;
+    if (typeof refusal === "string" && refusal.trim()) return refusal.trim();
   }
   const output = Array.isArray(root.output) ? root.output : [];
   for (const entry of output) {

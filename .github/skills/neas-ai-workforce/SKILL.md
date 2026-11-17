@@ -71,3 +71,11 @@ Use a focused feature branch, a verified dated recovery tag on current `main`, a
 - Do not use provider BYOK credentials or direct-provider fallbacks for specialist tasks; those routes bypass the project budget. Missing OIDC, authentication failure, quota exhaustion, or Gateway errors must fail closed with a clear message.
 - Gateway budgets are soft caps: a request already in progress when the limit is crossed can complete; subsequent requests are rejected.
 - Test one live specialist work order only after the Preview deployment has passed checks. Verify the Gateway request, model, usage/cost, persisted `needs_review` task, and audit entry. Do not auto-approve or perform external actions.
+
+## Gateway inference diagnostics and response handling
+- Distinguish three states in the admin UI: OIDC authentication available, live inference verified by an authenticated test request, and inference failed. Never label OIDC token presence alone as a live/ready model.
+- The Gateway adapter must normalise text from OpenAI-compatible chat completions, multipart message content, Responses API output text/content, and Gemini candidate parts. Trim whitespace and reject empty output.
+- If a 2xx response contains no recognised text, report a safe diagnostic with the finish reason and request ID when available. Never log or expose the prompt, response body, bearer token, or other secrets.
+- The admin-only Gateway health check must make a bounded, low-token request and validate its exact sentinel response. It must not create a work order, modify business data, send a message, publish content, or trigger an external action.
+- A specialist work order is saved only after non-empty generated text is returned and always enters `needs_review`. Failed or malformed Gateway responses must fail closed and must not create an empty task.
+- Regression tests must cover the supported response envelopes, multipart extraction, empty-content diagnostics, OIDC header forwarding, budget exhaustion and authentication failures.
