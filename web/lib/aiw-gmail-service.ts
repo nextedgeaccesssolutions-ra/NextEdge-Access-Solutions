@@ -1,6 +1,7 @@
 import { sql } from "@/lib/db";
 import { decrypt, encrypt } from "@/lib/social-token-crypto";
 import { ensureAiwGmailAccountsTable, recordAiwGmailAudit } from "@/lib/aiw-gmail";
+import { isValidEmailAddress } from "@/lib/aiw-email-validation";
 
 export type AiwGmailAccount = "info" | "operations";
 const EMAILS: Record<AiwGmailAccount, string> = {
@@ -128,7 +129,7 @@ function validateMessage(input: { to: string; subject: string; body: string }) {
   const to = input.to.trim();
   const subject = input.subject.trim();
   const body = input.body.trim();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) throw new AiwGmailError("Enter one valid recipient email address.", 400, "invalid_recipient");
+  if (!isValidEmailAddress(to)) throw new AiwGmailError("Enter one valid recipient email address (maximum 254 characters).", 400, "invalid_recipient");
   if (!subject || subject.length > 240) throw new AiwGmailError("Subject is required and must be 240 characters or fewer.", 400, "invalid_subject");
   if (!body || body.length > 100_000) throw new AiwGmailError("Message body is required and must be 100,000 characters or fewer.", 400, "invalid_body");
   return { to, subject, body };
