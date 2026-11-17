@@ -27,6 +27,17 @@ test("fails closed when Gateway OIDC is unavailable", () => {
   assert.equal(result.specialistAiProvider, null);
 });
 
+test("fails closed when a static Gateway key is configured instead of project OIDC", () => {
+  const request = new Request("https://neas.example/api/admin/ai-workforce", {
+    headers: { "x-vercel-oidc-token": "runtime-oidc-token" },
+  });
+  const result = getAiwRuntimeReadiness(request, {
+    AI_GATEWAY_API_KEY: "static-key",
+  });
+  assert.equal(result.specialistAiReady, false);
+  assert.equal(result.specialistAiProvider, null);
+});
+
 test("keeps separate marketing provider readiness accurate", () => {
   const request = new Request("https://neas.example/api/admin/ai-workforce");
   const result = getAiwRuntimeReadiness(request, { GEMINI_API_KEY: "configured" });

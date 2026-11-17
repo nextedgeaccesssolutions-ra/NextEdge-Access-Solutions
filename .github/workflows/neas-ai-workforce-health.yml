@@ -1,0 +1,65 @@
+name: NEAS AI Workforce Production Health
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: neas-ai-workforce-production-health
+  cancel-in-progress: true
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Check public site and protected AI Workforce API
+        shell: bash
+        run: |
+          set -euo pipefail
+          login_url="https://www.nextedge-access-solutions.com/admin/login"
+          api_url="https://www.nextedge-access-solutions.com/api/admin/ai-workforce"
+          for attempt in 1 2 3; do
+            login_status="$(curl --silent --show-error --max-time 12 -o /tmp/neas-login.html -w '%{http_code}' "$login_url" || true)"
+            api_status="$(curl --silent --show-error --max-time 12 -H 'Accept: application/json' -o /tmp/neas-api.json -w '%{http_code}' "$api_url" || true)"
+            if [ "$login_status" = "200" ] && [ "$api_status" = "403" ] && jq -e '.error == "Admin access required."' /tmp/neas-api.json >/dev/null 2>&1; then
+              echo "NEAS production site and protected AI Workforce API verified on attempt $attempt."
+              echo "Staff login: HTTP $login_status"
+              echo "AI Workforce API: HTTP $api_status (expected unauthenticated response)"
+              exit 0
+            fi
+            echo "Health attempt $attempt failed: login HTTP $login_status; AI Workforce API HTTP $api_status."
+            sleep 8
+          done
+          echo "::error::NEAS production availability or admin-authentication check failed after three attempts."
+          exit 1
+
+      - name: Open one incident for a sustained outage
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "NEAS AI Workforce production availability check failed";
+            const { owner, repo } = context.repo;
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner, repo, state: "open", per_page: 100
+            });
+            const existing = issues.find((issue) => !issue.pull_request && issue.title === title);
+            if (!existing) {
+              await github.rest.issues.create({
+                owner, repo, title,
+                body: [
+                  "The scheduled production availability check failed after three attempts.",
+                  "",
+                  "Checks: https://www.nextedge-access-solutions.com/admin/login and https://www.nextedge-access-solutions.com/api/admin/ai-workforce",
+                  "Workflow run: " + context.serverUrl + "/" + owner + "/" + repo + "/actions/runs/" + context.runId,
+                  "",
+                  "This monitor checks public site availability and the unauthenticated admin API guard only. It does not run AI inference, consume Gateway credits, or modify production code.",
+                  "Investigate deployment status and logs, reproduce the issue, and make only evidence-backed repairs."
+                ].join("\n")
+              });
+            }

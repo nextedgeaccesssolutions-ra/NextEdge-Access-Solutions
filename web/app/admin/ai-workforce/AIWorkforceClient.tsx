@@ -40,11 +40,24 @@ const AGENTS: Agent[] = [
 const STAGES = ["new","qualified","discovery","proposal","negotiation","won","lost"];
 const peso = (n:number) => "₱" + Math.round(n || 0).toLocaleString("en-PH");
 const dt = (s:string) => new Date(s).toLocaleDateString("en-PH",{day:"2-digit",month:"short"});
+function explainFetchError(error: unknown, operation: string): Error {
+  if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+    return new Error(operation + " timed out while contacting the NEAS server. No external action was confirmed; check the workflow status before retrying.");
+  }
+  if (error instanceof TypeError && /fetch/i.test(error.message)) {
+    return new Error("The browser could not reach the NEAS AI Workforce API. Check your admin session and network connection, then reload the portal. No email, publication, or other external action was confirmed.");
+  }
+  return error instanceof Error ? error : new Error("The NEAS request failed unexpectedly.");
+}
 async function request(action:string, payload:Record<string,unknown> = {}) {
-  const r = await fetch("/api/admin/ai-workforce",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action,...payload})});
-  const j = await r.json().catch(()=>({}));
-  if(!r.ok) throw new Error(j.error || "Request failed");
-  return j;
+  try {
+    const r = await fetch("/api/admin/ai-workforce",{method:"POST",credentials:"same-origin",cache:"no-store",signal:AbortSignal.timeout(55_000),headers:{"content-type":"application/json"},body:JSON.stringify({action,...payload})});
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error || "Request failed ("+r.status+").");
+    return j;
+  } catch (error) {
+    throw explainFetchError(error, "NEAS AI Workforce request");
+  }
 }
 
 export default function AIWorkforceClient(){
@@ -71,7 +84,12 @@ export default function AIWorkforceClient(){
   const [agentObjective,setAgentObjective]=useState("");
 
   const load=useCallback(async()=>{
-    try{const r=await fetch("/api/admin/ai-workforce",{cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.error||"Unable to load workforce");setData(j);}catch(e){setError((e as Error).message);}
+    try{
+      const r=await fetch("/api/admin/ai-workforce",{credentials:"same-origin",cache:"no-store",signal:AbortSignal.timeout(20_000)});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.error||"Unable to load workforce ("+r.status+").");
+      setData(j);
+    }catch(e){setError(explainFetchError(e,"Loading the NEAS AI Workforce").message);}
   },[]);
   useEffect(()=>{load();},[load]);
   const flash=(s:string)=>{setNotice(s);window.setTimeout(()=>setNotice(""),4000);};
