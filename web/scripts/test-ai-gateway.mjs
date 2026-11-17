@@ -67,3 +67,42 @@ test("reads the Vercel Functions OIDC token from the incoming request header", a
   assert.deepEqual(result, { text: "Runtime authenticated", model: DEFAULT_AI_GATEWAY_MODEL });
   assert.equal(request.init.headers.authorization, "Bearer runtime-oidc-token");
 });
+
+
+test("extracts text from a Responses API output_text payload", async () => {
+  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+    token: "oidc",
+    fetchImpl: async () => new Response(JSON.stringify({ id: "resp_123", output_text: "Gateway output text" }), { status: 200 }),
+  });
+  assert.deepEqual(result, { text: "Gateway output text", model: DEFAULT_AI_GATEWAY_MODEL });
+});
+
+test("extracts text from structured chat-completion content blocks", async () => {
+  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+    token: "oidc",
+    fetchImpl: async () => new Response(JSON.stringify({ choices: [{ message: { content: [{ type: "text", text: "First" }, { type: "text", text: "Second" }] } }] }), { status: 200 }),
+  });
+  assert.deepEqual(result, { text: "First\nSecond", model: DEFAULT_AI_GATEWAY_MODEL });
+});
+
+test("extracts text from a Responses API output content array", async () => {
+  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+    token: "oidc",
+    fetchImpl: async () => new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: "Structured output" }] }] }), { status: 200 }),
+  });
+  assert.deepEqual(result, { text: "Structured output", model: DEFAULT_AI_GATEWAY_MODEL });
+});
+
+test("returns actionable safe diagnostics for an empty model completion", async () => {
+  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+    token: "oidc",
+    fetchImpl: async () => new Response(JSON.stringify({ id: "resp_empty_1", choices: [{ finish_reason: "length", message: { content: "" } }] }), { status: 200 }),
+  });
+  assert.equal("error" in result, true);
+  if ("error" in result) {
+    assert.match(result.error, /empty completion/);
+    assert.match(result.error, /finish_reason=length/);
+    assert.match(result.error, /response_id=resp_empty_1/);
+    assert.doesNotMatch(result.error, /oidc|test prompt/i);
+  }
+});

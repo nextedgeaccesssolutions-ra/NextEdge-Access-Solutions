@@ -2,6 +2,33 @@ export const DEFAULT_AI_GATEWAY_MODEL = "recursive/flint-v1.0";
 
 export type AIGatewayResult = { text: string; model: string } | { error: string };
 
+type GatewayPayload = {
+  id?: string;
+  model?: string;
+  output_text?: unknown;
+  choices?: Array<{ finish_reason?: string | null; message?: { content?: unknown; refusal?: string } }>;
+  output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+  error?: { message?: string; type?: string };
+};
+
+function extractGatewayText(payload: GatewayPayload): string {
+  if (typeof payload.output_text === "string" && payload.output_text.trim()) return payload.output_text.trim();
+  const content = payload.choices?.[0]?.message?.content;
+  if (typeof content === "string" && content.trim()) return content.trim();
+  if (Array.isArray(content)) {
+    const parts = content.filter((part): part is { text?: string } => !!part && typeof part === "object")
+      .map((part) => typeof part.text === "string" ? part.text : "").filter(Boolean);
+    if (parts.length) return parts.join("\n").trim();
+  }
+  const refusal = payload.choices?.[0]?.message?.refusal;
+  if (typeof refusal === "string" && refusal.trim()) return refusal.trim();
+  if (Array.isArray(payload.output)) {
+    const parts = payload.output.flatMap((item) => Array.isArray(item.content) ? item.content.map((part) => typeof part.text === "string" ? part.text : "") : []).filter(Boolean);
+    if (parts.length) return parts.join("\n").trim();
+  }
+  return "";
+}
+
 export async function generateAIGatewayText(
   input: { system: string; user: string },
   options: {
@@ -46,10 +73,7 @@ export async function generateAIGatewayText(
       signal: AbortSignal.timeout(45_000),
     });
 
-    const payload = await response.json().catch(() => ({})) as {
-      choices?: Array<{ message?: { content?: string | Array<{ type?: string; text?: string }> } }>;
-      error?: { message?: string; type?: string };
-    };
+    const payload = await response.json().catch(() => ({})) as GatewayPayload;
 
     if (!response.ok) {
       if (response.status === 402) {
@@ -65,13 +89,16 @@ export async function generateAIGatewayText(
       return { error: `NEAS AI Gateway request failed (${response.status}): ${detail}` };
     }
 
-    const content = payload.choices?.[0]?.message?.content;
-    const text = typeof content === "string"
-      ? content.trim()
-      : Array.isArray(content)
-        ? content.map((part) => part.text ?? "").join("\n").trim()
-        : "";
-    return text ? { text, model } : { error: "NEAS AI Gateway returned no text. Please retry." };
+    const text = extractGatewayText(payload);
+    if (text) return { text, model: payload.model || model };
+
+    // Safe response metadata makes empty completions diagnosable without
+    // logging prompts, OIDC tokens, or other sensitive data.
+    const finishReason = payload.choices?.[0]?.finish_reason || "not-provided";
+    const responseId = payload.id ? ", response_id=" + payload.id.slice(0, 80) : "";
+    return {
+      error: "NEAS AI Gateway returned an empty completion (finish_reason=" + finishReason + responseId + "). The request reached the Gateway, but the model supplied no text. No unbudgeted provider fallback was attempted.",
+    };
   } catch {
     return { error: "Could not reach NEAS AI Gateway or the request timed out. No alternate provider was used." };
   }
