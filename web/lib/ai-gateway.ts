@@ -10,20 +10,24 @@ type UnknownRecord = Record<string, unknown>;
 const record = (value: unknown): UnknownRecord | null =>
   value !== null && typeof value === "object" && !Array.isArray(value) ? value as UnknownRecord : null;
 
-function collectText(value: unknown): string {
+function collectText(value: unknown, depth = 0): string {
+  if (depth > 6 || value == null) return "";
   if (typeof value === "string") return value;
-  if (!Array.isArray(value)) return "";
-  return value.map((part) => {
-    if (typeof part === "string") return part;
-    const item = record(part);
-    if (!item) return "";
-    if (typeof item.text === "string") return item.text;
-    if (typeof item.output_text === "string") return item.output_text;
-    return "";
-  }).filter(Boolean).join("\n");
+  if (Array.isArray(value)) return value.map((part) => collectText(part, depth + 1)).filter(Boolean).join("\n");
+  const item = record(value);
+  if (!item) return "";
+  for (const key of ["text", "output_text", "content", "parts"]) {
+    const candidate = item[key];
+    if (typeof candidate === "string" && candidate.trim()) return candidate;
+    if (Array.isArray(candidate) || record(candidate)) {
+      const nested = collectText(candidate, depth + 1);
+      if (nested.trim()) return nested;
+    }
+  }
+  return "";
 }
 
-/** Normalise common OpenAI-compatible, Responses, and Gemini text response envelopes. */
+/** Extract user-facing answer text only; never substitute private reasoning for an answer. */
 export function extractGatewayText(payload: unknown): string {
   const root = record(payload);
   if (!root) return "";
@@ -32,7 +36,8 @@ export function extractGatewayText(payload: unknown): string {
   for (const choice of choices) {
     const item = record(choice);
     const message = record(item?.message);
-    const content = collectText(message?.content ?? item?.text);
+    const delta = record(item?.delta);
+    const content = collectText(message?.content ?? message?.output_text ?? item?.text ?? delta?.content);
     if (content.trim()) return content.trim();
   }
   const output = Array.isArray(root.output) ? root.output : [];
@@ -92,7 +97,9 @@ export async function generateAIGatewayText(
           { role: "system", content: input.system },
           { role: "user", content: input.user },
         ],
-        max_tokens: 2000,
+        // Flint spends part of its output budget on reasoning tokens; reserve room for the user-facing answer.
+        max_tokens: 6000,
+        reasoning: { effort: "minimal" },
       }),
       signal: AbortSignal.timeout(45_000),
     });
@@ -114,8 +121,12 @@ export async function generateAIGatewayText(
     const choices = Array.isArray(payload.choices) ? payload.choices : [];
     const firstChoice = record(choices[0]);
     const finishReason = String(firstChoice?.finish_reason ?? "not supplied").slice(0, 60);
+    const usage = record(payload.usage);
+    const completionDetails = record(usage?.completion_tokens_details ?? usage?.output_tokens_details);
+    const reasoningTokens = Number(completionDetails?.reasoning_tokens ?? 0);
+    const tokenDiagnostic = Number.isFinite(reasoningTokens) && reasoningTokens > 0 ? "; reasoning tokens: " + reasoningTokens : "";
     const requestId = String(response.headers.get("x-request-id") ?? payload.id ?? "not supplied").slice(0, 100);
-    return { error: "NEAS AI Gateway returned a successful response but no recognised text content (finish reason: " + finishReason + "; request: " + requestId + "). The response was not saved. Please retry or inspect the Gateway response format." };
+    return { error: "NEAS AI Gateway returned a successful response but no recognised text content (finish reason: " + finishReason + "; request: " + requestId + tokenDiagnostic + "). The response was not saved. Please retry or inspect the Gateway response format." };
   } catch {
     return { error: "Could not reach NEAS AI Gateway or the request timed out. No alternate provider was used." };
   }
