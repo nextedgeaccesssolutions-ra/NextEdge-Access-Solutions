@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_AI_GATEWAY_MODEL, generateAIGatewayText } from "../lib/ai-gateway.ts";
+import { DEFAULT_AI_GATEWAY_MODEL, extractGatewayText, generateAIGatewayText } from "../lib/ai-gateway.ts";
 
 test("uses the live catalog-selected Recursive Flint 1.0 model by default", () => {
   assert.equal(DEFAULT_AI_GATEWAY_MODEL, "recursive/flint-v1.0");
@@ -66,4 +66,37 @@ test("reads the Vercel Functions OIDC token from the incoming request header", a
   });
   assert.deepEqual(result, { text: "Runtime authenticated", model: DEFAULT_AI_GATEWAY_MODEL });
   assert.equal(request.init.headers.authorization, "Bearer runtime-oidc-token");
+});
+
+test("normalises OpenAI-compatible string content", () => {
+  assert.equal(extractGatewayText({ choices: [{ message: { content: "  Hello NEAS  " } }] }), "Hello NEAS");
+});
+
+test("normalises multipart OpenAI-compatible content", () => {
+  assert.equal(extractGatewayText({ choices: [{ message: { content: [{ type: "text", text: "Hello" }, { type: "text", text: "NEAS" }] } }] }), "Hello\\nNEAS");
+});
+
+test("normalises Responses API output_text and output content", () => {
+  assert.equal(extractGatewayText({ output_text: "Ready" }), "Ready");
+  assert.equal(extractGatewayText({ output: [{ content: [{ type: "output_text", text: "Gateway ready" }] }] }), "Gateway ready");
+});
+
+test("normalises Gemini candidate text parts", () => {
+  assert.equal(extractGatewayText({ candidates: [{ content: { parts: [{ text: "Gemini output" }] } }] }), "Gemini output");
+});
+
+test("returns a diagnostic reference when a successful response has no recognised text", async () => {
+  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+    token: "oidc",
+    fetchImpl: async () => new Response(JSON.stringify({ id: "req-neas-123", choices: [{ message: { content: "" }, finish_reason: "length" }] }), {
+      status: 200,
+      headers: { "content-type": "application/json", "x-request-id": "req-neas-123" },
+    }),
+  });
+  assert.equal("error" in result, true);
+  if ("error" in result) {
+    assert.match(result.error, /successful response but no recognised text content/i);
+    assert.match(result.error, /length/);
+    assert.match(result.error, /req-neas-123/);
+  }
 });
