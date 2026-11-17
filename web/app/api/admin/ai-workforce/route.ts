@@ -3,6 +3,8 @@ import { sql } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { DEFAULT_BRAND, generate } from "@/lib/marketing";
 import { getSetting, setSetting } from "@/lib/settings";
+import { getAiwSkill, listAiwSkills } from "@/lib/aiw-skills";
+import { loadConfig } from "@/lib/config";
 import { resolveAiwSpecialistPermission } from "@/lib/aiw-authority";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +35,7 @@ export async function GET() {
   const user = await admin();
   if (!user) return json({ error: "Admin access required." }, 403);
   try {
+    await loadConfig(true);
     await ensureSpecialistTaskTable();
     const [leads,drafts,runs,tasks,metrics] = await Promise.all([
       sql`select id, company, contact, email, phone, service, source, stage, estimated_value, next_step, contact_status, created_at from aiw_leads order by created_at desc limit 500`,
@@ -49,6 +52,9 @@ export async function GET() {
     const workforceConfig = await getSetting<WorkforceConfig>(WORKFORCE_KEY, EMPTY_WORKFORCE);
     return json({
       workforceConfig,
+      skills: listAiwSkills(),
+      aiReady: Boolean(process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY),
+      aiProvider: process.env.ANTHROPIC_API_KEY ? "anthropic" : process.env.GEMINI_API_KEY ? "gemini" : null,
       leads: leads.map(x=>({...x,id:Number(x.id),value:Number(x.estimated_value),estimated_value:undefined,created_at:new Date(x.created_at).toISOString()})),
       drafts: drafts.map(x=>({...x,id:Number(x.id),lead_id:Number(x.lead_id),created_at:new Date(x.created_at).toISOString()})),
       runs: runs.map(x=>({...x,id:Number(x.id),created_at:new Date(x.created_at).toISOString()})),
@@ -102,6 +108,9 @@ export async function POST(req: Request) {
       return json({ok:true});
     }
     if (b.action === "draftOutreach") {
+      const config = await getSetting<WorkforceConfig>(WORKFORCE_KEY, EMPTY_WORKFORCE);
+      const outreachPolicy = config.agents.find((agent) => agent.id === "outreach");
+      if (outreachPolicy && (!outreachPolicy.enabled || outreachPolicy.authority === "observe")) return json({ error: "Outreach drafting is disabled by the workforce authority matrix." }, 403);
       const leadId=Number(b.leadId), channel=String(b.channel);
       if (!Number.isSafeInteger(leadId) || !(channels as readonly string[]).includes(channel)) return json({error:"Select a valid lead and outreach channel."},400);
       const lead=(await sql`select * from aiw_leads where id=${leadId}`)[0];
@@ -134,6 +143,7 @@ If this is not relevant, I will respect that and won't continue contacting you.
 CALL NOTES
 Record only factual answers, objections, requested follow-up and contact preferences.`;
       } else {
+        await loadConfig(true);
         const result=await generate("outreach",context,{brand:DEFAULT_BRAND});
         if ("error" in result) return json({error:result.error},503);
         body=result.text;
@@ -202,18 +212,21 @@ Record only factual answers, objections, requested follow-up and contact prefere
       const workforceConfig = await getSetting<WorkforceConfig>(WORKFORCE_KEY, EMPTY_WORKFORCE);
       const permission = resolveAiwSpecialistPermission(agentId, workforceConfig);
       if (!permission.allowed) return json({error:permission.reason},403);
+      const skill = getAiwSkill(agentId);
+      await loadConfig(true);
       const taskBrief=[
         "SPECIALIST: "+role.name+" ("+agentId+")",
         "ROLE SCOPE: "+role.scope,
+        "ADVANCED SKILL: "+skill.name+" ("+skill.domain+")\n"+skill.instructions,
         "USER OBJECTIVE: "+objective,
         "REQUIRED DELIVERABLES: "+role.deliverables.join("; "),
         "AUTHORITY / SAFETY LIMIT: "+role.guardrail,
         "NEAS CONTEXT: NextEdge Access Solutions (NEAS) OPC, Philippines. Services include rope access, renewable energy, offshore/onshore, wind turbine and met mast services, telecom, industrial maintenance, inspection, training and PPE.",
         "INSTRUCTIONS: Produce the actual specialist work product, not a generic template. Use clear headings, actionable steps, assumptions, dependencies, missing information and measurable acceptance criteria. Use only facts supplied. Mark unknowns as [TO VERIFY]. If the objective is underspecified, state what is missing and provide a useful preliminary draft. Never claim external research or actions that were not performed. Keep the authority limit explicit."
-      ].join("\\n\\n");
+      ].join("\n\n");
       const generated=await generate("specialist",taskBrief,{brand:DEFAULT_BRAND});
       if("error" in generated) return json({error:generated.error},503);
-      const deliverable=generated.text+"\\n\\nGOVERNANCE STATUS\\nInternal AI-generated draft · human review required\\nAUTHORITY / SAFETY CONTROL\\n"+role.guardrail;
+      const deliverable=generated.text+"\n\nGOVERNANCE STATUS\nInternal AI-generated draft · human review required\nAUTHORITY / SAFETY CONTROL\n"+role.guardrail;
       const saved=await sql`insert into aiw_specialist_tasks(agent_id,agent_name,objective,deliverable,status,created_by) values(${agentId},${role.name},${objective},${deliverable},'needs_review',${user.id}) returning id,created_at`;
       await sql`insert into aiw_workflow_runs(workflow,status,summary,actor_id) values(${"Specialist: "+role.name},'needs_review',${"Work order #"+saved[0].id+" created for review"},${user.id})`;
       return json({ok:true,task:{id:Number(saved[0].id),agent_id:agentId,agent_name:role.name,objective,deliverable,status:"needs_review",created_at:new Date(saved[0].created_at).toISOString()}});
