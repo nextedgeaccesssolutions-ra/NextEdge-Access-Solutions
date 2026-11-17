@@ -53,6 +53,7 @@ export default function AIWorkforceClient(){
   const [busy,setBusy]=useState(false);
   const [notice,setNotice]=useState("");
   const [error,setError]=useState("");
+  const [gatewayProbe,setGatewayProbe]=useState("");
   const [company,setCompany]=useState("");
   const [contact,setContact]=useState("");
   const [email,setEmail]=useState("");
