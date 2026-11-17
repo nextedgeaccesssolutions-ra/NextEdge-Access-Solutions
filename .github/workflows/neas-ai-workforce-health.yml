@@ -1,0 +1,62 @@
+name: NEAS AI Workforce Production Health
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: neas-ai-workforce-production-health
+  cancel-in-progress: true
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Check production availability
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://www.nextedge-access-solutions.com/api/health"
+          for attempt in 1 2 3; do
+            status="$(curl --silent --show-error --max-time 12 -o /tmp/neas-health.json -w '%{http_code}' "$endpoint" || true)"
+            if [ "$status" = "200" ] && jq -e '.ok == true and .service == "neas-web"' /tmp/neas-health.json >/dev/null 2>&1; then
+              echo "NEAS production availability verified on attempt $attempt."
+              cat /tmp/neas-health.json
+              exit 0
+            fi
+            echo "Health attempt $attempt failed with HTTP $status."
+            sleep 8
+          done
+          echo "::error::NEAS production availability check failed after three attempts."
+          exit 1
+
+      - name: Open one incident for a sustained outage
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "NEAS AI Workforce production availability check failed";
+            const { owner, repo } = context.repo;
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner, repo, state: "open", per_page: 100
+            });
+            const existing = issues.find((issue) => !issue.pull_request && issue.title === title);
+            if (!existing) {
+              await github.rest.issues.create({
+                owner, repo, title,
+                body: [
+                  "The scheduled production availability check failed after three attempts.",
+                  "",
+                  "Endpoint: https://www.nextedge-access-solutions.com/api/health",
+                  "Workflow run: " + context.serverUrl + "/" + owner + "/" + repo + "/actions/runs/" + context.runId,
+                  "",
+                  "This monitor checks HTTP availability only. It does not run AI inference, consume Gateway credits, or modify production code.",
+                  "Investigate deployment status and logs, reproduce the issue, and make only evidence-backed repairs."
+                ].join("\n")
+              });
+            }
