@@ -48,3 +48,22 @@ test("rejects unknown specialist IDs", () => {
   assert.equal(decision.allowed, false);
   if (!decision.allowed) assert.equal(decision.workforceAgentId, null);
 });
+
+test("maps the professional communications specialist to the outreach permission", () => {
+  assert.equal(resolveAiwSpecialistPermission("PRO", null).allowed, true);
+  const blocked = resolveAiwSpecialistPermission("PRO", {
+    updatedAt: "2026-11-17T00:00:00.000Z",
+    agents: [],
+  });
+  assert.equal(blocked.allowed, false);
+  if (!blocked.allowed) assert.match(blocked.reason, /disabled/i);
+});
+
+test("blocks PRO outreach when the saved outreach authority is observe-only", () => {
+  const decision = resolveAiwSpecialistPermission("PRO", {
+    updatedAt: "2026-11-17T00:00:00.000Z",
+    agents: [{ id: "outreach", enabled: true, authority: "observe" }],
+  });
+  assert.equal(decision.allowed, false);
+  if (!decision.allowed) assert.match(decision.reason, /observe-only/i);
+});

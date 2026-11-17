@@ -47,6 +47,10 @@ jobs:
         run: npm run test:aiw-email-validation
         working-directory: web
 
+      - name: Test Gmail opt-out enforcement
+        run: npm run test:aiw-contact-policy
+        working-directory: web
+
       - name: Test AI Workforce authority enforcement
         run: npm run test:aiw-authority
         working-directory: web

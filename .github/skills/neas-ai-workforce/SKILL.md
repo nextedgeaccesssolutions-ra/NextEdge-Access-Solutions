@@ -65,7 +65,7 @@ Use a focused feature branch, a verified dated recovery tag on current `main`, a
 
 ## NEAS AI Gateway production configuration
 - Specialist work orders use Vercel AI Gateway through the production project's short-lived Vercel OIDC token.
-- The configured default model is `google/gemini-3-flash`, verified against the live Gateway model catalog on 2026-11-17.
+- The configured default model is `recursive/flint-v1.0`, verified against the live Gateway model catalog and successfully smoke-tested with project OIDC on 2026-11-17. It is currently listed as free; use a paid frontier model only after Gateway credits are available, keeping the US$10 monthly project budget in force.
 - The NEAS project budget is US$10 per calendar month (UTC reset), enforced at the Vercel AI Gateway project scope.
 - Do not set `AI_GATEWAY_API_KEY` in this workload: static API-key requests are not counted against the project OIDC budget.
 - Do not use provider BYOK credentials or direct-provider fallbacks for specialist tasks; those routes bypass the project budget. Missing OIDC, authentication failure, quota exhaustion, or Gateway errors must fail closed with a clear message.

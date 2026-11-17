@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { DEFAULT_AI_GATEWAY_MODEL, generateAIGatewayText } from "../lib/ai-gateway.ts";
 
-test("uses the live catalog-selected Gemini 3 Flash model by default", () => {
-  assert.equal(DEFAULT_AI_GATEWAY_MODEL, "google/gemini-3-flash");
+test("uses the live catalog-selected Recursive Flint 1.0 model by default", () => {
+  assert.equal(DEFAULT_AI_GATEWAY_MODEL, "recursive/flint-v1.0");
 });
 
 test("sends specialist prompts using project OIDC and returns generated text", async () => {
@@ -15,10 +15,10 @@ test("sends specialist prompts using project OIDC and returns generated text", a
       return new Response(JSON.stringify({ choices: [{ message: { content: "Qualified lead plan" } }] }), { status: 200 });
     },
   });
-  assert.deepEqual(result, { text: "Qualified lead plan", model: "google/gemini-3-flash" });
+  assert.deepEqual(result, { text: "Qualified lead plan", model: "recursive/flint-v1.0" });
   assert.equal(request.url, "https://ai-gateway.vercel.sh/v1/chat/completions");
   assert.equal(request.init.headers.authorization, "Bearer test-oidc-token");
-  assert.equal(JSON.parse(request.init.body).model, "google/gemini-3-flash");
+  assert.equal(JSON.parse(request.init.body).model, "recursive/flint-v1.0");
 });
 
 test("refuses static Gateway keys so the project OIDC budget cannot be bypassed", async () => {
