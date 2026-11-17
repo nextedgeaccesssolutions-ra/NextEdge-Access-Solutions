@@ -204,6 +204,17 @@ await sql`create table if not exists aiw_gmail_send_audit (
   provider_message_id text, error_code text, created_at timestamptz not null default now()
 )`;
 await sql`create index if not exists aiw_gmail_send_audit_daily_idx on aiw_gmail_send_audit(account_key, created_at desc)`;
+await sql`create table if not exists aiw_gmail_audit (
+  id bigserial primary key,
+  account_key text check (account_key in ('info','operations')),
+  actor_id int references users(id) on delete set null,
+  action text not null,
+  outcome text not null check (outcome in ('success','blocked','failure')),
+  provider_code text,
+  detail text not null default '',
+  created_at timestamptz not null default now()
+)`;
+await sql`create index if not exists aiw_gmail_audit_created_idx on aiw_gmail_audit(created_at desc)`;
 console.log("[migrate] Database ready.");
 await sql.end();
 

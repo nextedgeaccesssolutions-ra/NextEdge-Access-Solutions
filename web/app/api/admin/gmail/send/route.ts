@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isValidEmailAddress } from "@/lib/aiw-email-validation";
 import { getUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import {
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 const json = (message: string, status: number) => NextResponse.json({ error: message }, { status });
 const safe = (value: unknown, max: number) => String(value ?? "").trim().slice(0, max);
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 
 export async function POST(req: Request) {
   const user = await getUser();
@@ -24,12 +25,13 @@ export async function POST(req: Request) {
 
   const input = body as Record<string, unknown>;
   const accountKey = safe(input.account, 20) as GmailAccountKey;
-  const recipient = safe(input.recipient, 254).toLowerCase();
+  const rawRecipient = typeof input.recipient === "string" ? input.recipient.trim() : "";
+  const recipient = rawRecipient.toLowerCase();
   const templateKey = safe(input.template, 40) as keyof typeof GMAIL_TEMPLATES;
   const contact = safe(input.contact, 100);
   const company = safe(input.company, 160);
   const reference = safe(input.reference, 80);
-  if (!Object.hasOwn(GMAIL_ACCOUNTS, accountKey) || !emailPattern.test(recipient) ||
+  if (!Object.hasOwn(GMAIL_ACCOUNTS, accountKey) || !isValidEmailAddress(recipient) ||
       !Object.hasOwn(GMAIL_TEMPLATES, templateKey) || !contact || !company || !reference) {
     return json("A valid mailbox, recipient, approved template, contact, company and reference are required.", 400);
   }
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
   let reservationId: number | null = null;
 
   try {
-    const token = await getGmailAccessToken(accountKey);
+    const token = await getGmailAccessToken(accountKey, user.id);
     if (!hasGmailSendScope(token.scope)) return recordBlocked("gmail_send_scope_missing_reconnect_required", 409);
 
     // Serialize reservations per mailbox so concurrent requests cannot exceed the rolling daily cap.

@@ -35,11 +35,35 @@ export function ensureAiwGmailAccountsTable(): Promise<void> {
       created_at timestamptz not null default now()
     )`;
     await sql`create index if not exists aiw_gmail_send_audit_daily_idx on aiw_gmail_send_audit(account_key, created_at desc)`;
+    await sql`create table if not exists aiw_gmail_audit (
+      id bigserial primary key,
+      account_key text check (account_key in ('info','operations')),
+      actor_id int references users(id) on delete set null,
+      action text not null,
+      outcome text not null check (outcome in ('success','blocked','failure')),
+      provider_code text,
+      detail text not null default '',
+      created_at timestamptz not null default now()
+    )`;
+    await sql`create index if not exists aiw_gmail_audit_created_idx on aiw_gmail_audit(created_at desc)`;
   })().catch((error) => {
     ready = null;
     throw error;
   });
   return ready;
+}
+
+export async function recordAiwGmailAudit(input: {
+  accountKey?: "info" | "operations" | null;
+  actorId?: number | null;
+  action: string;
+  outcome: "success" | "blocked" | "failure";
+  providerCode?: string | null;
+  detail?: string;
+}) {
+  await ensureAiwGmailAccountsTable();
+  await sql`insert into aiw_gmail_audit (account_key,actor_id,action,outcome,provider_code,detail)
+    values (${input.accountKey ?? null},${input.actorId ?? null},${input.action},${input.outcome},${input.providerCode ?? null},${(input.detail ?? "").slice(0,500)})`;
 }
 
 export const GMAIL_ACCOUNTS = {
@@ -77,12 +101,15 @@ export const GMAIL_TEMPLATES = {
 } as const;
 
 type TokenBundle = { refresh_token: string; access_token?: string; token_type?: string; scope?: string; expires_at?: number };
-export async function getGmailAccessToken(accountKey: GmailAccountKey) {
+export async function getGmailAccessToken(accountKey: GmailAccountKey, actorId?: number) {
   const rows = await sql`select token_enc, scope, email, status from aiw_gmail_accounts where account_key=${accountKey} limit 1`;
   const row = rows[0];
   if (!row || row.status !== "connected" || row.email !== GMAIL_ACCOUNTS[accountKey]) throw new Error("mailbox_not_connected");
   const bundle = JSON.parse(decrypt(String(row.token_enc))) as TokenBundle;
   if (!bundle.refresh_token) throw new Error("refresh_token_missing");
+  if (bundle.access_token && Number(bundle.expires_at ?? 0) > Date.now() + 120_000) {
+    return { accessToken: bundle.access_token, scope: String(row.scope || bundle.scope || "") };
+  }
   const clientId = process.env.GOOGLE_CLIENT_ID?.trim() ?? "";
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() ?? "";
   if (!clientId || !clientSecret) throw new Error("oauth_client_missing");
@@ -91,12 +118,21 @@ export async function getGmailAccessToken(accountKey: GmailAccountKey) {
     body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: bundle.refresh_token, grant_type: "refresh_token" }),
     cache: "no-store",
   });
-  const fresh = await response.json();
+  const fresh = await response.json().catch(() => ({}));
   if (!response.ok || !fresh.access_token) {
     await sql`update aiw_gmail_accounts set status='reauth_required', last_error='token_refresh_failed', updated_at=now() where account_key=${accountKey}`;
+    await recordAiwGmailAudit({ accountKey, actorId, action: "token_refresh", outcome: "failure", detail: "Google refresh token was rejected; mailbox requires reauthorization." }).catch(() => {});
     throw new Error("token_refresh_failed");
   }
-  const next: TokenBundle = { ...bundle, access_token: fresh.access_token, expires_at: Date.now() + Number(fresh.expires_in || 3600) * 1000 };
-  await sql`update aiw_gmail_accounts set token_enc=${encrypt(JSON.stringify(next))}, expires_at=now() + (${Number(fresh.expires_in || 3600)} * interval '1 second'), updated_at=now() where account_key=${accountKey}`;
-  return { accessToken: String(fresh.access_token), scope: String(row.scope ?? bundle.scope ?? "") };
+  const next: TokenBundle = {
+    ...bundle,
+    access_token: String(fresh.access_token),
+    refresh_token: String(fresh.refresh_token || bundle.refresh_token),
+    token_type: String(fresh.token_type || bundle.token_type || "Bearer"),
+    scope: String(fresh.scope || bundle.scope || row.scope || ""),
+    expires_at: Date.now() + Number(fresh.expires_in || 3600) * 1000,
+  };
+  await sql`update aiw_gmail_accounts set token_enc=${encrypt(JSON.stringify(next))}, scope=${next.scope ?? ""}, expires_at=now() + (${Number(fresh.expires_in || 3600)} * interval '1 second'), updated_at=now() where account_key=${accountKey}`;
+  await recordAiwGmailAudit({ accountKey, actorId, action: "token_refresh", outcome: "success", detail: "Access token refreshed and encrypted token bundle updated." });
+  return { accessToken: String(fresh.access_token), scope: String(next.scope || row.scope || bundle.scope || "") };
 }
