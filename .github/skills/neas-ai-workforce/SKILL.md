@@ -11,6 +11,9 @@ Operate the NEAS AI Workforce as a coordinated business system for NextEdge Acce
 ## Repository map
 - Admin UI: `web/app/admin/ai-workforce/`
 - Workforce API: `web/app/api/admin/ai-workforce/route.ts`
+- AI Gateway adapter and diagnostics: `web/lib/ai-gateway.ts`, `web/scripts/test-ai-gateway.mjs`
+- Skill registry: `web/lib/aiw-skills.ts`; Gateway reliability skill: `.github/skills/ai-gateway-reliability/SKILL.md`
+- Five-minute production availability monitor: `.github/workflows/neas-ai-workforce-health.yml`
 - Gmail API and encrypted account services: `web/app/api/admin/gmail/`, `web/lib/aiw-gmail-service.ts`, `web/lib/aiw-gmail.ts`
 - Authority policy: `web/lib/aiw-authority.ts`
 - Product context and model generation: `web/lib/marketing.ts`
@@ -36,6 +39,7 @@ Operate the NEAS AI Workforce as a coordinated business system for NextEdge Acce
 - **HSEQ / Quality / Integrity / Audit:** risk identification, evidence checks, document completeness, nonconformance tracking and independent review.
 - **Project Delivery / Branch Coordination:** milestones, resource requirements, mobilization readiness, handoffs and delivery risk.
 - **Code / Automation / Model Router / Knowledge:** integration design, test strategy, tool permissions, model cost/quality controls and controlled knowledge maintenance.
+- **AI Gateway Reliability:** separate browser/API/network/OIDC/model/response failures, preserve project billing and token privacy, and verify inference with side-effect-free probes.
 
 ## Workflow
 1. Confirm objective, target customer or internal stakeholder, service line, evidence available, deadline, owner and desired deliverable.
@@ -52,7 +56,7 @@ Operate the NEAS AI Workforce as a coordinated business system for NextEdge Acce
 - Check each mailbox's independent Google OAuth grant before claiming that account is connected.
 - Google restricted-scope approval and any required security assessment are external gates; code deployment does not equal Google verification.
 - Gmail send requires the documented application and database gates plus completed acceptance tests and explicit owner authorization. Keep disabled until all conditions are met.
-- Scheduled repository and deployment monitoring is hourly at most; do not promise five-minute checks where the scheduler cannot provide them.
+- ChatGPT task automations are hourly at most. The repository's GitHub Actions production availability monitor may run every five minutes; it checks the public health endpoint only, creates one GitHub issue on a sustained outage, and does not run model inference, spend Gateway credits, or modify production code.
 
 ## Required validation
 - Regression tests for role-to-authority mapping, disabled roles, observe-only roles, and missing saved permissions.
