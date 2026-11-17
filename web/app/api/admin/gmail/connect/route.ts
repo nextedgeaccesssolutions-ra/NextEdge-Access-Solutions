@@ -11,6 +11,15 @@ const ACCOUNTS = {
   operations: "nextedgeaccesssolutions@gmail.com",
 } as const;
 
+function getCanonicalCallback(origin: string) {
+  const configured = process.env.SITE_URL?.trim() || origin;
+  const base = new URL(configured);
+  if (base.protocol !== "https:" && process.env.NODE_ENV === "production") {
+    throw new Error("SITE_URL must use HTTPS in production.");
+  }
+  return new URL("/api/admin/gmail/callback", base.origin).toString();
+}
+
 export async function GET(req: Request) {
   const user = await getUser();
   if (!user || user.role !== "admin") return NextResponse.json({ error: "Admin access required." }, { status: 403 });
@@ -21,11 +30,16 @@ export async function GET(req: Request) {
   if (!key || !(key in ACCOUNTS)) return NextResponse.json({ error: "Choose a valid NEAS mailbox." }, { status: 400 });
   const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
   if (!clientId) return NextResponse.redirect(new URL("/admin/ai-workforce/email?gmail=missing-client", url.origin));
+  let callback: string;
+  try {
+    callback = getCanonicalCallback(url.origin);
+  } catch {
+    return NextResponse.redirect(new URL("/admin/ai-workforce/email?gmail=invalid-site-url", url.origin));
+  }
   const state = randomBytes(32).toString("base64url");
   const jar = await cookies();
   jar.set("neas_gmail_oauth_state", state, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/api/admin/gmail/callback", maxAge: 600 });
   jar.set("neas_gmail_oauth_account", key, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/api/admin/gmail/callback", maxAge: 600 });
-  const callback = new URL("/api/admin/gmail/callback", url.origin).toString();
   const auth = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   auth.search = new URLSearchParams({
     client_id: clientId,

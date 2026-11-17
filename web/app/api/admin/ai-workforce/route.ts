@@ -2,11 +2,17 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { DEFAULT_BRAND, generate } from "@/lib/marketing";
+import { getSetting, setSetting } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 const stages = ["new","qualified","discovery","proposal","negotiation","won","lost"] as const;
 const channels = ["email","call","linkedin"] as const;
+const WORKFORCE_KEY = "neas_ai_workforce_config";
+const WORKFORCE_LEVELS = ["observe", "draft", "recommend", "execute_approved"] as const;
+const WORKFORCE_IDS = new Set(["orchestrator","lead-research","lead-qualifier","outreach","proposal-closer","relationship","marketing-strategy","seo","content","video","publisher","rope-access","renewables","offshore-power","estimator","contracts","finance","hseq","integrity","agent-quality","model-router","code-engineer","knowledge","human-interaction"]);
+type WorkforceConfig = { agents: { id: string; enabled: boolean; authority: (typeof WORKFORCE_LEVELS)[number] }[]; updatedAt: string | null };
+const EMPTY_WORKFORCE: WorkforceConfig = { agents: [], updatedAt: null };
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status });
 const text = (v: unknown, max: number) => String(v ?? "").trim().slice(0,max);
 async function admin() { const user = await getUser(); return user?.role === "admin" ? user : null; }
@@ -27,6 +33,20 @@ export async function GET() {
   if (!user) return json({ error: "Admin access required." }, 403);
   try {
     await ensureSpecialistTaskTable();
+    if (b.action === "saveWorkforceConfig") {
+      if (!Array.isArray(b.agents) || b.agents.length > WORKFORCE_IDS.size) return json({ error: "Invalid workforce configuration." }, 400);
+      const seen = new Set<string>();
+      const agents: WorkforceConfig["agents"] = [];
+      for (const item of b.agents) {
+        if (!item || typeof item.id !== "string" || !WORKFORCE_IDS.has(item.id) || seen.has(item.id)) return json({ error: "Unknown or duplicate specialist." }, 400);
+        if (typeof item.enabled !== "boolean" || !(WORKFORCE_LEVELS as readonly string[]).includes(item.authority)) return json({ error: "Invalid specialist permission." }, 400);
+        seen.add(item.id);
+        agents.push({ id: item.id, enabled: item.enabled, authority: item.authority });
+      }
+      const config: WorkforceConfig = { agents, updatedAt: new Date().toISOString() };
+      await setSetting(WORKFORCE_KEY, config);
+      return json({ ok: true, workforceConfig: config });
+    }
     const [leads,drafts,runs,tasks,metrics] = await Promise.all([
       sql`select id, company, contact, email, phone, service, source, stage, estimated_value, next_step, contact_status, created_at from aiw_leads order by created_at desc limit 500`,
       sql`select d.id, d.lead_id, d.channel, d.subject, d.body, d.status, d.created_at, l.company from aiw_outreach_drafts d join aiw_leads l on l.id=d.lead_id order by d.created_at desc limit 200`,
@@ -39,7 +59,9 @@ export async function GET() {
         (select count(*)::int from aiw_outreach_drafts where status = 'draft') as drafts
         from aiw_leads`
     ]);
+    const workforceConfig = await getSetting<WorkforceConfig>(WORKFORCE_KEY, EMPTY_WORKFORCE);
     return json({
+      workforceConfig,
       leads: leads.map(x=>({...x,id:Number(x.id),value:Number(x.estimated_value),estimated_value:undefined,created_at:new Date(x.created_at).toISOString()})),
       drafts: drafts.map(x=>({...x,id:Number(x.id),lead_id:Number(x.lead_id),created_at:new Date(x.created_at).toISOString()})),
       runs: runs.map(x=>({...x,id:Number(x.id),created_at:new Date(x.created_at).toISOString()})),
