@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { ensureAiwGmailAccountsTable } from "@/lib/aiw-gmail";
+import GmailWorkspaceClient from "./GmailWorkspaceClient";
 
 export const dynamic = "force-dynamic";
 const MAILBOXES = [
@@ -49,6 +50,7 @@ export default async function AIWorkforceEmailPage({ searchParams }: { searchPar
         </article>;
       })}
     </section>
+    <GmailWorkspaceClient />
     <aside style={{marginTop:22,padding:14,border:"1px solid #ca933244",borderRadius:10,color:"#c8b68f",fontSize:12,lineHeight:1.6}}>
       <b>Security and authority</b><br/>OAuth tokens are encrypted at rest using TOKEN_ENCRYPTION_KEY. Access is limited to administrators. The selected Google scopes allow reading mail and creating drafts; outbound sending remains disabled by the NEAS workforce policy. Disconnect/revocation and automated inbox processing must be implemented and tested before describing the workforce as 24/7 operational.
     </aside>
