@@ -6,33 +6,34 @@ type Agent = { id: string; name: string; lane: string; role: string; status: "re
 type Lead = { id: number; company: string; contact: string; email: string; phone: string; service: string; source: string; stage: string; value: number; next_step: string; contact_status: string; created_at: string; };
 type Draft = { id: number; lead_id: number; channel: string; subject: string; body: string; status: string; created_at: string; company: string; };
 type Run = { id: number; workflow: string; status: string; summary: string; created_at: string; };
-type State = { leads: Lead[]; drafts: Draft[]; runs: Run[]; metrics: { leads: number; qualified: number; proposals: number; pipeline: number; drafts: number }; };
-type Tab = "command" | "agents" | "leads" | "outreach" | "approvals" | "performance";
+type SpecialistTask = { id:number; agent_id:string; agent_name:string; objective:string; deliverable:string; status:string; created_at:string; };
+type State = { leads: Lead[]; drafts: Draft[]; runs: Run[]; tasks: SpecialistTask[]; metrics: { leads: number; qualified: number; proposals: number; pipeline: number; drafts: number }; };
+type Tab = "command" | "agents" | "workbench" | "leads" | "outreach" | "approvals" | "performance";
 
 const AGENTS: Agent[] = [
   { id:"JARVIS",name:"JARVIS Orchestrator",lane:"COMMAND",role:"Coordinates specialist work, budgets, permissions, handoffs and outcome reporting",status:"ready",metric:"On-time workflow completion",color:"#d6a84f" },
   { id:"SALES",name:"Sales & CRM",lane:"REVENUE",role:"Qualifies prospects, manages pipeline, prepares deal plans and follow-ups",status:"ready",metric:"Qualified-to-won conversion",color:"#e4b65d" },
   { id:"MARKETING",name:"Marketing Growth",lane:"REVENUE",role:"Plans SEO, campaigns, channel strategy and measurable demand generation",status:"ready",metric:"Marketing-qualified leads",color:"#9bc4b2" },
   { id:"CONTENT",name:"Creative Studio",lane:"REVENUE",role:"Creates brand-aligned posts, campaign copy, scripts and sales collateral",status:"ready",metric:"Approved content throughput",color:"#b3a2dc" },
-  { id:"SKILLS",name:"Skills & Competency",lane:"PEOPLE",role:"Maps role competencies, training needs, certifications and capability gaps",status:"standby",metric:"Competency coverage",color:"#a7b8d4" },
-  { id:"PERFORMANCE",name:"Performance Intelligence",lane:"GOVERNANCE",role:"Tracks agent and commercial KPIs, service levels, conversion and delivery outcomes",status:"standby",metric:"KPI attainment",color:"#9ac9d1" },
-  { id:"AUTHORITY",name:"Authority & Governance",lane:"GOVERNANCE",role:"Enforces role permissions, approval thresholds, audit trails and escalation paths",status:"standby",metric:"Policy compliance",color:"#c2b5a0" },
-  { id:"APPROACH",name:"Client Approach Strategy",lane:"REVENUE",role:"Builds account plans, value propositions, stakeholder maps and ethical outreach sequences",status:"standby",metric:"Meeting conversion",color:"#df9b83" },
-  { id:"HUMAN",name:"Human Relationship",lane:"RELATIONSHIPS",role:"Supports account ownership, context-aware handoffs and long-term client relationships",status:"standby",metric:"Client retention",color:"#9ac9d1" },
-  { id:"EMPATHY",name:"Customer Experience & Empathy",lane:"RELATIONSHIPS",role:"Reviews tone, customer needs, complaints and respectful response quality",status:"standby",metric:"Customer satisfaction",color:"#b3a2dc" },
-  { id:"PRO",name:"Professional Communications",lane:"RELATIONSHIPS",role:"Maintains consistent professional proposals, emails, reports and meeting briefs",status:"standby",metric:"Communication quality",color:"#a9c28b" },
-  { id:"ENGINEERING",name:"Engineering & Technical",lane:"DELIVERY",role:"Organizes technical scope reviews, method statements and competent-person review packs",status:"standby",metric:"Technical completeness",color:"#d2a5a5" },
-  { id:"QUALIFY",name:"Tender & Qualification",lane:"COMMERCIAL",role:"Screens tender eligibility, client requirements, deadlines and submission evidence",status:"standby",metric:"Bid readiness",color:"#a7b8d4" },
-  { id:"QUALITY",name:"Quality Assurance",lane:"DELIVERY",role:"Checks deliverables, document control, acceptance criteria and corrective actions",status:"standby",metric:"First-pass acceptance",color:"#c2b5a0" },
-  { id:"INTEGRITY",name:"Integrity & Compliance",lane:"GOVERNANCE",role:"Checks factual accuracy, conflicts, privacy, legal boundaries and ethical conduct",status:"standby",metric:"Integrity exceptions",color:"#df9b83" },
-  { id:"ADVANCED",name:"Advanced Intelligence",lane:"INTELLIGENCE",role:"Synthesizes approved business data into research, forecasts and decision briefs",status:"standby",metric:"Decision usefulness",color:"#9bc4b2" },
-  { id:"MODELS",name:"Model & Tool Orchestration",lane:"INTELLIGENCE",role:"Routes tasks to approved models and tools with cost, latency and quality controls",status:"standby",metric:"Task success per cost",color:"#b3a2dc" },
-  { id:"BRANCHES",name:"Branches & Department Coordination",lane:"OPERATIONS",role:"Coordinates service lines, regional handoffs, workload and ownership boundaries",status:"standby",metric:"Handoff completion",color:"#a9c28b" },
-  { id:"CODE",name:"Code & Automation Engineering",lane:"ENGINEERING",role:"Maintains approved integrations, internal tools, tests and automation workflows",status:"standby",metric:"Automation reliability",color:"#d2a5a5" },
-  { id:"FINANCE",name:"Finance & Commercial",lane:"COMMERCIAL",role:"Checks costing, cash exposure, margin assumptions and proposal risk",status:"standby",metric:"Margin integrity",color:"#df9b83" },
-  { id:"CUSTOMER",name:"Customer Operations",lane:"RELATIONSHIPS",role:"Routes inquiries, tracks response commitments and maintains customer service records",status:"standby",metric:"Response SLA",color:"#9ac9d1" },
-  { id:"PROJECTS",name:"Project Delivery",lane:"DELIVERY",role:"Checks schedule, resourcing, mobilization and delivery readiness",status:"standby",metric:"Delivery confidence",color:"#a9c28b" },
-  { id:"AUDIT",name:"Independent QA & Risk Review",lane:"GOVERNANCE",role:"Performs independent evidence review and flags unresolved operational risks",status:"standby",metric:"Review findings closed",color:"#c2b5a0" },
+  { id:"SKILLS",name:"Skills & Competency",lane:"PEOPLE",role:"Maps role competencies, training needs, certifications and capability gaps",status:"ready",metric:"Competency coverage",color:"#a7b8d4" },
+  { id:"PERFORMANCE",name:"Performance Intelligence",lane:"GOVERNANCE",role:"Tracks agent and commercial KPIs, service levels, conversion and delivery outcomes",status:"ready",metric:"KPI attainment",color:"#9ac9d1" },
+  { id:"AUTHORITY",name:"Authority & Governance",lane:"GOVERNANCE",role:"Enforces role permissions, approval thresholds, audit trails and escalation paths",status:"ready",metric:"Policy compliance",color:"#c2b5a0" },
+  { id:"APPROACH",name:"Client Approach Strategy",lane:"REVENUE",role:"Builds account plans, value propositions, stakeholder maps and ethical outreach sequences",status:"ready",metric:"Meeting conversion",color:"#df9b83" },
+  { id:"HUMAN",name:"Human Relationship",lane:"RELATIONSHIPS",role:"Supports account ownership, context-aware handoffs and long-term client relationships",status:"ready",metric:"Client retention",color:"#9ac9d1" },
+  { id:"EMPATHY",name:"Customer Experience & Empathy",lane:"RELATIONSHIPS",role:"Reviews tone, customer needs, complaints and respectful response quality",status:"ready",metric:"Customer satisfaction",color:"#b3a2dc" },
+  { id:"PRO",name:"Professional Communications",lane:"RELATIONSHIPS",role:"Maintains consistent professional proposals, emails, reports and meeting briefs",status:"ready",metric:"Communication quality",color:"#a9c28b" },
+  { id:"ENGINEERING",name:"Engineering & Technical",lane:"DELIVERY",role:"Organizes technical scope reviews, method statements and competent-person review packs",status:"ready",metric:"Technical completeness",color:"#d2a5a5" },
+  { id:"QUALIFY",name:"Tender & Qualification",lane:"COMMERCIAL",role:"Screens tender eligibility, client requirements, deadlines and submission evidence",status:"ready",metric:"Bid readiness",color:"#a7b8d4" },
+  { id:"QUALITY",name:"Quality Assurance",lane:"DELIVERY",role:"Checks deliverables, document control, acceptance criteria and corrective actions",status:"ready",metric:"First-pass acceptance",color:"#c2b5a0" },
+  { id:"INTEGRITY",name:"Integrity & Compliance",lane:"GOVERNANCE",role:"Checks factual accuracy, conflicts, privacy, legal boundaries and ethical conduct",status:"ready",metric:"Integrity exceptions",color:"#df9b83" },
+  { id:"ADVANCED",name:"Advanced Intelligence",lane:"INTELLIGENCE",role:"Synthesizes approved business data into research, forecasts and decision briefs",status:"ready",metric:"Decision usefulness",color:"#9bc4b2" },
+  { id:"MODELS",name:"Model & Tool Orchestration",lane:"INTELLIGENCE",role:"Routes tasks to approved models and tools with cost, latency and quality controls",status:"ready",metric:"Task success per cost",color:"#b3a2dc" },
+  { id:"BRANCHES",name:"Branches & Department Coordination",lane:"OPERATIONS",role:"Coordinates service lines, regional handoffs, workload and ownership boundaries",status:"ready",metric:"Handoff completion",color:"#a9c28b" },
+  { id:"CODE",name:"Code & Automation Engineering",lane:"ENGINEERING",role:"Maintains approved integrations, internal tools, tests and automation workflows",status:"ready",metric:"Automation reliability",color:"#d2a5a5" },
+  { id:"FINANCE",name:"Finance & Commercial",lane:"COMMERCIAL",role:"Checks costing, cash exposure, margin assumptions and proposal risk",status:"ready",metric:"Margin integrity",color:"#df9b83" },
+  { id:"CUSTOMER",name:"Customer Operations",lane:"RELATIONSHIPS",role:"Routes inquiries, tracks response commitments and maintains customer service records",status:"ready",metric:"Response SLA",color:"#9ac9d1" },
+  { id:"PROJECTS",name:"Project Delivery",lane:"DELIVERY",role:"Checks schedule, resourcing, mobilization and delivery readiness",status:"ready",metric:"Delivery confidence",color:"#a9c28b" },
+  { id:"AUDIT",name:"Independent QA & Risk Review",lane:"GOVERNANCE",role:"Performs independent evidence review and flags unresolved operational risks",status:"ready",metric:"Review findings closed",color:"#c2b5a0" },
 ];
 
 const STAGES = ["new","qualified","discovery","proposal","negotiation","won","lost"];
@@ -64,6 +65,8 @@ export default function AIWorkforceClient(){
   const [goal,setGoal]=useState("Generate qualified leads and book discovery calls for NEAS rope access, renewable and industrial services.");
   const [query,setQuery]=useState("");
   const [expanded,setExpanded]=useState<string|null>("JARVIS");
+  const [selectedAgent,setSelectedAgent]=useState("JARVIS");
+  const [agentObjective,setAgentObjective]=useState("");
 
   const load=useCallback(async()=>{
     try{const r=await fetch("/api/admin/ai-workforce",{cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.error||"Unable to load workforce");setData(j);}catch(e){setError((e as Error).message);}
@@ -77,7 +80,7 @@ export default function AIWorkforceClient(){
   };
   const filtered=useMemo(()=> (data?.leads||[]).filter(l=>(l.company+" "+l.contact+" "+l.service+" "+l.stage).toLowerCase().includes(query.toLowerCase())),[data,query]);
   const lead=data?.leads.find(l=>l.id===Number(selectedLead));
-  const nav:[Tab,string,string][]=[["command","Command graph","◈"],["agents","Agent matrix","⌘"],["leads","Lead pipeline","↗"],["outreach","Human outreach","✉"],["approvals","Human approvals","◉"],["performance","Performance","▥"]];
+  const nav:[Tab,string,string][]=[["command","Command graph","◈"],["agents","Agent matrix","⌘"],["workbench","Specialist workbench","✧"],["leads","Lead pipeline","↗"],["outreach","Human outreach","✉"],["approvals","Human approvals","◉"],["performance","Performance","▥"]];
 
   return <div className="wf">
     <style jsx global>{`
@@ -145,8 +148,8 @@ export default function AIWorkforceClient(){
           <section className="wf-card" style={{marginTop:12}}><div className="wf-row"><div><h3>Latest opportunities</h3><p>Real records entered in this portal</p></div><button className="wf-button" onClick={()=>setTab("leads")}>Manage leads</button></div>{data.leads.length?<div className="wf-tablewrap"><table><thead><tr><th>Company</th><th>Service</th><th>Stage</th><th>Value</th><th>Added</th></tr></thead><tbody>{data.leads.slice(0,6).map(l=><tr key={l.id}><td>{l.company}</td><td>{l.service}</td><td>{l.stage}</td><td>{peso(l.value)}</td><td>{dt(l.created_at)}</td></tr>)}</tbody></table></div>:<div className="wf-empty">No leads yet. Add your first opportunity in Lead Pipeline.</div>}</section>
         </>}
         {tab==="agents"&&<>
-          <div className="wf-note">The matrix below shows the designed specialist workforce and current portal readiness. Only JARVIS, Sales, Marketing and Creative are enabled as initial business-workflow modules; other specialists are staged until their data, skills and controls are implemented.</div>
-          <div className="wf-agentgrid">{AGENTS.map(a=><button key={a.id} className={"wf-agent "+(expanded===a.id?"selected":"")} onClick={()=>setExpanded(expanded===a.id?null:a.id)}><div className="wf-agenthead"><span className="wf-orb" style={{borderColor:a.color+"88",color:a.color}}>{a.id.slice(0,2)}</span><div><b>{a.name}</b><small style={{display:"block"}}>{a.lane} · {a.status.toUpperCase()}</small></div></div><p>{a.role}</p>{expanded===a.id&&<p style={{color:"#e1c58e"}}>Primary KPI: {a.metric}. Execution rights are limited to assigned skills and approved workflows.</p>}</button>)}</div>
+          <div className="wf-note">All 23 specialist roles are now available for bounded internal work orders, with role-specific instructions, persistent task records and human review. External actions and regulated sign-offs remain restricted by the authority matrix.</div>
+          <div className="wf-agentgrid">{AGENTS.map(a=><button key={a.id} className={"wf-agent "+(expanded===a.id?"selected":"")} onClick={()=>setExpanded(expanded===a.id?null:a.id)}><div className="wf-agenthead"><span className="wf-orb" style={{borderColor:a.color+"88",color:a.color}}>{a.id.slice(0,2)}</span><div><b>{a.name}</b><small style={{display:"block"}}>{a.lane} · {a.status.toUpperCase()}</small></div></div><p>{a.role}</p>{expanded===a.id&&<p style={{color:"#e1c58e"}}>Primary KPI: {a.metric}. Scoped task execution is available; external actions require human approval.</p>}<span className="wf-button" style={{display:"inline-block",marginTop:9}} onClick={e=>{e.stopPropagation();setSelectedAgent(a.id);setTab("workbench");}}>Open workbench →</span></button>)}</div>
         </>}
         {tab==="leads"&&<>
           <div className="wf-columns">
@@ -182,6 +185,22 @@ export default function AIWorkforceClient(){
           <div className="wf-note">Approvals are a separate human authority layer. No external email, quotation, campaign publication, purchase or contract commitment should be issued by an agent without the required authorized approval.</div>
           <section className="wf-card"><h3>Drafts awaiting review</h3><p>Review outreach and proposed actions before they leave NEAS systems.</p>{data.drafts.length?<div className="wf-tablewrap"><table><thead><tr><th>Company</th><th>Channel</th><th>Subject / purpose</th><th>Status</th><th>Created</th><th>Review</th></tr></thead><tbody>{data.drafts.map(d=><tr key={d.id}><td>{d.company}</td><td>{d.channel}</td><td>{d.subject}</td><td>{d.status}</td><td>{dt(d.created_at)}</td><td>{d.status==="draft"?<button className="wf-button" disabled={busy} onClick={()=>run("reviewDraft",{id:d.id},"Draft marked reviewed")}>Mark reviewed</button>:<span className="wf-pill">Reviewed</span>}</td></tr>)}</tbody></table></div>:<div className="wf-empty">No outreach drafts are waiting for review.</div>}</section>
           <section className="wf-card" style={{marginTop:12}}><h3>Authority matrix</h3><div className="wf-tablewrap"><table><thead><tr><th>Action</th><th>AI authority</th><th>Human control</th></tr></thead><tbody>{[["Research / classify / summarize","Autonomous within access","Audit sampling"],["Draft posts, emails and proposals","Prepare draft only","Review and approve before issue"],["Update internal lead stage","Authorized internal update","Audit trail and role check"],["Send external email / cold outreach","No autonomous send","Explicit human send action"],["Publish social campaigns / paid ads","Prepare and schedule proposal","Manager approval"],["Prices, contracts, purchase and payment","No autonomous commitment","Owner / delegated authority"],["Safety plans, anchor or engineering sign-off","Assistive drafting only","Competent person approval"]].map(x=><tr key={x[0]}><td>{x[0]}</td><td>{x[1]}</td><td>{x[2]}</td></tr>)}</tbody></table></div></section>
+        </>}
+        {tab==="workbench"&&<>
+          <div className="wf-note">All specialist roles can now create persistent, role-scoped work orders. Outputs are internal drafts for review. This does not grant authority to send communications, publish campaigns, commit prices, approve engineering or safety work, or sign contracts.</div>
+          <div className="wf-columns">
+            <section className="wf-card"><h3>Launch a specialist work order</h3><p>Select a specialist and define the business outcome. The system applies the role's scope, controls and review requirements.</p>
+              <div className="wf-form">
+                <label className="wf-field wf-span">Specialist<select value={selectedAgent} onChange={e=>setSelectedAgent(e.target.value)}>{AGENTS.map(a=><option key={a.id} value={a.id}>{a.name} · {a.lane}</option>)}</select></label>
+                <label className="wf-field wf-span">Objective / task brief<textarea value={agentObjective} onChange={e=>setAgentObjective(e.target.value)} maxLength={3000} placeholder="Describe the deliverable, client/project context, constraints and deadline." /></label>
+                <div className="wf-span"><button className="wf-button" disabled={busy||agentObjective.trim().length<12} onClick={()=>run("specialistTask",{agentId:selectedAgent,objective:agentObjective},"Specialist work order created")}>✦ Run specialist</button></div>
+              </div>
+            </section>
+            <section className="wf-card"><h3>Execution and governance</h3><p>Every run is logged and reviewable.</p><div className="wf-list">
+              {[[ "01","Role-scoped","Uses the selected specialist's responsibility and limits." ],[ "02","Traceable","Persists objective, output, owner and timestamp." ],[ "03","Human review","Work orders enter review before external use." ],[ "04","Safety boundary","No autonomous engineering, HSE or legal authorization." ]].map(x=><div className="wf-item" key={x[0]}><span className="wf-pill">{x[0]}</span><div><b>{x[1]}</b><small>{x[2]}</small></div></div>)}
+            </div></section>
+          </div>
+          <section className="wf-card" style={{marginTop:12}}><h3>Specialist work queue</h3><p>Latest saved work orders and draft deliverables.</p>{data.tasks?.length?<div className="wf-list">{data.tasks.map(t=><article className="wf-item" key={t.id}><span className="wf-pill">#{t.id}</span><div style={{minWidth:0,flex:1}}><b>{t.agent_name} · {t.status}</b><small>{t.objective} · {dt(t.created_at)}</small><pre style={{whiteSpace:"pre-wrap",fontSize:10,color:"#c7d5e2",margin:"9px 0 0",fontFamily:"inherit"}}>{t.deliverable}</pre></div></article>)}</div>:<div className="wf-empty">No specialist work orders yet. Launch the first task above.</div>}</section>
         </>}
         {tab==="performance"&&<>
           <div className="wf-grid"><div className="wf-stat"><label>Lead records</label><strong>{data.metrics.leads}</strong><small>All tracked sources</small></div><div className="wf-stat"><label>Qualified</label><strong>{data.metrics.qualified}</strong><small>Qualified + later stages</small></div><div className="wf-stat"><label>Proposal stage</label><strong>{data.metrics.proposals}</strong><small>Proposal, negotiation and won</small></div><div className="wf-stat"><label>Pipeline amount</label><strong>{peso(data.metrics.pipeline)}</strong><small>Manually entered estimates</small></div></div>

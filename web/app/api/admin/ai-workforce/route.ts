@@ -15,10 +15,11 @@ export async function GET() {
   const user = await admin();
   if (!user) return json({ error: "Admin access required." }, 403);
   try {
-    const [leads,drafts,runs,metrics] = await Promise.all([
+    const [leads,drafts,runs,tasks,metrics] = await Promise.all([
       sql`select id, company, contact, email, phone, service, source, stage, estimated_value, next_step, contact_status, created_at from aiw_leads order by created_at desc limit 500`,
       sql`select d.id, d.lead_id, d.channel, d.subject, d.body, d.status, d.created_at, l.company from aiw_outreach_drafts d join aiw_leads l on l.id=d.lead_id order by d.created_at desc limit 200`,
       sql`select id, workflow, status, summary, created_at from aiw_workflow_runs order by created_at desc limit 50`,
+      sql`select id, agent_id, agent_name, objective, deliverable, status, created_at from aiw_specialist_tasks order by created_at desc limit 100`,
       sql`select count(*)::int as leads,
         count(*) filter (where stage in ('qualified','discovery','proposal','negotiation','won'))::int as qualified,
         count(*) filter (where stage in ('proposal','negotiation','won'))::int as proposals,
@@ -30,6 +31,7 @@ export async function GET() {
       leads: leads.map(x=>({...x,id:Number(x.id),value:Number(x.estimated_value),estimated_value:undefined,created_at:new Date(x.created_at).toISOString()})),
       drafts: drafts.map(x=>({...x,id:Number(x.id),lead_id:Number(x.lead_id),created_at:new Date(x.created_at).toISOString()})),
       runs: runs.map(x=>({...x,id:Number(x.id),created_at:new Date(x.created_at).toISOString()})),
+      tasks: tasks.map(x=>({...x,id:Number(x.id),created_at:new Date(x.created_at).toISOString()})),
       metrics: metrics[0]
     });
   } catch (e) {
@@ -128,6 +130,43 @@ Record only factual answers, objections, requested follow-up and contact prefere
       if (!row.length) return json({error:"Draft not found or no longer awaiting review."},409);
       await sql`insert into aiw_workflow_runs(workflow,status,summary,lead_id,actor_id) values('Human outreach review','completed',${"Outreach draft #"+id+" reviewed by an administrator"},${row[0].lead_id},${user.id})`;
       return json({ok:true});
+    }
+
+    if (b.action === "specialistTask") {
+      const agentId=text(b.agentId,32).toUpperCase();
+      const objective=text(b.objective,3000);
+      const roles:Record<string,{name:string;scope:string;deliverables:string[];guardrail:string}> = {
+        JARVIS:{name:"JARVIS Orchestrator",scope:"Break the objective into owned workstreams, sequence dependencies and coordinate handoffs.",deliverables:["Objective and success criteria","Workstream owners and dependencies","Priority sequence and checkpoints","Escalations and decision gates"],guardrail:"Coordinate only; do not override delegated authority."},
+        SALES:{name:"Sales & CRM",scope:"Qualify the opportunity, map stakeholders and recommend a next commercial action.",deliverables:["Qualification summary","Buying signals and missing information","Recommended next contact","CRM update checklist"],guardrail:"No fabricated client facts, unsolicited sending or deal commitment."},
+        MARKETING:{name:"Marketing Growth",scope:"Develop an evidence-led demand generation and channel plan.",deliverables:["Audience and positioning","SEO/content/campaign plan","Channel and cadence recommendations","Measurement and conversion KPIs"],guardrail:"No publication, ad spend or performance claims without approval/evidence."},
+        CONTENT:{name:"Creative Studio",scope:"Prepare brand-aligned creative concepts and copy for NEAS.",deliverables:["Creative concept and message","Draft copy / storyboard","Visual direction using NEAS brand palette","Review checklist"],guardrail:"Draft only; verify claims, rights and brand assets before publication."},
+        SKILLS:{name:"Skills & Competency",scope:"Map required competencies, role evidence and training gaps.",deliverables:["Competency matrix","Evidence required","Gap and training plan","Reassessment criteria"],guardrail:"Never invent certifications or declare personnel competent without verified evidence."},
+        PERFORMANCE:{name:"Performance Intelligence",scope:"Define measurable indicators and review supplied operational data.",deliverables:["KPI definitions","Baseline and data gaps","Review cadence","Corrective-action recommendations"],guardrail:"Do not fabricate metrics; distinguish measured results from targets."},
+        AUTHORITY:{name:"Authority & Governance",scope:"Map permissions, approval thresholds and escalation requirements.",deliverables:["Decision-rights map","Approval checkpoints","Segregation-of-duties risks","Audit evidence checklist"],guardrail:"Cannot grant legal authority or bypass system access controls."},
+        APPROACH:{name:"Client Approach Strategy",scope:"Build an ethical account approach and value proposition.",deliverables:["Account hypothesis","Stakeholder map to validate","Relevant NEAS value proposition","Outreach sequence draft"],guardrail:"No invented relationships, contact details or claims."},
+        HUMAN:{name:"Human Relationship",scope:"Plan accountable client ownership and human handoffs.",deliverables:["Relationship owner and backup","Handoff context","Client communication cadence","Follow-up commitments"],guardrail:"Do not impersonate staff or claim a conversation occurred."},
+        EMPATHY:{name:"Customer Experience & Empathy",scope:"Review customer-facing language for clarity, respect and responsiveness.",deliverables:["Customer need summary","Tone and empathy review","Response draft","Service recovery options"],guardrail:"Protect personal data; do not infer sensitive traits."},
+        PRO:{name:"Professional Communications",scope:"Draft clear business communications and reports.",deliverables:["Communication objective","Recommended structure","Draft text","Fact-check and approval checklist"],guardrail:"No unsupported statements or unauthorized issue."},
+        ENGINEERING:{name:"Engineering & Technical",scope:"Organize technical scope and identify competent-person review needs.",deliverables:["Scope breakdown","Technical information required","Method statement / inspection pack outline","Technical risks and review gates"],guardrail:"Advisory drafting only; no design certification, engineering approval or safety sign-off."},
+        QUALIFY:{name:"Tender & Qualification",scope:"Assess bid requirements and submission readiness from supplied documents.",deliverables:["Eligibility checklist","Mandatory submission evidence","Clarification questions","Bid/no-bid risk summary"],guardrail:"No legal interpretation or submission without authorized review."},
+        QUALITY:{name:"Quality Assurance",scope:"Define acceptance criteria and document quality checks.",deliverables:["Quality checklist","Inspection and test evidence","Nonconformance workflow","Closeout requirements"],guardrail:"Do not certify work or close nonconformities without evidence and authority."},
+        INTEGRITY:{name:"Integrity & Compliance",scope:"Identify factual, privacy, ethical and compliance risks.",deliverables:["Evidence and claim review","Privacy and consent checks","Conflict / integrity risks","Escalation recommendations"],guardrail:"Flag issues; not legal advice or formal compliance certification."},
+        ADVANCED:{name:"Advanced Intelligence",scope:"Synthesize provided business context into a decision brief.",deliverables:["Decision question","Evidence and assumptions","Options and trade-offs","Recommendation and confidence"],guardrail:"Do not present assumptions as verified external intelligence."},
+        MODELS:{name:"Model & Tool Orchestration",scope:"Specify safe model/tool routing for the requested workflow.",deliverables:["Task decomposition","Tool and model requirements","Data access boundaries","Cost, quality and fallback controls"],guardrail:"Use only configured integrations and least-privilege access."},
+        BRANCHES:{name:"Branches & Department Coordination",scope:"Coordinate service-line ownership and cross-functional handoffs.",deliverables:["Department responsibility map","Handoff sequence","Regional/service dependencies","Escalation route"],guardrail:"No implied authority over external partners or unassigned staff."},
+        CODE:{name:"Code & Automation Engineering",scope:"Prepare a technical implementation plan and validation criteria.",deliverables:["Requirements and affected systems","Implementation sequence","Security and failure-mode review","Test and rollback plan"],guardrail:"No production code deployment or secret changes from this work order."},
+        FINANCE:{name:"Finance & Commercial",scope:"Structure costing, cash exposure and margin checks from supplied figures.",deliverables:["Cost inputs and assumptions","Pricing/margin calculation plan","Cash-flow and payment-term risks","Commercial approval checklist"],guardrail:"No payment, accounting entry, binding quotation or financial commitment."},
+        CUSTOMER:{name:"Customer Operations",scope:"Organize inquiry handling, response SLAs and service records.",deliverables:["Inquiry classification","Required response information","SLA and owner","Customer update draft"],guardrail:"No external message sent automatically."},
+        PROJECTS:{name:"Project Delivery",scope:"Plan schedule, resources, mobilization and delivery readiness.",deliverables:["Scope and milestones","Resource/equipment requirements","Mobilization dependencies","Delivery risk register"],guardrail:"No mobilization, purchase or work authorization without approval."},
+        AUDIT:{name:"Independent QA & Risk Review",scope:"Independently challenge the proposed work against evidence and controls.",deliverables:["Evidence gaps","Control failures or conflicts","Risk rating and rationale","Required corrective actions"],guardrail:"Cannot self-approve work it produced; independent human review remains required."}
+      };
+      const role=roles[agentId];
+      if(!role) return json({error:"Unknown specialist."},400);
+      if(objective.length<12) return json({error:"Provide a clear task objective of at least 12 characters."},400);
+      const deliverable=[role.name+" · WORK ORDER", "OBJECTIVE\\n"+objective, "SPECIALIST SCOPE\\n"+role.scope, "REQUIRED OUTPUT\\n"+role.deliverables.map((x,i)=>(i+1)+". "+x).join("\\n"), "EXECUTION APPROACH\\n1. Confirm inputs, owner and deadline.\\n2. Separate verified facts from assumptions and missing evidence.\\n3. Prepare the role-specific deliverable and identify dependencies.\\n4. Record risks, decisions required and the recommended next action.", "AUTHORITY / SAFETY CONTROL\\n"+role.guardrail, "STATUS\\nInternal draft · human review required"].join("\\n\\n");
+      const saved=await sql`insert into aiw_specialist_tasks(agent_id,agent_name,objective,deliverable,status,created_by) values(${agentId},${role.name},${objective},${deliverable},'needs_review',${user.id}) returning id,created_at`;
+      await sql`insert into aiw_workflow_runs(workflow,status,summary,actor_id) values(${"Specialist: "+role.name},'needs_review',${"Work order #"+saved[0].id+" created for review"},${user.id})`;
+      return json({ok:true,task:{id:Number(saved[0].id),agent_id:agentId,agent_name:role.name,objective,deliverable,status:"needs_review",created_at:new Date(saved[0].created_at).toISOString()}});
     }
     return json({error:"Unknown action."},400);
   } catch (e) {
