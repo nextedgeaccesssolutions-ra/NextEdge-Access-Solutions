@@ -20,6 +20,14 @@ function same(a: string, b: string) {
 function finish(req: Request, result: string) {
   return NextResponse.redirect(new URL("/admin/ai-workforce/email?gmail=" + encodeURIComponent(result), req.url));
 }
+function getCanonicalCallback(origin: string) {
+  const configured = process.env.SITE_URL?.trim() || origin;
+  const base = new URL(configured);
+  if (base.protocol !== "https:" && process.env.NODE_ENV === "production") {
+    throw new Error("SITE_URL must use HTTPS in production.");
+  }
+  return new URL("/api/admin/gmail/callback", base.origin).toString();
+}
 
 export async function GET(req: Request) {
   const user = await getUser();
@@ -41,7 +49,7 @@ export async function GET(req: Request) {
     const clientId = process.env.GOOGLE_CLIENT_ID?.trim() ?? "";
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() ?? "";
     if (!clientId || !clientSecret) return finish(req, "missing-client");
-    const redirectUri = new URL("/api/admin/gmail/callback", incoming.origin).toString();
+    const redirectUri = getCanonicalCallback(incoming.origin);
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
