@@ -3,7 +3,7 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
 
 type Account = "info" | "operations";
-type Mail = { id: string; threadId: string; snippet: string; from: string; subject: string; date: string; unread: boolean };
+type Mail = { id: string; threadId: string; from: string; subject: string; date: string; unread: boolean };
 type Audit = { id: number; account_key: string | null; action: string; outcome: string; provider_code: string | null; detail: string; created_at: string };
 
 const styles: Record<string, CSSProperties> = {
@@ -81,7 +81,6 @@ export default function GmailWorkspaceClient() {
       {messages.map(m=><article key={m.id} style={{border:"1px solid #294153",borderRadius:10,padding:12,background:"#102235"}}>
         <div style={{display:"flex",justifyContent:"space-between",gap:8}}><b style={{fontSize:13}}>{m.subject || "(No subject)"}</b>{m.unread&&<span style={{fontSize:10,color:"#ebc07e"}}>UNREAD</span>}</div>
         <p style={{...styles.muted,margin:"5px 0"}}>{m.from} · {m.date}</p>
-        <p style={{fontSize:12,color:"#c8d3dd",margin:0,lineHeight:1.5}}>{m.snippet}</p>
       </article>)}
       {messages.length===0&&<p style={styles.muted}>No inbox metadata loaded yet. Connect the mailbox above, then load its inbox.</p>}
     </div>
