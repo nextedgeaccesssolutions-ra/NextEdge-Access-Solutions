@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isValidEmailAddress } from "@/lib/aiw-email-validation";
+import { isOptedOutRecipient } from "@/lib/aiw-contact-policy";
 import { getUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import {
@@ -49,6 +50,9 @@ export async function POST(req: Request) {
   if (policyRows[0]?.automatic_send_enabled !== true) return recordBlocked("database_send_policy_disabled");
   if (!gmailSendScopeApproved()) return recordBlocked("gmail_send_policy_or_google_scope_not_approved");
   if (!approvedRecipient(recipient)) return recordBlocked("recipient_not_on_explicit_approval_allowlist");
+  // A static allowlist must never override a later contact opt-out.
+  const contactRows = await sql`select email, contact_status from aiw_leads where lower(email)=${recipient}`;
+  if (isOptedOutRecipient(recipient, contactRows)) return recordBlocked("recipient_opted_out");
   const account = (await sql`select scope,status,email from aiw_gmail_accounts where account_key=${accountKey} limit 1`)[0];
   if (!account || account.status !== "connected" || account.email !== GMAIL_ACCOUNTS[accountKey]) return recordBlocked("mailbox_not_connected", 409);
   if (!hasGmailSendScope(String(account.scope ?? ""))) return recordBlocked("gmail_send_scope_missing_reconnect_required", 409);
