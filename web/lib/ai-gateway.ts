@@ -1,4 +1,4 @@
-export const DEFAULT_AI_GATEWAY_MODEL = "recursive/flint-v1.0";
+export const DEFAULT_AI_GATEWAY_MODEL = "google/gemini-3-flash";
 
 export type AIGatewayResult = { text: string; model: string } | { error: string };
 
