@@ -38,6 +38,17 @@ await sql`alter table products add column if not exists image_url text`;
 await sql`alter table products add column if not exists description text`;
 await sql`alter table products add column if not exists features text`;
 await sql`alter table products add column if not exists specs_url text`;
+
+// Admin overrides for sheet-owned fields. The sheet keeps writing *_sheet;
+// an override, when set, wins and survives every sync.
+await sql`alter table products add column if not exists name_sheet text`;
+await sql`alter table products add column if not exists code_sheet text`;
+await sql`alter table products add column if not exists category_sheet text`;
+await sql`alter table products add column if not exists name_override text`;
+await sql`alter table products add column if not exists code_override text`;
+await sql`alter table products add column if not exists category_override text`;
+await sql`alter table products add column if not exists dealer_price_sheet numeric(12,2)`;
+await sql`alter table products add column if not exists dealer_override numeric(12,2)`;
 await sql`create table if not exists product_images (id text primary key, mime text not null, data bytea not null, created_at timestamptz not null default now())`;
 await sql`insert into settings (key, value) values ('markup_percent', '20') on conflict (key) do nothing`;
 
@@ -86,6 +97,38 @@ await sql`create table if not exists mk_social_accounts (
 await sql`create table if not exists mk_post_results (
   id serial primary key, post_id int references mk_posts(id) on delete cascade, account_id int references mk_social_accounts(id) on delete set null,
   platform text not null, ok boolean not null, remote_id text, error text, created_at timestamptz not null default now())`;
+// Durable publishing leases serialize manual and scheduled attempts for each post.
+await sql`create table if not exists mk_post_publish_locks (
+  post_id int primary key references mk_posts(id) on delete cascade,
+  lock_token uuid not null,
+  locked_at timestamptz not null default now())`;
+await sql`create table if not exists mk_post_recovery_queue (
+  id bigserial primary key,
+  post_id int not null references mk_posts(id) on delete cascade,
+  account_id int not null references mk_social_accounts(id) on delete cascade,
+  platform text not null,
+  state text not null default 'needs_review' check (state in ('needs_review','retryable','retry_ready','resolved','closed')),
+  error_class text not null default 'unknown',
+  error_message text not null default '',
+  attempts int not null default 1,
+  resolution_note text,
+  last_attempt_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (post_id, account_id)
+)`;
+await sql`create index if not exists mk_post_recovery_queue_state_idx on mk_post_recovery_queue (state, updated_at desc)`;
+ // Preserve historical failed sends as review-only until an operator verifies their remote outcome.
+await sql`insert into mk_post_recovery_queue (post_id, account_id, platform, state, error_class, error_message, attempts, last_attempt_at, created_at, updated_at)
+  select distinct on (r.post_id, r.account_id)
+    r.post_id, r.account_id, r.platform, 'needs_review', 'historical_failure',
+    coalesce(r.error, 'Historical failed publication; verify destination before retrying'),
+    count(*) over (partition by r.post_id, r.account_id)::int, r.created_at, now(), now()
+  from mk_post_results r
+  where r.ok = false and r.account_id is not null
+    and not exists (select 1 from mk_post_results s where s.post_id = r.post_id and s.account_id = r.account_id and s.ok = true)
+  order by r.post_id, r.account_id, r.created_at desc
+  on conflict (post_id, account_id) do nothing`;
 await sql`create table if not exists mk_media (
   id serial primary key, url text not null, title text not null default '', kind text not null default 'graphic',
   width int, height int, created_by int references users(id) on delete set null, created_at timestamptz not null default now())`;
@@ -110,44 +153,32 @@ await sql`alter table users add column if not exists mk_access_at timestamptz`;
 await sql`alter table users add column if not exists mk_access_until timestamptz`;
 // ---- NEAS AI Workforce (additive, admin-only data) ----
 await sql`create table if not exists aiw_leads (
-  id bigserial primary key,
-  company text not null,
-  contact text not null default '',
-  email text not null default '',
-  phone text not null default '',
-  service text not null,
+  id bigserial primary key, company text not null, contact text not null default '',
+  email text not null default '', phone text not null default '', service text not null,
   source text not null default 'Manual entry',
   stage text not null default 'new' check (stage in ('new','qualified','discovery','proposal','negotiation','won','lost')),
   estimated_value numeric(14,2) not null default 0 check (estimated_value >= 0),
   next_step text not null default '',
   contact_status text not null default 'unreviewed' check (contact_status in ('unreviewed','permitted','opted_out')),
-  created_by int references users(id) on delete set null,
-  created_at timestamptz not null default now(),
+  created_by int references users(id) on delete set null, created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 )`;
 await sql`create index if not exists aiw_leads_stage_created_idx on aiw_leads(stage, created_at desc)`;
 await sql`create index if not exists aiw_leads_company_idx on aiw_leads(company)`;
 await sql`create table if not exists aiw_outreach_drafts (
-  id bigserial primary key,
-  lead_id bigint not null references aiw_leads(id) on delete cascade,
+  id bigserial primary key, lead_id bigint not null references aiw_leads(id) on delete cascade,
   channel text not null check (channel in ('email','call','linkedin')),
-  subject text not null default '',
-  body text not null,
+  subject text not null default '', body text not null,
   status text not null default 'draft' check (status in ('draft','reviewed','sent','cancelled')),
-  created_by int references users(id) on delete set null,
-  reviewed_by int references users(id) on delete set null,
-  sent_at timestamptz,
-  created_at timestamptz not null default now()
+  created_by int references users(id) on delete set null, reviewed_by int references users(id) on delete set null,
+  sent_at timestamptz, created_at timestamptz not null default now()
 )`;
 await sql`create index if not exists aiw_outreach_status_idx on aiw_outreach_drafts(status, created_at desc)`;
 await sql`create table if not exists aiw_workflow_runs (
-  id bigserial primary key,
-  workflow text not null,
+  id bigserial primary key, workflow text not null,
   status text not null default 'recorded' check (status in ('recorded','completed','failed','needs_review')),
-  summary text not null default '',
-  lead_id bigint references aiw_leads(id) on delete set null,
-  actor_id int references users(id) on delete set null,
-  created_at timestamptz not null default now()
+  summary text not null default '', lead_id bigint references aiw_leads(id) on delete set null,
+  actor_id int references users(id) on delete set null, created_at timestamptz not null default now()
 )`;
 await sql`create index if not exists aiw_workflow_runs_created_idx on aiw_workflow_runs(created_at desc)`;
 console.log("[migrate] Database ready.");
