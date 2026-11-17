@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { sql } from "./db";
 import { publishTo } from "./social";
 import { logActivity, inWs, memberLimit } from "./marketing";
@@ -13,6 +14,16 @@ export async function publishPost(id: number, userId: number | null, origin: str
   const post = (await sql`select * from mk_posts where id = ${id}`)[0];
   if (!post) return { error: "Post not found." };
   if (!["approved", "scheduled", "failed"].includes(post.status)) return { error: "Only approved or scheduled posts can be published." };
+  // A durable per-post lease prevents manual retries and overlapping cron runs from
+  // sending the same post to a platform at the same time. Expired leases recover crashes.
+  const lockToken = randomUUID();
+  const claimed = await sql`insert into mk_post_publish_locks (post_id, lock_token, locked_at)
+    values (${id}, ${lockToken}, now())
+    on conflict (post_id) do update set lock_token = excluded.lock_token, locked_at = now()
+    where mk_post_publish_locks.locked_at < now() - interval '10 minutes'
+    returning post_id`;
+  if (!claimed.length) return { error: "This post is already being published. Wait for the current attempt to finish before retrying.", retry: true };
+  try {
   const wanted: string[] = (post.platforms ?? []).filter((x: string) => AUTO.includes(x));
   if (!wanted.length) return { error: "Pick at least one platform on this post first." };
   if (post.ws != null) {
@@ -43,4 +54,8 @@ export async function publishPost(id: number, userId: number | null, origin: str
   await logActivity(userId as number, (userId ? "" : "auto-") + (allOk ? "published" : "publish failed"), out.map((r) => `${r.platform}${r.name ? " (" + r.name + ")" : ""}: ${r.ok ? "ok" : r.error}`).join("; "), id, post.ws);
   if (!allOk && post.ws == null) await notifyApproval(id, "failed", out.filter((r) => !r.ok).map((r) => `${r.platform}: ${r.error}`).join("; ")).catch(() => {});
   return { allOk, results: out };
+  } finally {
+    // Token-checked release prevents an expired lease from deleting a newer worker's lock.
+    await sql`delete from mk_post_publish_locks where post_id = ${id} and lock_token = ${lockToken}`.catch(() => {});
+  }
 }
