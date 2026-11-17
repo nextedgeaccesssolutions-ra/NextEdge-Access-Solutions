@@ -75,7 +75,6 @@ export async function POST(req: Request) {
   const b = await req.json().catch(()=>null);
   if (!b || typeof b !== "object") return json({ error: "Invalid request." }, 400);
   try {
-    await ensureSpecialistTaskTable();
     if (b.action === "saveWorkforceConfig") {
       if (!Array.isArray(b.agents) || b.agents.length > WORKFORCE_IDS.size) return json({ error: "Invalid workforce configuration." }, 400);
       const seen = new Set<string>();
@@ -238,6 +237,7 @@ Record only factual answers, objections, requested follow-up and contact prefere
       const generated=await generate("specialist",taskBrief,{brand:DEFAULT_BRAND,request:req});
       if("error" in generated) return json({error:generated.error},503);
       const deliverable=generated.text+"\n\nGOVERNANCE STATUS\nInternal AI-generated draft · human review required\nAUTHORITY / SAFETY CONTROL\n"+role.guardrail;
+      await ensureSpecialistTaskTable();
       const saved=await sql`insert into aiw_specialist_tasks(agent_id,agent_name,objective,deliverable,status,created_by) values(${agentId},${role.name},${objective},${deliverable},'needs_review',${user.id}) returning id,created_at`;
       await sql`insert into aiw_workflow_runs(workflow,status,summary,actor_id) values(${"Specialist: "+role.name},'needs_review',${"Work order #"+saved[0].id+" created for review"},${user.id})`;
       return json({ok:true,task:{id:Number(saved[0].id),agent_id:agentId,agent_name:role.name,objective,deliverable,status:"needs_review",created_at:new Date(saved[0].created_at).toISOString()}});
