@@ -102,6 +102,22 @@ await sql`create table if not exists mk_post_publish_locks (
   post_id int primary key references mk_posts(id) on delete cascade,
   lock_token uuid not null,
   locked_at timestamptz not null default now())`;
+await sql`create table if not exists mk_post_recovery_queue (
+  id bigserial primary key,
+  post_id int not null references mk_posts(id) on delete cascade,
+  account_id int not null references mk_social_accounts(id) on delete cascade,
+  platform text not null,
+  state text not null default 'needs_review' check (state in ('needs_review','retryable','retry_ready','resolved','closed')),
+  error_class text not null default 'unknown',
+  error_message text not null default '',
+  attempts int not null default 1,
+  resolution_note text,
+  last_attempt_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (post_id, account_id)
+)`;
+await sql`create index if not exists mk_post_recovery_queue_state_idx on mk_post_recovery_queue (state, updated_at desc)`;
 await sql`create table if not exists mk_media (
   id serial primary key, url text not null, title text not null default '', kind text not null default 'graphic',
   width int, height int, created_by int references users(id) on delete set null, created_at timestamptz not null default now())`;
