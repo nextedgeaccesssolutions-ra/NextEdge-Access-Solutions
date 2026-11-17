@@ -102,6 +102,33 @@ await sql`create table if not exists mk_post_publish_locks (
   post_id int primary key references mk_posts(id) on delete cascade,
   lock_token uuid not null,
   locked_at timestamptz not null default now())`;
+await sql`create table if not exists mk_post_recovery_queue (
+  id bigserial primary key,
+  post_id int not null references mk_posts(id) on delete cascade,
+  account_id int not null references mk_social_accounts(id) on delete cascade,
+  platform text not null,
+  state text not null default 'needs_review' check (state in ('needs_review','retryable','retry_ready','resolved','closed')),
+  error_class text not null default 'unknown',
+  error_message text not null default '',
+  attempts int not null default 1,
+  resolution_note text,
+  last_attempt_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (post_id, account_id)
+)`;
+await sql`create index if not exists mk_post_recovery_queue_state_idx on mk_post_recovery_queue (state, updated_at desc)`;
+ // Preserve historical failed sends as review-only until an operator verifies their remote outcome.
+await sql`insert into mk_post_recovery_queue (post_id, account_id, platform, state, error_class, error_message, attempts, last_attempt_at, created_at, updated_at)
+  select distinct on (r.post_id, r.account_id)
+    r.post_id, r.account_id, r.platform, 'needs_review', 'historical_failure',
+    coalesce(r.error, 'Historical failed publication; verify destination before retrying'),
+    count(*) over (partition by r.post_id, r.account_id)::int, r.created_at, now(), now()
+  from mk_post_results r
+  where r.ok = false and r.account_id is not null
+    and not exists (select 1 from mk_post_results s where s.post_id = r.post_id and s.account_id = r.account_id and s.ok = true)
+  order by r.post_id, r.account_id, r.created_at desc
+  on conflict (post_id, account_id) do nothing`;
 await sql`create table if not exists mk_media (
   id serial primary key, url text not null, title text not null default '', kind text not null default 'graphic',
   width int, height int, created_by int references users(id) on delete set null, created_at timestamptz not null default now())`;

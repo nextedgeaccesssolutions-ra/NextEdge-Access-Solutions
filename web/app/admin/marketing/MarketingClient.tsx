@@ -15,6 +15,7 @@ type State = {
   site: { orders30: number; sales30: number; products: number; customers: number };
   accounts?: { id: number; platform: string; name: string; status: string; error: string; expires_at: string | null }[];
   results?: { post_id: number; platform: string; ok: boolean; remote_id: string; error: string; at: string }[];
+  recovery?: { id: number; post_id: number; account_id: number; platform: string; state: "needs_review" | "retryable" | "retry_ready"; error_class: string; error_message: string; attempts: number; resolution_note: string; updated_at: string; title: string; account_name: string }[];
   connectReady?: { facebook: boolean; linkedin: boolean; linkedinPages?: boolean; google?: boolean; tiktok?: boolean };
   media?: { id: number; url: string; title: string; width: number | null; height: number | null; at: string }[];
   studioLogo?: string;
@@ -723,6 +724,25 @@ function Automation({ s, can, run }: { s: State; can: Can; run: Run }) {
   return <><H t="Automation" sub="Control automatic publishing, product rotation and notification workflows." />
     {storeCard}
     {autoCard}
+    <div className="mk-card">
+      <div className="mk-row between"><div><div className="mk-label" style={{ margin: 0 }}>Publishing recovery queue</div><p className="mk-mini">Unconfirmed outcomes are held here. No post is resent until an administrator checks the destination platform, confirms it is not live, fixes the issue and records that verification.</p></div>
+        <span className={"mk-pill " + ((s.recovery ?? []).length ? "st-failed" : "st-published")}>{(s.recovery ?? []).length} item(s) need review</span></div>
+      {!(s.recovery ?? []).length ? <p className="mk-mini" style={{ marginTop: 12 }}>No unresolved publishing recovery items.</p> :
+        <div style={{ overflowX: "auto" }}><table className="mk-t"><thead><tr><th>Post / destination</th><th>State</th><th>Attempts</th><th>Last error</th><th>Action</th></tr></thead><tbody>
+          {(s.recovery ?? []).map((item) => <tr key={item.id}>
+            <td><b>{item.title || "Untitled post"}</b><div className="mk-mini">{PLAT[item.platform] || item.platform} · {item.account_name}</div></td>
+            <td><span className={"mk-pill " + (item.state === "retryable" ? "st-scheduled" : "st-failed")}>{item.state.replaceAll("_", " ")}</span><div className="mk-mini">{item.error_class}</div></td>
+            <td>{item.attempts}</td><td className="mk-mini" style={{ minWidth: 220, whiteSpace: "normal" }}>{item.error_message}</td>
+            <td style={{ minWidth: 220 }}>{can("admin") ? <button type="button" className="mk-btn sm" onClick={async () => {
+              const evidence = prompt("Confirm you checked the destination account and the post is NOT live. Record what you checked and the fix applied:");
+              if (!evidence || evidence.trim().length < 12) return;
+              const authorized = await run({ action: "recoveryAuthorizeRetry", postId: item.post_id, accountId: item.account_id, note: evidence.trim() }, "Verified retry authorized");
+              if (authorized) await run({ action: "publishNow", id: item.post_id }, "Recovery attempt completed");
+            }}>Verify not live &amp; retry</button> : <span className="mk-mini">Administrator action required</span>}</td>
+          </tr>)}
+        </tbody></table></div>}
+      <p className="mk-mini" style={{ marginTop: 10 }}>Important: timeouts and network/server errors are treated as ambiguous. Check the live platform first; never authorize a retry just because an API request returned an error.</p>
+    </div>
     <EmailAutomations s={s} can={can} run={run} />
     <div className="mk-card"><table className="mk-t"><thead><tr><th>Rule</th><th>Status</th><th>What it needs</th></tr></thead><tbody>
       {rules.map(([r, n]) => <tr key={r}><td>{r}</td><td><span className="mk-pill st-draft">Not active</span></td><td className="mk-mini">{n}</td></tr>)}
