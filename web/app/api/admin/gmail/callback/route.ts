@@ -74,6 +74,7 @@ export async function GET(req: Request) {
     await recordAiwGmailAudit({ accountKey, actorId: user.id, action: "oauth_connected", outcome: "success", detail: "Mailbox identity verified; granted Gmail scopes recorded and refresh token encrypted." });
     return finish(req, "connected");
   } catch {
+    await recordAiwGmailAudit({ accountKey: accountKey ?? null, actorId: user.id, action: "oauth_callback", outcome: "failure", detail: "Unexpected OAuth callback error; sensitive provider response omitted." }).catch(() => {});
     return finish(req, "connection-error");
   }
 }
