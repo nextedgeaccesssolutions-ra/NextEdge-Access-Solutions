@@ -6,7 +6,6 @@ export async function generateAIGatewayText(
   input: { system: string; user: string },
   options: {
     token?: string;
-    request?: Request;
     apiKey?: string;
     model?: string;
     fetchImpl?: typeof fetch;
@@ -14,7 +13,7 @@ export async function generateAIGatewayText(
 ): Promise<AIGatewayResult> {
   // Vercel Functions expose the deployment OIDC token on the incoming Request,
   // not as a process environment variable. Keep env lookup for build/local use.
-  const token = options.token ?? options.request?.headers.get("x-vercel-oidc-token") ?? process.env.VERCEL_OIDC_TOKEN;
+  const token = options.token ?? process.env.VERCEL_OIDC_TOKEN;
   const apiKey = options.apiKey ?? process.env.AI_GATEWAY_API_KEY;
   const model = options.model ?? DEFAULT_AI_GATEWAY_MODEL;
 

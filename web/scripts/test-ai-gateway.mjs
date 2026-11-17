@@ -51,19 +51,22 @@ test("does not fallback when project OIDC authentication is rejected", async () 
   if ("error" in result) assert.match(result.error, /OIDC federation/i);
 });
 
-test("reads the Vercel Functions OIDC token from the incoming request header", async () => {
+test("reads the Vercel project OIDC token from the runtime environment", async () => {
+  const previous = process.env.VERCEL_OIDC_TOKEN;
+  process.env.VERCEL_OIDC_TOKEN = "runtime-env-oidc-token";
   let request;
-  const incoming = new Request("https://neas.example/api/admin/ai-workforce", {
-    headers: { "x-vercel-oidc-token": "runtime-oidc-token" },
-  });
-  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
-    request: incoming,
-    apiKey: "",
-    fetchImpl: async (url, init) => {
-      request = { url, init };
-      return new Response(JSON.stringify({ choices: [{ message: { content: "Runtime authenticated" } }] }), { status: 200 });
-    },
-  });
-  assert.deepEqual(result, { text: "Runtime authenticated", model: DEFAULT_AI_GATEWAY_MODEL });
-  assert.equal(request.init.headers.authorization, "Bearer runtime-oidc-token");
+  try {
+    const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+      apiKey: "",
+      fetchImpl: async (url, init) => {
+        request = { url, init };
+        return new Response(JSON.stringify({ choices: [{ message: { content: "Runtime authenticated" } }] }), { status: 200 });
+      },
+    });
+    assert.deepEqual(result, { text: "Runtime authenticated", model: DEFAULT_AI_GATEWAY_MODEL });
+    assert.equal(request.init.headers.authorization, "Bearer runtime-env-oidc-token");
+  } finally {
+    if (previous === undefined) delete process.env.VERCEL_OIDC_TOKEN;
+    else process.env.VERCEL_OIDC_TOKEN = previous;
+  }
 });
