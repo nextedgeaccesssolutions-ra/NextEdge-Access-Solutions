@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generateGatewayText } from "../lib/ai-gateway.ts";
+import { generateGatewayText, resolveGatewayToken } from "../lib/ai-gateway.ts";
 
 test("fails closed when the request has no Gateway token", async () => {
   const result = await generateGatewayText({ system: "system", user: "hello" });
@@ -43,4 +43,10 @@ test("does not expose provider diagnostics or credentials on errors", async () =
     assert.doesNotMatch(result.error, /private provider diagnostic|sensitive-test-token/i);
     assert.match(result.error, /500/);
   }
+});
+
+test("prefers a regular Gateway API key over a deployment OIDC token", () => {
+  assert.equal(resolveGatewayToken({ apiKey: " regular-key ", oidcToken: "oidc-token" }), "regular-key");
+  assert.equal(resolveGatewayToken({ apiKey: "", oidcToken: " oidc-token " }), "oidc-token");
+  assert.equal(resolveGatewayToken({ apiKey: null, oidcToken: null }), null);
 });

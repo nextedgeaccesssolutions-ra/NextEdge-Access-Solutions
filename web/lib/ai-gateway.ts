@@ -1,5 +1,9 @@
 export type GatewayResult = { text: string } | { error: string };
 
+export function resolveGatewayToken(input: { apiKey?: string | null; oidcToken?: string | null }): string | null {
+  return input.apiKey?.trim() || input.oidcToken?.trim() || null;
+}
+
 export async function generateGatewayText(input: {
   token?: string | null;
   model?: string;

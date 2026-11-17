@@ -1,4 +1,4 @@
-import { generateGatewayText } from "@/lib/ai-gateway";
+import { generateGatewayText, resolveGatewayToken } from "@/lib/ai-gateway";
 import { sql } from "./db";
 import { getUser } from "./auth";
 
@@ -80,7 +80,7 @@ export const AI_TASKS: Record<string, string> = {
 
 export async function generate(task: string, topic: string, extra: { tone?: string; brand: Brand; tenant?: boolean; gatewayToken?: string | null }): Promise<{ text: string } | { error: string }> {
   const key = process.env.ANTHROPIC_API_KEY, gkey = process.env.GEMINI_API_KEY;
-  const gatewayToken = extra.gatewayToken || process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
+  const gatewayToken = resolveGatewayToken({ apiKey: process.env.AI_GATEWAY_API_KEY, oidcToken: extra.gatewayToken || process.env.VERCEL_OIDC_TOKEN });
   const what = AI_TASKS[task];
   if (!what) return { error: "Unknown content type." };
   const b = extra.brand;
