@@ -1,45 +1,78 @@
-# NEAS AI Workforce — Gmail OAuth setup
+# NEAS AI Workforce — Google Workspace / Gmail production integration
 
-The AI Workforce Gmail connector uses two independent Google OAuth grants:
+The NEAS AI Workforce connects two independently authorized Google mailboxes:
 
-- `info` → `info.nextedgeaccesssolutions@gmail.com`
-- `operations` → `nextedgeaccesssolutions@gmail.com`
+- **NEAS Information** — `info.nextedgeaccesssolutions@gmail.com`
+- **NEAS Operations** — `nextedgeaccesssolutions@gmail.com`
 
-## Google Cloud configuration
+## OAuth client and production callback
 
-Use a Google OAuth 2.0 **Web application** client. Enable the Gmail API and configure the OAuth consent screen. Add this exact production Authorized redirect URI:
+Use a Google OAuth 2.0 **Web application** client in project `neas-513807`. Enable the Gmail API. Add this exact production Authorized redirect URI:
 
 ```
 https://www.nextedge-access-solutions.com/api/admin/gmail/callback
 ```
 
-The connector requests `openid`, `email`, `profile`, `gmail.readonly`, and `gmail.compose`. The application uses the refresh token to maintain access and creates drafts only. No send endpoint is provided by this integration.
+The OAuth callback uses the same canonical `SITE_URL` value for both authorization and token exchange. Do not register preview, localhost, or personal developer callback URLs on the production OAuth client.
+
+## Requested scopes and verification
+
+The connector requests:
+
+- `openid`, `email`, `profile` — identify the administrator-authorized Google account.
+- `https://www.googleapis.com/auth/gmail.readonly` — list inbox message metadata/snippets for the authorized mailbox (**restricted scope**).
+- `https://www.googleapis.com/auth/gmail.compose` — create drafts and, if separately enabled in the future, send messages (**sensitive scope**).
+
+Request only scopes required by the actual features. Google review is required for sensitive/restricted scopes where no exception applies. Because `gmail.readonly` allows restricted Gmail data to be accessed through NEAS servers, Google may require an independent Google-approved security assessment (CASA) and recurring reassessment. Do not represent the app as verified until Google confirms approval in the Verification Center.
 
 ## Vercel environment
 
-Configure the following on the intended Vercel project:
+Configure these on the intended Vercel project:
 
 - `GOOGLE_CLIENT_ID` — OAuth web client ID
 - `GOOGLE_CLIENT_SECRET` — OAuth web client secret
 - `TOKEN_ENCRYPTION_KEY` — dedicated 32-byte key encoded as exactly 64 hexadecimal characters
 - `SITE_URL` — `https://www.nextedge-access-solutions.com`
+- `NEAS_GMAIL_AUTOMATIC_SEND_ENABLED` — leave unset or `false`
 
-Do not reuse `SESSION_SECRET`, `CONFIG_ENCRYPTION_KEY`, or database credentials as the token encryption key. Set secrets directly in Vercel; never commit them or paste them into chat.
+Do not reuse `SESSION_SECRET`, `CONFIG_ENCRYPTION_KEY`, or database credentials as the token encryption key. Set secrets directly in Vercel; never commit them or paste them into chat. Do not rotate `TOKEN_ENCRYPTION_KEY` without a planned token migration.
 
-## Database setup
+## Database and security
 
-The admin connection page and OAuth routes idempotently create `aiw_gmail_accounts` on first use. The same table is also included in the existing `web/scripts/migrate.mjs` migration for environments that run the full migration. OAuth tokens are encrypted at rest using the existing AES-256-GCM social-token encryption helper.
+The application idempotently creates:
 
-## Connect and verify
+- `aiw_gmail_accounts` — one encrypted OAuth grant per mailbox.
+- `aiw_gmail_audit` — metadata-only audit events; message bodies and access/refresh tokens are never written to this log.
+- `aiw_gmail_policy` — singleton policy row with `automatic_send_enabled = false` by default.
 
-1. Sign in as a NEAS administrator.
-2. Open `/admin/ai-workforce/email`.
-3. Connect each mailbox separately and select the exact Google account shown.
-4. Verify both rows show `connected` in the admin screen.
-5. Verify Google consent granted the requested scopes and that a refresh token was stored.
+OAuth tokens use the existing versioned AES-256-GCM helper. Refresh tokens are stored encrypted; access tokens are refreshed server-side and re-encrypted. Access is restricted to authenticated NEAS administrators. The callback verifies OAuth state, checks the verified Google profile email against the mailbox identity, requires a refresh token, validates the required Gmail scopes, and records an audit event.
 
-The integration is not considered connected until the callback verifies the Google profile email matches the mailbox assigned to that connection. OAuth grants can be revoked in the Google Account security settings.
+## Available admin APIs
 
-## Operational boundary
+All endpoints require a NEAS administrator session:
 
-This change establishes secure account authorization and token storage only. It does **not** yet implement a background inbox poller, lead extraction, reply-draft generation from inbound messages, refresh-token health monitoring, or a 24/7 processing schedule. Those components must be implemented and tested before describing the workforce as continuously operational. Email sending remains disabled under the draft-only authority.
+- `GET /api/admin/gmail/inbox?account=info|operations&maxResults=20&q=` — returns limited inbox metadata/snippets. It does not persist message bodies.
+- `POST /api/admin/gmail/drafts` — creates a Gmail draft. JSON body: `{ "account": "info", "to": "recipient@example.com", "subject": "...", "body": "..." }`.
+- `POST /api/admin/gmail/send` — intentionally blocked by default. It requires **both** the Vercel environment flag `NEAS_GMAIL_AUTOMATIC_SEND_ENABLED=true` and the database policy row `automatic_send_enabled=true`. Neither gate is enabled by this implementation.
+
+## Sending authority
+
+Automatic email sending remains disabled until all of the following are independently confirmed:
+
+1. Google has approved the exact production branding and scopes, including any restricted-scope security assessment.
+2. Both NEAS mailboxes have completed separate, verified OAuth grants.
+3. Token refresh, inbox access, draft creation, failure handling, and audit logging pass production acceptance tests.
+4. NEAS explicitly approves activation of the environment flag and database policy.
+
+No background mailer or autonomous sending schedule is enabled. Draft creation is the active outbound workflow; humans remain responsible for reviewing and sending drafts until the separate activation criteria are met.
+
+## Google verification evidence checklist
+
+- Public homepage: `https://www.nextedge-access-solutions.com/`
+- Public privacy policy: `https://www.nextedge-access-solutions.com/privacy-policy`
+- Support/developer contact: `info.nextedgeaccesssolutions@gmail.com`
+- Production redirect URI: `https://www.nextedge-access-solutions.com/api/admin/gmail/callback`
+- Provide an unlisted demonstration video showing the English OAuth grant flow, displayed app name and client ID, and the in-product use of each requested scope.
+- Explain why inbox access is necessary for the NEAS Information and NEAS Operations workflows and why a narrower scope is insufficient.
+
+The app is not considered Google-verified until the Google Auth Platform Verification Center reports approval.
