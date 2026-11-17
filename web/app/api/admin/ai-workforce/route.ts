@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { DEFAULT_BRAND, generate } from "@/lib/marketing";
 import { getSetting, setSetting } from "@/lib/settings";
+import { resolveAiwSpecialistPermission } from "@/lib/aiw-authority";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -198,6 +199,9 @@ Record only factual answers, objections, requested follow-up and contact prefere
       const role=roles[agentId];
       if(!role) return json({error:"Unknown specialist."},400);
       if(objective.length<12) return json({error:"Provide a clear task objective of at least 12 characters."},400);
+      const workforceConfig = await getSetting<WorkforceConfig>(WORKFORCE_KEY, EMPTY_WORKFORCE);
+      const permission = resolveAiwSpecialistPermission(agentId, workforceConfig);
+      if (!permission.allowed) return json({error:permission.reason},403);
       const taskBrief=[
         "SPECIALIST: "+role.name+" ("+agentId+")",
         "ROLE SCOPE: "+role.scope,
