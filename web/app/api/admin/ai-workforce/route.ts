@@ -224,7 +224,7 @@ Record only factual answers, objections, requested follow-up and contact prefere
         "NEAS CONTEXT: NextEdge Access Solutions (NEAS) OPC, Philippines. Services include rope access, renewable energy, offshore/onshore, wind turbine and met mast services, telecom, industrial maintenance, inspection, training and PPE.",
         "INSTRUCTIONS: Produce the actual specialist work product, not a generic template. Use clear headings, actionable steps, assumptions, dependencies, missing information and measurable acceptance criteria. Use only facts supplied. Mark unknowns as [TO VERIFY]. If the objective is underspecified, state what is missing and provide a useful preliminary draft. Never claim external research or actions that were not performed. Keep the authority limit explicit."
       ].join("\n\n");
-      const generated=await generate("specialist",taskBrief,{brand:DEFAULT_BRAND});
+      const generated=await generate("specialist",taskBrief,{brand:DEFAULT_BRAND,request:req});
       if("error" in generated) return json({error:generated.error},503);
       const deliverable=generated.text+"\n\nGOVERNANCE STATUS\nInternal AI-generated draft · human review required\nAUTHORITY / SAFETY CONTROL\n"+role.guardrail;
       const saved=await sql`insert into aiw_specialist_tasks(agent_id,agent_name,objective,deliverable,status,created_by) values(${agentId},${role.name},${objective},${deliverable},'needs_review',${user.id}) returning id,created_at`;
