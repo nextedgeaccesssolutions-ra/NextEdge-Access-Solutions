@@ -10,7 +10,8 @@
     "migrate": "node scripts/migrate.mjs",
     "test:clean-routes": "node scripts/test-clean-routes.mjs",
     "test:lockfile": "node scripts/test-package-lock-sync.mjs",
-    "test:aiw-email-validation": "node --experimental-strip-types --test scripts/test-aiw-email-validation.mjs"
+    "test:aiw-email-validation": "node --experimental-strip-types --test scripts/test-aiw-email-validation.mjs",
+    "test:aiw-skills": "node --experimental-strip-types --test scripts/test-aiw-skills.mjs"
   },
   "dependencies": {
     "@vercel/speed-insights": "^2.1.0",
