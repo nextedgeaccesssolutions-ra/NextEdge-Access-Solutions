@@ -97,6 +97,11 @@ await sql`create table if not exists mk_social_accounts (
 await sql`create table if not exists mk_post_results (
   id serial primary key, post_id int references mk_posts(id) on delete cascade, account_id int references mk_social_accounts(id) on delete set null,
   platform text not null, ok boolean not null, remote_id text, error text, created_at timestamptz not null default now())`;
+// Durable publishing leases serialize manual and scheduled attempts for each post.
+await sql`create table if not exists mk_post_publish_locks (
+  post_id int primary key references mk_posts(id) on delete cascade,
+  lock_token uuid not null,
+  locked_at timestamptz not null default now())`;
 await sql`create table if not exists mk_media (
   id serial primary key, url text not null, title text not null default '', kind text not null default 'graphic',
   width int, height int, created_by int references users(id) on delete set null, created_at timestamptz not null default now())`;
