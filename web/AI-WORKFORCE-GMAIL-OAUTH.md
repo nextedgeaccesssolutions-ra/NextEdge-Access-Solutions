@@ -13,7 +13,7 @@ Use a Google OAuth 2.0 **Web application** client. Enable the Gmail API and conf
 https://www.nextedge-access-solutions.com/api/admin/gmail/callback
 ```
 
-The connector requests `openid`, `email`, `profile`, `gmail.readonly`, and `gmail.compose`. The optional `gmail.compose` scope is requested only when BOTH `GOOGLE_GMAIL_COMPOSE_SCOPE_APPROVED=true` (set only after Google approves the restricted scope) and `NEAS_GMAIL_SEND_ENABLED=true` (NEAS operational activation) are set. Do not set either flag before Google grants the scope approval.
+The connector requests `openid`, `email`, `profile`, `gmail.readonly`, and `gmail.compose`. Google documents `gmail.compose` as permitting draft management AND sending. NEAS uses this already-requested scope for sending only after Google verification is granted and BOTH `GOOGLE_GMAIL_COMPOSE_SCOPE_APPROVED=true` and `NEAS_GMAIL_SEND_ENABLED=true` are explicitly set. No broader Gmail scope is added.
 
 ## Vercel environment
 
