@@ -40,7 +40,7 @@ export async function GET(req: Request) {
     client_id: clientId,
     redirect_uri: callback,
     response_type: "code",
-    scope: ["openid", "email", "profile", "https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.compose", ...(gmailSendScopeApproved() ? ["https://www.googleapis.com/auth/gmail.send"] : [])].join(" "),
+    scope: "openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose",
     access_type: "offline",
     prompt: "consent select_account",
     login_hint: GMAIL_ACCOUNTS[key],
