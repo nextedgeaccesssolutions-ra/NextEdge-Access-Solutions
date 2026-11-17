@@ -23,7 +23,7 @@ export async function GET() {
         count(*) filter (where stage in ('qualified','discovery','proposal','negotiation','won'))::int as qualified,
         count(*) filter (where stage in ('proposal','negotiation','won'))::int as proposals,
         coalesce(sum(estimated_value) filter (where stage not in ('lost','won')),0)::float as pipeline,
-        (select count(*)::int from aiw_outreach_drafts where status in ('draft','reviewed')) as drafts
+        (select count(*)::int from aiw_outreach_drafts where status = 'draft') as drafts
         from aiw_leads`
     ]);
     return json({
@@ -111,6 +111,14 @@ Record only factual answers, objections, requested follow-up and contact prefere
       const row=await sql`update aiw_leads set contact_status=${status},updated_at=now() where id=${id} returning company`;
       if (!row.length) return json({error:"Lead not found."},404);
       await sql`insert into aiw_workflow_runs(workflow,status,summary,lead_id,actor_id) values('Contact preference update','completed',${row[0].company+" contact status set to "+status},${id},${user.id})`;
+      return json({ok:true});
+    }
+    if (b.action === "updateNextStep") {
+      const id=Number(b.id), nextStep=text(b.nextStep,300);
+      if (!Number.isSafeInteger(id)) return json({error:"Invalid lead."},400);
+      const row=await sql`update aiw_leads set next_step=${nextStep},updated_at=now() where id=${id} returning company`;
+      if (!row.length) return json({error:"Lead not found."},404);
+      await sql`insert into aiw_workflow_runs(workflow,status,summary,lead_id,actor_id) values('Next step update','completed',${row[0].company+" next step updated"},${id},${user.id})`;
       return json({ok:true});
     }
     if (b.action === "reviewDraft") {
