@@ -86,7 +86,7 @@ async function accessFor(account: AiwGmailAccount, actorId: number, requiredScop
     expires_at: Date.now() + Number(refreshed.expires_in || 3600) * 1000,
   };
   const encrypted = encrypt(JSON.stringify(next));
-  await sql`update aiw_gmail_accounts set token_enc = ${encrypted}, scope = ${next.scope}, expires_at = now() + (${Number(refreshed.expires_in || 3600)} * interval '1 second'), status = 'connected', last_error = null, updated_at = now() where account_key = ${account}`;
+  await sql`update aiw_gmail_accounts set token_enc = ${encrypted}, scope = ${next.scope ?? ""}, expires_at = now() + (${Number(refreshed.expires_in || 3600)} * interval '1 second'), status = 'connected', last_error = null, updated_at = now() where account_key = ${account}`;
   await recordAiwGmailAudit({ accountKey: account, actorId, action: "token_refresh", outcome: "success", detail: "Access token refreshed; token payload re-encrypted." });
   return { accessToken: next.access_token, scope: next.scope };
 }
