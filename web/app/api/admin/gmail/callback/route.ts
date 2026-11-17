@@ -5,6 +5,7 @@ import { getUser } from "@/lib/auth";
 import { loadConfig } from "@/lib/config";
 import { sql } from "@/lib/db";
 import { encrypt } from "@/lib/social-token-crypto";
+import { ensureAiwGmailAccountsTable } from "@/lib/aiw-gmail";
 
 export const dynamic = "force-dynamic";
 const ACCOUNTS = {
@@ -36,6 +37,7 @@ export async function GET(req: Request) {
 
   try {
     await loadConfig(true);
+    await ensureAiwGmailAccountsTable();
     const clientId = process.env.GOOGLE_CLIENT_ID?.trim() ?? "";
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() ?? "";
     if (!clientId || !clientSecret) return finish(req, "missing-client");
