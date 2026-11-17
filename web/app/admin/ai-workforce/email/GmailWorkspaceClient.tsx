@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
 
 type Account = "info" | "operations";
 type Mail = { id: string; threadId: string; snippet: string; from: string; subject: string; date: string; unread: boolean };
 type Audit = { id: number; account_key: string | null; action: string; outcome: string; provider_code: string | null; detail: string; created_at: string };
 
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<string, CSSProperties> = {
   panel: { border: "1px solid #294153", borderRadius: 14, padding: 18, background: "#0c1b29", marginTop: 18 },
   field: { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 8, border: "1px solid #385269", background: "#07111b", color: "#e7edf4", marginTop: 6 },
   button: { padding: "10px 14px", borderRadius: 8, border: 0, background: "#ca9332", color: "#07111b", fontWeight: 700, cursor: "pointer" },
@@ -43,7 +43,7 @@ export default function GmailWorkspaceClient() {
     } finally { setBusy(false); }
   }
 
-  async function createDraft(event: React.FormEvent<HTMLFormElement>) {
+  async function createDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setStatus("");
     try {
       const response = await fetch("/api/admin/gmail/drafts", {
@@ -97,7 +97,7 @@ export default function GmailWorkspaceClient() {
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}><h3 style={{fontSize:15,margin:0}}>Recent security audit</h3><button type="button" onClick={loadAudit} style={{...styles.button,padding:"7px 10px",fontSize:11}}>Refresh</button></div>
       <div style={{display:"grid",gap:8,marginTop:12}}>
         {audit.slice(0,10).map(event=><div key={event.id} style={{display:"flex",justifyContent:"space-between",gap:12,borderBottom:"1px solid #294153",paddingBottom:8}}>
-          <div><b style={{fontSize:12}}>{event.action.replaceAll("_"," ")}</b><p style={{...styles.muted,margin:"3px 0"}}>{event.account_key || "System"} · {event.detail}</p></div>
+          <div><b style={{fontSize:12}}>{event.action.replace(/_/g," ")}</b><p style={{...styles.muted,margin:"3px 0"}}>{event.account_key || "System"} · {event.detail}</p></div>
           <span style={{fontSize:10,color:event.outcome==="success"?"#9ad0b2":event.outcome==="blocked"?"#ebc07e":"#f0a2a2",whiteSpace:"nowrap"}}>{event.outcome}</span>
         </div>)}
         {audit.length===0&&<p style={styles.muted}>No audit events recorded yet.</p>}
