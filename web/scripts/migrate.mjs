@@ -198,3 +198,18 @@ await sql`create table if not exists aiw_gmail_accounts (
 await sql`create index if not exists aiw_gmail_accounts_status_idx on aiw_gmail_accounts(status)`;
 console.log("[migrate] Database ready.");
 await sql.end();
+
+ // ---- NEAS AI Workforce specialist task ledger ----
+await sql`create table if not exists aiw_specialist_tasks (
+  id bigserial primary key,
+  agent_id text not null,
+  agent_name text not null,
+  objective text not null,
+  deliverable text not null,
+  status text not null default 'needs_review' check (status in ('needs_review','approved','rejected','completed')),
+  created_by int references users(id) on delete set null,
+  reviewed_by int references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+)`;
+await sql`create index if not exists aiw_specialist_tasks_created_idx on aiw_specialist_tasks(created_at desc)`;
