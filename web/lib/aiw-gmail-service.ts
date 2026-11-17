@@ -135,7 +135,7 @@ function validateMessage(input: { to: string; subject: string; body: string }) {
 }
 
 export async function listAiwGmailInbox(account: AiwGmailAccount, actorId: number, maxResults = 20, query = "") {
-  const limit = Math.min(25, Math.max(1, Math.floor(maxResults)));
+  const requested = Number(maxResults);\n  const limit = Number.isFinite(requested) ? Math.min(25, Math.max(1, Math.floor(requested))) : 20;
   const params = new URLSearchParams({ maxResults: String(limit) });
   if (query.trim()) params.set("q", query.trim().slice(0, 500));
   const data = await gmailRequest(account, actorId, READ_SCOPE, "messages?" + params.toString());
