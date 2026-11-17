@@ -10,6 +10,17 @@ const channels = ["email","call","linkedin"] as const;
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status });
 const text = (v: unknown, max: number) => String(v ?? "").trim().slice(0,max);
 async function admin() { const user = await getUser(); return user?.role === "admin" ? user : null; }
+async function ensureSpecialistTaskTable() {
+  await sql`create table if not exists aiw_specialist_tasks (
+    id bigserial primary key, agent_id text not null, agent_name text not null,
+    objective text not null, deliverable text not null,
+    status text not null default 'needs_review' check (status in ('needs_review','approved','rejected','completed')),
+    created_by int references users(id) on delete set null,
+    reviewed_by int references users(id) on delete set null,
+    created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+  )`;
+  await sql`create index if not exists aiw_specialist_tasks_created_idx on aiw_specialist_tasks(created_at desc)`;
+}
 
 export async function GET() {
   const user = await admin();
@@ -163,7 +174,18 @@ Record only factual answers, objections, requested follow-up and contact prefere
       const role=roles[agentId];
       if(!role) return json({error:"Unknown specialist."},400);
       if(objective.length<12) return json({error:"Provide a clear task objective of at least 12 characters."},400);
-      const deliverable=[role.name+" · WORK ORDER", "OBJECTIVE\\n"+objective, "SPECIALIST SCOPE\\n"+role.scope, "REQUIRED OUTPUT\\n"+role.deliverables.map((x,i)=>(i+1)+". "+x).join("\\n"), "EXECUTION APPROACH\\n1. Confirm inputs, owner and deadline.\\n2. Separate verified facts from assumptions and missing evidence.\\n3. Prepare the role-specific deliverable and identify dependencies.\\n4. Record risks, decisions required and the recommended next action.", "AUTHORITY / SAFETY CONTROL\\n"+role.guardrail, "STATUS\\nInternal draft · human review required"].join("\\n\\n");
+      const taskBrief=[
+        "SPECIALIST: "+role.name+" ("+agentId+")",
+        "ROLE SCOPE: "+role.scope,
+        "USER OBJECTIVE: "+objective,
+        "REQUIRED DELIVERABLES: "+role.deliverables.join("; "),
+        "AUTHORITY / SAFETY LIMIT: "+role.guardrail,
+        "NEAS CONTEXT: NextEdge Access Solutions (NEAS) OPC, Philippines. Services include rope access, renewable energy, offshore/onshore, wind turbine and met mast services, telecom, industrial maintenance, inspection, training and PPE.",
+        "INSTRUCTIONS: Produce the actual specialist work product, not a generic template. Use clear headings, actionable steps, assumptions, dependencies, missing information and measurable acceptance criteria. Use only facts supplied. Mark unknowns as [TO VERIFY]. If the objective is underspecified, state what is missing and provide a useful preliminary draft. Never claim external research or actions that were not performed. Keep the authority limit explicit."
+      ].join("\\n\\n");
+      const generated=await generate("specialist",taskBrief,{brand:DEFAULT_BRAND});
+      if("error" in generated) return json({error:generated.error},503);
+      const deliverable=generated.text+"\\n\\nGOVERNANCE STATUS\\nInternal AI-generated draft · human review required\\nAUTHORITY / SAFETY CONTROL\\n"+role.guardrail;
       const saved=await sql`insert into aiw_specialist_tasks(agent_id,agent_name,objective,deliverable,status,created_by) values(${agentId},${role.name},${objective},${deliverable},'needs_review',${user.id}) returning id,created_at`;
       await sql`insert into aiw_workflow_runs(workflow,status,summary,actor_id) values(${"Specialist: "+role.name},'needs_review',${"Work order #"+saved[0].id+" created for review"},${user.id})`;
       return json({ok:true,task:{id:Number(saved[0].id),agent_id:agentId,agent_name:role.name,objective,deliverable,status:"needs_review",created_at:new Date(saved[0].created_at).toISOString()}});
