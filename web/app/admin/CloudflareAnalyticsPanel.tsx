@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-type Bucket = { hour: string; requests: number; cachedRequests: number | null; bytes: number; threats: number | null };
+type Bucket = { hour: string; requests: number; visits: number; cachedRequests: number | null; bytes: number; threats: number | null };
 type Data = {
   configured: boolean;
   missing?: string[];
   fetchedAt?: string;
   period?: { start: string; end: string };
-  totals?: { requests: number; cachedRequests: number | null; bytes: number; cachedBytes: number | null; threats: number | null; pageViews: number; cacheHitRate: number | null };
+  totals?: { requests: number; visits: number; cachedRequests: number | null; bytes: number; cachedBytes: number | null; threats: number | null; cacheHitRate: number | null };
   series?: Bucket[];
 };
 
@@ -158,7 +158,7 @@ export default function CloudflareAnalyticsPanel() {
     {data?.configured && <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(155px,1fr))", gap: 12, marginTop: 22 }}>
         <Metric label="HTTP REQUESTS" value={number(totals?.requests)} note="Last 24 hours" />
-        <Metric label="PAGEVIEWS" value={number(totals?.pageViews)} note="Cloudflare edge estimate" />
+        <Metric label="VISITS" value={number(totals?.visits)} note="Cloudflare visits; not page views" />
         <Metric label="DATA TRANSFER" value={bytes(totals?.bytes ?? 0)} note="Response bytes" />
         <Metric label="CACHED REQUESTS" value={metric(totals?.cachedRequests)} note="Not provided by the current traffic query" />
         <Metric label="CACHE HIT RATE" value={totals?.cacheHitRate == null ? "Not available" : number(totals.cacheHitRate) + "%"} note="Requires a separate cache-status query" />
@@ -171,10 +171,11 @@ export default function CloudflareAnalyticsPanel() {
         <h4 style={{ margin: "0 0 12px" }}>Hourly traffic detail</h4>
         {data.series?.length ? <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
-            <thead><tr>{["Hour (Manila)", "Requests", "Cached", "Data transfer", "Threats"].map((label) => <th key={label} style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)" }}>{label}</th>)}</tr></thead>
+            <thead><tr>{["Hour (Manila)", "Requests", "Visits", "Cached", "Data transfer", "Threats"].map((label) => <th key={label} style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)" }}>{label}</th>)}</tr></thead>
             <tbody>{[...(data.series ?? [])].sort((a, b) => Date.parse(b.hour) - Date.parse(a.hour)).map((item) => <tr key={item.hour}>
               <td style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)", whiteSpace: "nowrap" }}>{item.hour ? new Date(item.hour).toLocaleString("en-PH", { timeZone: "Asia/Manila", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}</td>
               <td style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)" }}>{number(item.requests)}</td>
+              <td style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)" }}>{number(item.visits)}</td>
               <td style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)" }}>{metric(item.cachedRequests)}</td>
               <td style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)" }}>{bytes(item.bytes)}</td>
               <td style={{ padding: "9px 8px", borderBottom: "1px solid var(--line)" }}>{metric(item.threats)}</td>
