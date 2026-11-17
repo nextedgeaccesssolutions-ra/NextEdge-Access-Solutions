@@ -1,3 +1,4 @@
+import { generateGatewayText } from "@/lib/ai-gateway";
 import { sql } from "./db";
 import { getUser } from "./auth";
 
@@ -77,9 +78,9 @@ export const AI_TASKS: Record<string, string> = {
   specialist: "a complete, role-specific internal business work product with clear headings, practical recommendations, action steps, assumptions, missing inputs, dependencies, risks, measurable acceptance criteria and a concise executive summary. Follow the supplied role scope and authority boundaries exactly. Do not fabricate facts, certifications, client details, project status, research or completed actions. Mark unknowns as [TO VERIFY] and clearly distinguish facts, assumptions and recommendations.",
 };
 
-export async function generate(task: string, topic: string, extra: { tone?: string; brand: Brand; tenant?: boolean }): Promise<{ text: string } | { error: string }> {
+export async function generate(task: string, topic: string, extra: { tone?: string; brand: Brand; tenant?: boolean; gatewayToken?: string | null }): Promise<{ text: string } | { error: string }> {
   const key = process.env.ANTHROPIC_API_KEY, gkey = process.env.GEMINI_API_KEY;
-  if (!key && !gkey) return { error: "AI is not switched on yet. Paste a free GEMINI_API_KEY in Marketing Command Center → Settings & Logs → API keys, then try again." };
+  const gatewayToken = extra.gatewayToken || process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
   const what = AI_TASKS[task];
   if (!what) return { error: "Unknown content type." };
   const b = extra.brand;
@@ -94,6 +95,8 @@ Preferred hashtags: ${b.hashtags}
 Avoid: ${b.avoid}
 Never invent certifications, project names, client names, statistics or prices. If a fact is needed and not given, leave a clear [placeholder].`;
   const user = `Write ${(extra.tenant ? what.replace("invite them to WhatsApp +63 991 426 5886 for quotes", "invite them to contact the business for quotes") : what)}.\nTopic / source content:\n${topic.slice(0, 6000)}${extra.tone ? `\nTone: ${extra.tone}` : ""}\nReturn only the content, ready to edit.`;
+  if (gatewayToken) return generateGatewayText({ token: gatewayToken, model: process.env.AI_GATEWAY_MODEL || "anthropic/claude-sonnet-5.5", system, user });
+  if (!key && !gkey) return { error: "AI Gateway authentication is unavailable. Check Vercel OIDC for this deployment." };
   if (!key && gkey) {
     const models = [process.env.MK_GEMINI_MODEL, "gemini-flash-latest", "gemini-flash-lite-latest"].filter((m, i, a): m is string => !!m && a.indexOf(m) === i);
     let last = "";

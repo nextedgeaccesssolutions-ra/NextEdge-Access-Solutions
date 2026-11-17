@@ -47,7 +47,9 @@ Operate the NEAS AI Workforce as a coordinated business system for NextEdge Acce
 7. Verify the resulting CRM stage, draft, audit record or deployment rather than assuming success.
 
 ## Live-system controls
-- Check model-provider/Gateway readiness before claiming generation is live. Secret values must never be read, printed, or committed.
+- Route production specialist generation through Vercel AI Gateway using the per-request `x-vercel-oidc-token` header; local development may use an uncommitted `AI_GATEWAY_API_KEY`. Never read, print, or commit token values.
+- Default model: `anthropic/claude-sonnet-5.5`; change only to an exact current model ID returned by the live Gateway catalog.
+- NEAS production project budget: US$10 monthly. This is a Vercel soft cap: a request that crosses the cap may complete, while subsequent requests are rejected until reset or a budget change. Monitor usage and never bypass the budget with BYOK credentials.
 - Check the AI Workforce database/API and persisted authority settings before claiming tasks can run.
 - Check each mailbox's independent Google OAuth grant before claiming that account is connected.
 - Google restricted-scope approval and any required security assessment are external gates; code deployment does not equal Google verification.
