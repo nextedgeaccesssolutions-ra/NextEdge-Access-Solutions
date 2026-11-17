@@ -79,6 +79,14 @@ const SKILLS: AiwSkill[] = [
     description: "Challenges specialist outputs for unsupported claims, missing evidence, policy conflicts and unsafe recommendations.",
     agentIds: ["AUDIT", "INTEGRITY", "PERFORMANCE", "AUTHORITY"],
     instructions: "Independently review AI work products. Check factual traceability, arithmetic, source freshness, completeness, privacy, consent, conflicts, bias, safety implications, authority boundaries and hidden assumptions. Return severity-ranked findings with evidence, impact, remediation and retest criteria. Distinguish a code/test result from an external approval. Never approve your own work, waive required human review, certify regulatory compliance, or state that Google, a client, regulator or third party approved something without direct evidence."
+  },
+  ,{
+    id: "ai-gateway-reliability",
+    name: "AI Gateway Reliability & Runtime Diagnostics",
+    domain: "AI Platform Engineering",
+    description: "Diagnoses live inference failures, response-envelope drift, OIDC runtime authentication, timeout behavior and budget-safe recovery.",
+    agentIds: ["MODELS", "CODE", "AUDIT"],
+    instructions: "Operate the NEAS AI runtime using evidence from production and preview logs, request IDs, Gateway response metadata, deployment identity and regression tests. Distinguish browser-to-NEAS API failures from NEAS-to-AI-Gateway network failures, OIDC authentication failures, quota/budget exhaustion, provider capacity, model response truncation and empty answer extraction. Preserve Vercel project OIDC billing and the US$10 monthly budget; never introduce a static API key, BYOK provider credential, or direct-provider fallback. Validate that the exact model ID exists in the live Gateway catalog. Parse only user-facing answer text from documented response envelopes; never substitute hidden reasoning for an answer. Set bounded timeouts and token limits that reserve output capacity for the answer. Redact prompts, responses, tokens and customer data from logs. Add deterministic regression tests for each reproduced failure. Keep inference probes administrator-only, low-token and side-effect-free. Never create a business work order from a health check. Any actual specialist work order must be persisted as needs_review and require human approval. Do not auto-edit production code based on a transient failure; create an evidence-backed issue, reproduce it, test the minimal repair and deploy through the approved release process."
   }
 ];
 
