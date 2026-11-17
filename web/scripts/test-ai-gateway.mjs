@@ -19,6 +19,8 @@ test("sends specialist prompts using project OIDC and returns generated text", a
   assert.equal(request.url, "https://ai-gateway.vercel.sh/v1/chat/completions");
   assert.equal(request.init.headers.authorization, "Bearer test-oidc-token");
   assert.equal(JSON.parse(request.init.body).model, "recursive/flint-v1.0");
+  assert.equal(JSON.parse(request.init.body).max_tokens, 6000);
+  assert.deepEqual(JSON.parse(request.init.body).reasoning, { effort: "minimal" });
 });
 
 test("refuses static Gateway keys so the project OIDC budget cannot be bypassed", async () => {
@@ -74,6 +76,15 @@ test("normalises OpenAI-compatible string content", () => {
 
 test("normalises multipart OpenAI-compatible content", () => {
   assert.equal(extractGatewayText({ choices: [{ message: { content: [{ type: "text", text: "Hello" }, { type: "text", text: "NEAS" }] } }] }), "Hello\nNEAS");
+});
+
+test("normalises nested content objects and streamed delta text", () => {
+  assert.equal(extractGatewayText({ choices: [{ message: { content: { type: "text", text: "Nested answer" } } }] }), "Nested answer");
+  assert.equal(extractGatewayText({ choices: [{ delta: { content: [{ type: "text", text: "Streamed answer" }] } }] }), "Streamed answer");
+});
+
+test("does not mistake model reasoning for a user-facing answer", () => {
+  assert.equal(extractGatewayText({ choices: [{ message: { reasoning_content: "private reasoning", content: "" } }] }), "");
 });
 
 test("normalises Responses API output_text and output content", () => {
