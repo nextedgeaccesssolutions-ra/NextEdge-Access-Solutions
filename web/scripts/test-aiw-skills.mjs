@@ -4,7 +4,8 @@ import { getAiwSkill, listAiwSkills } from "../lib/aiw-skills.ts";
 
 test("skill registry exposes a substantial, unique skill library", () => {
   const skills = listAiwSkills();
-  assert.ok(skills.length >= 8);
+  assert.ok(skills.length >= 10);
+  assert.ok(skills.some((skill) => skill.id === "ai-gateway-reliability"));
   assert.equal(new Set(skills.map((skill) => skill.id)).size, skills.length);
   for (const skill of skills) {
     assert.ok(skill.name.length > 5);
@@ -20,6 +21,11 @@ test("every workforce specialist resolves to a non-empty skill", () => {
     assert.ok(skill.id, agent);
     assert.ok(skill.instructions.length > 200, agent);
   }
+});
+
+test("model and code specialists resolve to the AI Gateway reliability skill", () => {
+  assert.equal(getAiwSkill("MODELS").id, "ai-gateway-reliability");
+  assert.equal(getAiwSkill("CODE").id, "ai-gateway-reliability");
 });
 
 test("skill metadata returned to UI excludes private prompt instructions", () => {
