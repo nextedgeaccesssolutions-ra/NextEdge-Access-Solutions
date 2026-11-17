@@ -1,5 +1,5 @@
 export type AiwRuntimeReadiness = {
-  /** Readiness of the specialist-work-order inference path (Vercel AI Gateway OIDC). */
+  /** Configuration readiness of the specialist-work-order inference path (Vercel AI Gateway OIDC). */
   specialistAiReady: boolean;
   specialistAiProvider: "vercel-ai-gateway" | null;
   /** Readiness of the separate marketing-content generation path. */
@@ -11,7 +11,10 @@ export function getAiwRuntimeReadiness(
   request: Request,
   env: Record<string, string | undefined> = process.env,
 ): AiwRuntimeReadiness {
-  const gatewayOidc = Boolean(
+  // Specialist inference is intentionally project-OIDC-only. A static Gateway
+  // key is rejected by generateAIGatewayText because it would bypass the
+  // approved project budget, so it must never be reported as ready here.
+  const gatewayOidc = !env.AI_GATEWAY_API_KEY && Boolean(
     request.headers.get("x-vercel-oidc-token") || env.VERCEL_OIDC_TOKEN,
   );
   const anthropic = Boolean(env.ANTHROPIC_API_KEY);
