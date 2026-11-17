@@ -78,7 +78,7 @@ export const AI_TASKS: Record<string, string> = {
   specialist: "a complete, role-specific internal business work product with clear headings, practical recommendations, action steps, assumptions, missing inputs, dependencies, risks, measurable acceptance criteria and a concise executive summary. Follow the supplied role scope and authority boundaries exactly. Do not fabricate facts, certifications, client details, project status, research or completed actions. Mark unknowns as [TO VERIFY] and clearly distinguish facts, assumptions and recommendations.",
 };
 
-export async function generate(task: string, topic: string, extra: { tone?: string; brand: Brand; tenant?: boolean }): Promise<{ text: string } | { error: string }> {
+export async function generate(task: string, topic: string, extra: { tone?: string; brand: Brand; tenant?: boolean; request?: Request }): Promise<{ text: string } | { error: string }> {
   const key = process.env.ANTHROPIC_API_KEY, gkey = process.env.GEMINI_API_KEY;
   if (!key && !gkey && task !== "specialist") return { error: "AI is not switched on yet. Configure a provider in Marketing Command Center Settings & Logs API keys, then try again." };
   const what = AI_TASKS[task];
@@ -96,7 +96,7 @@ Avoid: ${b.avoid}
 Never invent certifications, project names, client names, statistics or prices. If a fact is needed and not given, leave a clear [placeholder].`;
   const user = `Write ${(extra.tenant ? what.replace("invite them to WhatsApp +63 991 426 5886 for quotes", "invite them to contact the business for quotes") : what)}.\nTopic / source content:\n${topic.slice(0, 6000)}${extra.tone ? `\nTone: ${extra.tone}` : ""}\nReturn only the content, ready to edit.`;
   if (task === "specialist") {
-    const gateway = await generateAIGatewayText({ system, user });
+    const gateway = await generateAIGatewayText({ system, user }, { request: extra.request });
     return "error" in gateway ? gateway : { text: gateway.text };
   }
   if (!key && gkey) {
