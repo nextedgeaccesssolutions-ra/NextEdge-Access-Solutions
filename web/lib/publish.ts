@@ -37,14 +37,31 @@ export async function publishPost(id: number, userId: number | null, origin: str
   for (const pl of wanted) if (!accounts.some((a) => a.platform === pl)) out.push({ platform: pl, name: "", ok: false, error: "No connected account" });
   const accountResults = await Promise.all(accounts.map(async (a) => {
     if (done.has(a.id)) return { platform: a.platform, name: a.name, ok: true } as PublishResult;
+    const recovery = (await sql`select state, error_class, error_message from mk_post_recovery_queue where post_id = ${id} and account_id = ${a.id}`)[0];
+    if (recovery && recovery.state !== "retry_ready") {
+      return { platform: a.platform, name: a.name, ok: false, error: `Recovery blocked (${recovery.state}): ${recovery.error_message}. An administrator must verify the platform outcome before another attempt.` } as PublishResult;
+    }
     try {
       const rid = await publishTo(a as unknown as { id: number; platform: string; external_id: string; token_enc: string }, String(post.body || post.title), String(post.media_url || ""), origin);
       await sql`insert into mk_post_results (post_id, account_id, platform, ok, remote_id) values (${id}, ${a.id}, ${a.platform}, true, ${rid})`;
+      await sql`update mk_post_recovery_queue set state = 'resolved', error_message = '', resolution_note = coalesce(resolution_note, 'Confirmed successful platform response'), updated_at = now() where post_id = ${id} and account_id = ${a.id}`;
       return { platform: a.platform, name: a.name, ok: true } as PublishResult;
     } catch (e) {
       const msg = (e as Error).message.slice(0, 400);
       await sql`insert into mk_post_results (post_id, account_id, platform, ok, error) values (${id}, ${a.id}, ${a.platform}, false, ${msg})`;
-      if (/token|session|expired|OAuth|permission/i.test(msg)) await sql`update mk_social_accounts set status = 'error', last_error = ${msg} where id = ${a.id}`;
+      // Be conservative: only an explicit provider rate-limit response is retryable.
+      // Timeouts, network errors and server errors may happen after remote acceptance,
+      // so they are held for reconciliation and are never resent automatically.
+      const rateLimited = /(?:HTTP|answered)\\s*429|rate.?limit|too many requests/i.test(msg);
+      const authFailure = /token|session|expired|OAuth|permission|unauthori[sz]ed/i.test(msg);
+      const errorClass = rateLimited ? "rate_limited" : authFailure ? "authentication_or_permission" : /needs an image|isn't available|not available yet|unsupported/i.test(msg) ? "validation_or_unsupported" : "ambiguous";
+      const state = rateLimited ? "retryable" : "needs_review";
+      await sql`insert into mk_post_recovery_queue (post_id, account_id, platform, state, error_class, error_message, attempts, last_attempt_at, updated_at)
+        values (${id}, ${a.id}, ${a.platform}, ${state}, ${errorClass}, ${msg}, 1, now(), now())
+        on conflict (post_id, account_id) do update set state = excluded.state, error_class = excluded.error_class,
+          error_message = excluded.error_message, attempts = mk_post_recovery_queue.attempts + 1,
+          last_attempt_at = now(), updated_at = now(), resolution_note = null`;
+      if (authFailure) await sql`update mk_social_accounts set status = 'error', last_error = ${msg} where id = ${a.id}`;
       return { platform: a.platform, name: a.name, ok: false, error: msg } as PublishResult;
     }
   }));
