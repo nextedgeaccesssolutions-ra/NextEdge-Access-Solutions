@@ -20,7 +20,7 @@ The OAuth callback uses the same canonical `SITE_URL` value for both authorizati
 The connector requests:
 
 - `openid`, `email`, `profile` — identify the administrator-authorized Google account.
-- `https://www.googleapis.com/auth/gmail.readonly` — list inbox message metadata/snippets for the authorized mailbox (**restricted scope**).
+- `https://www.googleapis.com/auth/gmail.metadata` — list message headers, dates, and labels for the authorized mailbox without reading message bodies (**restricted scope**).
 - `https://www.googleapis.com/auth/gmail.compose` — create drafts and, if separately enabled in the future, send messages (**sensitive scope**).
 
 Request only scopes required by the actual features. Google review is required for sensitive/restricted scopes where no exception applies. Because `gmail.readonly` allows restricted Gmail data to be accessed through NEAS servers, Google may require an independent Google-approved security assessment (CASA) and recurring reassessment. Do not represent the app as verified until Google confirms approval in the Verification Center.
@@ -51,7 +51,7 @@ OAuth tokens use the existing versioned AES-256-GCM helper. Refresh tokens are s
 
 All endpoints require a NEAS administrator session:
 
-- `GET /api/admin/gmail/inbox?account=info|operations&maxResults=20&q=` — returns limited inbox metadata/snippets. It does not persist message bodies.
+- `GET /api/admin/gmail/inbox?account=info|operations&maxResults=20&q=` — returns limited inbox metadata. It does not persist message bodies.
 - `POST /api/admin/gmail/drafts` — creates a Gmail draft. JSON body: `{ "account": "info", "to": "recipient@example.com", "subject": "...", "body": "..." }`.
 - `POST /api/admin/gmail/send` — intentionally blocked by default. It requires **both** the Vercel environment flag `NEAS_GMAIL_AUTOMATIC_SEND_ENABLED=true` and the database policy row `automatic_send_enabled=true`. Neither gate is enabled by this implementation.
 
@@ -73,6 +73,6 @@ No background mailer or autonomous sending schedule is enabled. Draft creation i
 - Support/developer contact: `info.nextedgeaccesssolutions@gmail.com`
 - Production redirect URI: `https://www.nextedge-access-solutions.com/api/admin/gmail/callback`
 - Provide an unlisted demonstration video showing the English OAuth grant flow, displayed app name and client ID, and the in-product use of each requested scope.
-- Explain why inbox access is necessary for the NEAS Information and NEAS Operations workflows and why a narrower scope is insufficient.
+- Explain why inbox metadata access is necessary for the NEAS Information and NEAS Operations workflows and why a narrower scope is insufficient.
 
 The app is not considered Google-verified until the Google Auth Platform Verification Center reports approval.
