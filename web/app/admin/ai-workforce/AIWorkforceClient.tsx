@@ -89,7 +89,7 @@ export default function AIWorkforceClient(){
       const j=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(j.error||"Unable to load workforce ("+r.status+").");
       setData(j);
-    }catch(e){setError(explainFetchError(e,"Loading the NEAS AI Workforce"));}
+    }catch(e){setError(explainFetchError(e,"Loading the NEAS AI Workforce").message);}
   },[]);
   useEffect(()=>{load();},[load]);
   const flash=(s:string)=>{setNotice(s);window.setTimeout(()=>setNotice(""),4000);};
