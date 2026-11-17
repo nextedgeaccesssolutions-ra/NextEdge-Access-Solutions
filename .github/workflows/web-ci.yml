@@ -51,6 +51,10 @@ jobs:
         run: npm run test:aiw-authority
         working-directory: web
 
+      - name: Test AI Gateway OIDC budget enforcement
+        run: npm run test:ai-gateway
+        working-directory: web
+
       - name: Verify clean public route contract
         run: npm run test:clean-routes
         working-directory: web

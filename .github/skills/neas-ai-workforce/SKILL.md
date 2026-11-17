@@ -62,3 +62,12 @@ Operate the NEAS AI Workforce as a coordinated business system for NextEdge Acce
 
 ## Delivery
 Use a focused feature branch, a verified dated recovery tag on current `main`, a PR with exact test evidence, and a preview deployment before production release. Never claim that Google approved scopes, a mailbox connected, an email was sent, or a deployment is live without direct confirmation.
+
+## NEAS AI Gateway production configuration
+- Specialist work orders use Vercel AI Gateway through the production project's short-lived Vercel OIDC token.
+- The configured default model is `google/gemini-3-flash`, verified against the live Gateway model catalog on 2026-11-17.
+- The NEAS project budget is US$10 per calendar month (UTC reset), enforced at the Vercel AI Gateway project scope.
+- Do not set `AI_GATEWAY_API_KEY` in this workload: static API-key requests are not counted against the project OIDC budget.
+- Do not use provider BYOK credentials or direct-provider fallbacks for specialist tasks; those routes bypass the project budget. Missing OIDC, authentication failure, quota exhaustion, or Gateway errors must fail closed with a clear message.
+- Gateway budgets are soft caps: a request already in progress when the limit is crossed can complete; subsequent requests are rejected.
+- Test one live specialist work order only after the Preview deployment has passed checks. Verify the Gateway request, model, usage/cost, persisted `needs_review` task, and audit entry. Do not auto-approve or perform external actions.
