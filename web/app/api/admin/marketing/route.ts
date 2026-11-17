@@ -56,7 +56,7 @@ async function loadState(u: MkUser) {
     results: (await sql`select post_id, platform, ok, remote_id, error, created_at from mk_post_results where post_id in (select id from mk_posts where ${inWs(u.ws)}) order by id desc limit 500`.catch(() => [])).map((r) => ({ post_id: r.post_id, platform: r.platform, ok: r.ok, remote_id: r.remote_id ?? "", error: r.error ?? "", at: new Date(r.created_at).toISOString() })),
     recovery: (await sql`select q.id, q.post_id, q.account_id, q.platform, q.state, q.error_class, q.error_message, q.attempts, q.resolution_note, q.updated_at, p.title, a.name as account_name
       from mk_post_recovery_queue q join mk_posts p on p.id = q.post_id join mk_social_accounts a on a.id = q.account_id
-      where ${inWs(u.ws)} and q.state not in ('resolved','closed') order by q.updated_at desc limit 100`.catch(() => [])).map((r) => ({
+      where ${u.ws == null ? sql`p.ws is null` : sql`p.ws = ${u.ws}`} and q.state not in ('resolved','closed') order by q.updated_at desc limit 100`.catch(() => [])).map((r) => ({
         id: Number(r.id), post_id: r.post_id, account_id: r.account_id, platform: r.platform, state: r.state,
         error_class: r.error_class, error_message: r.error_message, attempts: r.attempts,
         resolution_note: r.resolution_note ?? "", updated_at: new Date(r.updated_at).toISOString(),
@@ -342,11 +342,11 @@ export async function POST(req: Request) {
       const note = txt(b.note, 500).trim();
       if (!Number.isSafeInteger(postId) || postId < 1 || !Number.isSafeInteger(accountId) || accountId < 1) return bad("Invalid recovery item.");
       if (note.length < 12) return bad("Record how you verified the post is not already live and what issue was fixed (at least 12 characters).");
-      const item = (await sql`select q.id, q.state, q.platform from mk_post_recovery_queue q join mk_posts p on p.id=q.post_id
-        where q.post_id=${postId} and q.account_id=${accountId} and ${inWs(u.ws)} for update`)[0];
-      if (!item) return bad("Recovery item not found.", 404);
-      if (!["retryable", "needs_review"].includes(item.state)) return bad("This recovery item is not eligible for manual authorization.");
-      await sql`update mk_post_recovery_queue set state='retry_ready', resolution_note=${note}, updated_at=now() where id=${item.id}`;
+      const item = (await sql`update mk_post_recovery_queue q set state='retry_ready', resolution_note=${note}, updated_at=now()
+        where q.post_id=${postId} and q.account_id=${accountId} and q.state in ('retryable','needs_review')
+          and exists (select 1 from mk_posts p where p.id=q.post_id and ${u.ws == null ? sql`p.ws is null` : sql`p.ws = ${u.ws}`})
+        returning q.platform`)[0];
+      if (!item) return bad("Recovery item not found or it is not eligible for manual authorization.", 404);
       await log("authorized verified publishing retry", `${item.platform} · ${note}`, postId);
       return ok({ authorized: true });
     }
