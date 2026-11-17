@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { DEFAULT_AI_GATEWAY_MODEL, extractGatewayText, generateAIGatewayText, usesProjectAIGateway } from "../lib/ai-gateway.ts";
+
+const marketingSource = readFileSync(new URL("../lib/marketing.ts", import.meta.url), "utf8");
+const workforceRouteSource = readFileSync(new URL("../app/api/admin/ai-workforce/route.ts", import.meta.url), "utf8");
 
 test("uses the live catalog-selected Recursive Flint 1.0 model by default", () => {
   assert.equal(DEFAULT_AI_GATEWAY_MODEL, "recursive/flint-v1.0");
@@ -118,4 +122,19 @@ test("preserves model refusal text from a Chat Completions response", async () =
     }), { status: 200 }),
   });
   assert.deepEqual(result, { text: "This request cannot be completed.", model: DEFAULT_AI_GATEWAY_MODEL });
+});
+
+
+test("routes specialist and outreach generation through the budgeted project Gateway", () => {
+  assert.match(marketingSource, /usesProjectAIGateway\(task\)/);
+  assert.match(marketingSource, /generateAIGatewayText\(\{ system, user \}, \{ request: extra\.request \}\)/);
+  assert.match(workforceRouteSource, /generate\("outreach",context,\{brand:DEFAULT_BRAND,request:req\}\)/);
+});
+
+test("provides an admin Gateway smoke test without creating a work order", () => {
+  const action = workforceRouteSource.indexOf('if (b.action === "testGateway")');
+  const tableSetup = workforceRouteSource.indexOf("await ensureSpecialistTaskTable()");
+  assert.ok(action >= 0 && tableSetup > action, "Gateway smoke test must run before database task-table setup");
+  assert.match(workforceRouteSource, /generateAIGatewayText\(/);
+  assert.match(workforceRouteSource, /return json\(\{ ok: true, model: probe\.model, text: probe\.text \}\)/);
 });
