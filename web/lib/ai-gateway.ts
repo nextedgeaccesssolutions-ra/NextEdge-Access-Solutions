@@ -1,4 +1,4 @@
-export const DEFAULT_AI_GATEWAY_MODEL = "recursive/flint-v1.0";
+export const DEFAULT_AI_GATEWAY_MODEL = "openai/gpt-4o-mini";
 
 export function usesProjectAIGateway(task: string): boolean {
   return task === "specialist" || task === "outreach";
