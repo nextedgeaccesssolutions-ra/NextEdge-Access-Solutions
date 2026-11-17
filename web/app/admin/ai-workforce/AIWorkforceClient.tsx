@@ -7,8 +7,9 @@ type Lead = { id: number; company: string; contact: string; email: string; phone
 type Draft = { id: number; lead_id: number; channel: string; subject: string; body: string; status: string; created_at: string; company: string; };
 type Run = { id: number; workflow: string; status: string; summary: string; created_at: string; };
 type SpecialistTask = { id:number; agent_id:string; agent_name:string; objective:string; deliverable:string; status:string; created_at:string; };
-type State = { leads: Lead[]; drafts: Draft[]; runs: Run[]; tasks: SpecialistTask[]; metrics: { leads: number; qualified: number; proposals: number; pipeline: number; drafts: number }; };
-type Tab = "command" | "agents" | "workbench" | "leads" | "outreach" | "approvals" | "performance";
+type Skill = { id:string; name:string; domain:string; description:string; agentIds:string[]; };
+type State = { leads: Lead[]; drafts: Draft[]; runs: Run[]; tasks: SpecialistTask[]; skills: Skill[]; aiReady: boolean; aiProvider: string | null; metrics: { leads: number; qualified: number; proposals: number; pipeline: number; drafts: number }; };
+type Tab = "command" | "agents" | "skills" | "workbench" | "leads" | "outreach" | "approvals" | "performance";
 
 const AGENTS: Agent[] = [
   { id:"JARVIS",name:"JARVIS Orchestrator",lane:"COMMAND",role:"Coordinates specialist work, budgets, permissions, handoffs and outcome reporting",status:"ready",metric:"On-time workflow completion",color:"#d6a84f" },
@@ -80,7 +81,8 @@ export default function AIWorkforceClient(){
   };
   const filtered=useMemo(()=> (data?.leads||[]).filter(l=>(l.company+" "+l.contact+" "+l.service+" "+l.stage).toLowerCase().includes(query.toLowerCase())),[data,query]);
   const lead=data?.leads.find(l=>l.id===Number(selectedLead));
-  const nav:[Tab,string,string][]=[["command","Command graph","◈"],["agents","Agent matrix","⌘"],["workbench","Specialist workbench","✧"],["leads","Lead pipeline","↗"],["outreach","Human outreach","✉"],["approvals","Human approvals","◉"],["performance","Performance","▥"]];
+  const selectedSkill=data?.skills?.find(skill=>skill.agentIds.includes(selectedAgent));
+  const nav:[Tab,string,string][]=[["command","Command graph","◈"],["agents","Agent matrix","⌘"],["skills","Skill library","?"],["workbench","Specialist workbench","✧"],["leads","Lead pipeline","↗"],["outreach","Human outreach","✉"],["approvals","Human approvals","◉"],["performance","Performance","▥"]];
 
   return <div className="wf">
     <style jsx global>{`
@@ -111,7 +113,7 @@ export default function AIWorkforceClient(){
         <div className="wf-sidefoot"><small>OPERATING MODE</small><b>HYBRID · HUMAN-GOVERNED</b><small style={{marginTop:8}}>AI prepares. Humans authorize.</small></div>
       </aside>
       <main className="wf-main">
-        <header className="wf-top"><div><div className="wf-kicker">NextEdge Access Solutions · Business OS</div><h1 className="wf-title">{nav.find(n=>n[0]===tab)?.[1] || "Command"}</h1><div className="wf-sub">One coordinated workforce. Every action traceable. Every result measurable.</div></div><div className="wf-live"><span className="wf-dot"/>{data?"CONTROL PLANE CONNECTED":"CONNECTING"}</div></header>
+        <header className="wf-top"><div><div className="wf-kicker">NextEdge Access Solutions · Business OS</div><h1 className="wf-title">{nav.find(n=>n[0]===tab)?.[1] || "Command"}</h1><div className="wf-sub">One coordinated workforce. Every action traceable. Every result measurable.</div></div><div className="wf-live"><span className="wf-dot"/>{data?(data.aiReady?"LIVE AI MODEL READY":"AI PROVIDER NOT CONFIGURED"):"CONNECTING"}</div></header>
         {error&&<div className="wf-error">{error}</div>}{notice&&<div className="wf-success">{notice}</div>}
         {!data?<div className="wf-card wf-empty">Loading NEAS workforce intelligence…</div>:<>
         {tab==="command"&&<>
@@ -186,10 +188,19 @@ export default function AIWorkforceClient(){
           <section className="wf-card"><h3>Drafts awaiting review</h3><p>Review outreach and proposed actions before they leave NEAS systems.</p>{data.drafts.length?<div className="wf-tablewrap"><table><thead><tr><th>Company</th><th>Channel</th><th>Subject / purpose</th><th>Status</th><th>Created</th><th>Review</th></tr></thead><tbody>{data.drafts.map(d=><tr key={d.id}><td>{d.company}</td><td>{d.channel}</td><td>{d.subject}</td><td>{d.status}</td><td>{dt(d.created_at)}</td><td>{d.status==="draft"?<button className="wf-button" disabled={busy} onClick={()=>run("reviewDraft",{id:d.id},"Draft marked reviewed")}>Mark reviewed</button>:<span className="wf-pill">Reviewed</span>}</td></tr>)}</tbody></table></div>:<div className="wf-empty">No outreach drafts are waiting for review.</div>}</section>
           <section className="wf-card" style={{marginTop:12}}><h3>Authority matrix</h3><div className="wf-tablewrap"><table><thead><tr><th>Action</th><th>AI authority</th><th>Human control</th></tr></thead><tbody>{[["Research / classify / summarize","Autonomous within access","Audit sampling"],["Draft posts, emails and proposals","Prepare draft only","Review and approve before issue"],["Update internal lead stage","Authorized internal update","Audit trail and role check"],["Send external email / cold outreach","No autonomous send","Explicit human send action"],["Publish social campaigns / paid ads","Prepare and schedule proposal","Manager approval"],["Prices, contracts, purchase and payment","No autonomous commitment","Owner / delegated authority"],["Safety plans, anchor or engineering sign-off","Assistive drafting only","Competent person approval"]].map(x=><tr key={x[0]}><td>{x[0]}</td><td>{x[1]}</td><td>{x[2]}</td></tr>)}</tbody></table></div></section>
         </>}
+        {tab==="skills"&&<>
+          <div className="wf-note">Nine versioned specialist skill packs are loaded server-side. The browser receives only skill descriptions and role mappings; internal prompt instructions stay on the server.</div>
+          <div className="wf-agentgrid">{(data.skills||[]).map(skill=><article className="wf-card" key={skill.id}>
+            <div className="wf-kicker">{skill.domain}</div><h3>{skill.name}</h3><p>{skill.description}</p>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:10}}>{skill.agentIds.map(id=><span className="wf-pill" key={id}>{id}</span>)}</div>
+            <button className="wf-button" style={{marginTop:12}} onClick={()=>{const agent=AGENTS.find(a=>skill.agentIds.includes(a.id));if(agent){setSelectedAgent(agent.id);setTab("workbench");}}}>Run this skill</button>
+          </article>)}</div>
+        </>}
         {tab==="workbench"&&<>
           <div className="wf-note">All specialist roles can now create persistent, role-scoped work orders. Outputs are internal drafts for review. This does not grant authority to send communications, publish campaigns, commit prices, approve engineering or safety work, or sign contracts.</div>
           <div className="wf-columns">
             <section className="wf-card"><h3>Launch a specialist work order</h3><p>Select a specialist and define the business outcome. The system applies the role's scope, controls and review requirements.</p>
+              <div className="wf-note" style={{marginTop:10}}>{selectedSkill?<>Active skill: <b>{selectedSkill.name}</b> | {selectedSkill.description}</>:"No skill mapping found for this specialist."}</div>
               <div className="wf-form">
                 <label className="wf-field wf-span">Specialist<select value={selectedAgent} onChange={e=>setSelectedAgent(e.target.value)}>{AGENTS.map(a=><option key={a.id} value={a.id}>{a.name} · {a.lane}</option>)}</select></label>
                 <label className="wf-field wf-span">Objective / task brief<textarea value={agentObjective} onChange={e=>setAgentObjective(e.target.value)} maxLength={3000} placeholder="Describe the deliverable, client/project context, constraints and deadline." /></label>
