@@ -50,3 +50,20 @@ test("does not fallback when project OIDC authentication is rejected", async () 
   assert.equal("error" in result, true);
   if ("error" in result) assert.match(result.error, /OIDC federation/i);
 });
+
+test("reads the Vercel Functions OIDC token from the incoming request header", async () => {
+  let request;
+  const incoming = new Request("https://neas.example/api/admin/ai-workforce", {
+    headers: { "x-vercel-oidc-token": "runtime-oidc-token" },
+  });
+  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+    request: incoming,
+    apiKey: "",
+    fetchImpl: async (url, init) => {
+      request = { url, init };
+      return new Response(JSON.stringify({ choices: [{ message: { content: "Runtime authenticated" } }] }), { status: 200 });
+    },
+  });
+  assert.deepEqual(result, { text: "Runtime authenticated", model: DEFAULT_AI_GATEWAY_MODEL });
+  assert.equal(request.init.headers.authorization, "Bearer runtime-oidc-token");
+});
