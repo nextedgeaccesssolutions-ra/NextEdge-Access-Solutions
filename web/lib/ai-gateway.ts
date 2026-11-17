@@ -1,5 +1,9 @@
 export const DEFAULT_AI_GATEWAY_MODEL = "recursive/flint-v1.0";
 
+export function usesProjectAIGateway(task: string): boolean {
+  return task === "specialist" || task === "outreach";
+}
+
 export type AIGatewayResult = { text: string; model: string } | { error: string };
 
 export async function generateAIGatewayText(

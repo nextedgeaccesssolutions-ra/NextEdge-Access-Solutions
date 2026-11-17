@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_AI_GATEWAY_MODEL, generateAIGatewayText } from "../lib/ai-gateway.ts";
+import { DEFAULT_AI_GATEWAY_MODEL, generateAIGatewayText, usesProjectAIGateway } from "../lib/ai-gateway.ts";
 
 test("uses the live catalog-selected Recursive Flint 1.0 model by default", () => {
   assert.equal(DEFAULT_AI_GATEWAY_MODEL, "recursive/flint-v1.0");
@@ -66,4 +66,13 @@ test("reads the Vercel Functions OIDC token from the incoming request header", a
   });
   assert.deepEqual(result, { text: "Runtime authenticated", model: DEFAULT_AI_GATEWAY_MODEL });
   assert.equal(request.init.headers.authorization, "Bearer runtime-oidc-token");
+});
+
+test("routes specialist and outreach work through the budgeted project Gateway", () => {
+  assert.equal(usesProjectAIGateway("specialist"), true);
+  assert.equal(usesProjectAIGateway("outreach"), true);
+});
+
+test("does not force unrelated marketing tasks onto the AI Workforce Gateway", () => {
+  for (const task of ["caption", "seo", "facebook", "campaign"]) assert.equal(usesProjectAIGateway(task), false);
 });

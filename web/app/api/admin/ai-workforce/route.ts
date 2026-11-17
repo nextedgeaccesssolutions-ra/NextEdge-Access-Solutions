@@ -144,7 +144,7 @@ CALL NOTES
 Record only factual answers, objections, requested follow-up and contact preferences.`;
       } else {
         await loadConfig(true);
-        const result=await generate("outreach",context,{brand:DEFAULT_BRAND});
+        const result=await generate("outreach",context,{brand:DEFAULT_BRAND,request:req});
         if ("error" in result) return json({error:result.error},503);
         body=result.text;
         subject=channel==="linkedin"?"Introduction | NEAS capability overview":`Introduction | NEAS ${lead.service}`;
