@@ -1,6 +1,6 @@
 import { sql } from "./db";
 import { getUser } from "./auth";
-import { generateAIGatewayText } from "./ai-gateway";
+import { generateAIGatewayText, usesProjectAIGateway } from "./ai-gateway";
 
 export const ROLES = ["viewer", "editor", "manager", "admin"] as const;
 export type MkRole = (typeof ROLES)[number];
@@ -80,7 +80,7 @@ export const AI_TASKS: Record<string, string> = {
 
 export async function generate(task: string, topic: string, extra: { tone?: string; brand: Brand; tenant?: boolean; request?: Request }): Promise<{ text: string } | { error: string }> {
   const key = process.env.ANTHROPIC_API_KEY, gkey = process.env.GEMINI_API_KEY;
-  if (!key && !gkey && task !== "specialist") return { error: "AI is not switched on yet. Configure a provider in Marketing Command Center Settings & Logs API keys, then try again." };
+  if (!key && !gkey && !usesProjectAIGateway(task)) return { error: "AI is not switched on yet. Configure a provider in Marketing Command Center Settings & Logs API keys, then try again." };
   const what = AI_TASKS[task];
   if (!what) return { error: "Unknown content type." };
   const b = extra.brand;
@@ -95,7 +95,7 @@ Preferred hashtags: ${b.hashtags}
 Avoid: ${b.avoid}
 Never invent certifications, project names, client names, statistics or prices. If a fact is needed and not given, leave a clear [placeholder].`;
   const user = `Write ${(extra.tenant ? what.replace("invite them to WhatsApp +63 991 426 5886 for quotes", "invite them to contact the business for quotes") : what)}.\nTopic / source content:\n${topic.slice(0, 6000)}${extra.tone ? `\nTone: ${extra.tone}` : ""}\nReturn only the content, ready to edit.`;
-  if (task === "specialist") {
+  if (usesProjectAIGateway(task)) {
     const gateway = await generateAIGatewayText({ system, user }, { request: extra.request });
     return "error" in gateway ? gateway : { text: gateway.text };
   }
