@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getUser } from "@/lib/auth";
 import { loadConfig } from "@/lib/config";
-import { ensureAiwGmailAccountsTable } from "@/lib/aiw-gmail";
+import { ensureAiwGmailAccountsTable, recordAiwGmailAudit } from "@/lib/aiw-gmail";
 
 export const dynamic = "force-dynamic";
 const ACCOUNTS = {
@@ -40,6 +40,7 @@ export async function GET(req: Request) {
   const jar = await cookies();
   jar.set("neas_gmail_oauth_state", state, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/api/admin/gmail/callback", maxAge: 600 });
   jar.set("neas_gmail_oauth_account", key, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/api/admin/gmail/callback", maxAge: 600 });
+  await recordAiwGmailAudit({ accountKey: key, actorId: user.id, action: "oauth_started", outcome: "success", detail: "Administrator initiated a mailbox authorization flow." });
   const auth = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   auth.search = new URLSearchParams({
     client_id: clientId,
