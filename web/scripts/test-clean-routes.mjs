@@ -5,7 +5,7 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const homepage = read("../site/home.html");
 const homepageRenderer = read("../lib/homepage.ts");
 const routeHandler = read("../app/[slug]/route.ts");
-const sitemap = read("../app/sitemap.ts");
+const sitemap = read("../lib/sitemap-routes.ts");
 const storePage = read("../app/store/page.tsx");
 
 const legacyRoutes = {
@@ -27,8 +27,11 @@ for (const slug of ["home", "about", "services", "partners", "contact"]) {
   assert.ok(routeHandler.includes(slug + ": {"), "Next.js route handler is missing /" + slug);
 }
 
-for (const slug of ["about", "services", "partners", "contact"]) {
-  assert.ok(sitemap.includes("/" + slug), "sitemap is missing /" + slug);
+for (const route of ["/", "/store", "/our-clients", "/privacy-policy"]) {
+  assert.ok(sitemap.includes("${origin}" + route), "sitemap route helper is missing " + route);
+}
+for (const obsolete of ["/about", "/services", "/partners", "/contact"]) {
+  assert.ok(!sitemap.includes("${origin}" + obsolete), "obsolete route remains in sitemap: " + obsolete);
 }
 
 assert.ok(storePage.includes('canonical: "https://www.nextedge-access-solutions.com/store"'), "store canonical URL must remain /store");
