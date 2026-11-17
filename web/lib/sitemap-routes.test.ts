@@ -1,0 +1,28 @@
+import { describe, expect, it } from "vitest";
+import { getStaticSitemapEntries } from "./sitemap-routes";
+
+describe("static sitemap destinations", () => {
+  const origin = "https://www.nextedge-access-solutions.com";
+  const now = new Date("2026-11-17T00:00:00.000Z");
+  const entries = getStaticSitemapEntries(origin, now);
+  const urls = entries.map((entry) => entry.url);
+
+  it("includes the distinct public pages that declare their own canonical URLs", () => {
+    expect(urls).toEqual([
+      `${origin}/`,
+      `${origin}/store`,
+      `${origin}/our-clients`,
+      `${origin}/privacy-policy`,
+    ]);
+  });
+
+  it("does not advertise homepage section aliases as separate indexable pages", () => {
+    for (const section of ["home", "about", "services", "partners", "contact"]) {
+      expect(urls).not.toContain(`${origin}/${section}`);
+    }
+  });
+
+  it("uses the supplied timestamp for each static entry", () => {
+    expect(entries.every((entry) => entry.lastModified === now)).toBe(true);
+  });
+});
