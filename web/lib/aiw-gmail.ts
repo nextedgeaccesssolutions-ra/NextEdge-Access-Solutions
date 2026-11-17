@@ -50,7 +50,7 @@ export type GmailAccountKey = keyof typeof GMAIL_ACCOUNTS;
 
 export function gmailSendScopeApproved() {
   return process.env.NEAS_GMAIL_SEND_ENABLED === "true" &&
-    process.env.GOOGLE_GMAIL_SEND_SCOPE_APPROVED === "true";
+    process.env.GOOGLE_GMAIL_COMPOSE_SCOPE_APPROVED === "true";
 }
 export function hasGmailSendScope(scope: string) {
   return scope.split(/\s+/).includes("https://www.googleapis.com/auth/gmail.send");
