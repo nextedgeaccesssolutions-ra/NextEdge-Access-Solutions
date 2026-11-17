@@ -40,7 +40,7 @@ assert.deepEqual(
   "sitemap must contain only the distinct, self-canonical static pages",
 );
 
-assert.ok(storePage.includes('canonical: "https://www.next-edge-access-solutions.com/store"') || storePage.includes('canonical: "https://www.nextedge-access-solutions.com/store"'), "store canonical URL must remain /store");
+assert.ok(storePage.includes('canonical: "https://www.next-edge-access-solutions.com/store"'), "store canonical URL must remain /store");
 assert.ok(homepageRenderer.includes("window.location.search"), "legacy redirects must preserve query strings");
 assert.ok(homepageRenderer.includes("window.history.replaceState"), "legacy redirects must replace history to avoid back-button loops");
 assert.ok(!homepage.includes("showStore()"), "legacy homepage store overlay handler must be removed");
