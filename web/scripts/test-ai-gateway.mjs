@@ -106,3 +106,23 @@ test("returns actionable safe diagnostics for an empty model completion", async 
     assert.doesNotMatch(result.error, /oidc|test prompt/i);
   }
 });
+
+test("extracts text from Gemini candidate parts", async () => {
+  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+    token: "oidc",
+    fetchImpl: async () => new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ text: "Gemini-compatible response" }] } }],
+    }), { status: 200 }),
+  });
+  assert.deepEqual(result, { text: "Gemini-compatible response", model: DEFAULT_AI_GATEWAY_MODEL });
+});
+
+test("returns a model refusal as user-visible text instead of an empty completion", async () => {
+  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+    token: "oidc",
+    fetchImpl: async () => new Response(JSON.stringify({
+      choices: [{ message: { content: "", refusal: "This request cannot be completed." } }],
+    }), { status: 200 }),
+  });
+  assert.deepEqual(result, { text: "This request cannot be completed.", model: DEFAULT_AI_GATEWAY_MODEL });
+});
