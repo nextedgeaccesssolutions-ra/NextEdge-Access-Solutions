@@ -17,6 +17,8 @@ export default async function AIWorkforceEmailPage({ searchParams }: { searchPar
   const params = await searchParams;
   await ensureAiwGmailAccountsTable();
   const rows = await sql`select account_key,email,status,connected_at,expires_at,last_error from aiw_gmail_accounts`;
+  const sendReady = gmailSendScopeApproved();
+  const auditRows = await sql`select account_key,recipient,template_key,subject,status,error_code,created_at from aiw_gmail_send_audit order by id desc limit 20`;
   const byKey = new Map(rows.map((r) => [String(r.account_key), r]));
   const messages: Record<string,string> = {
     connected: "Google authorization verified and encrypted refresh token stored.",
