@@ -2,8 +2,13 @@ import postgres from "postgres";
 
 const url = process.env.DATABASE_URL || process.env.POSTGRES_URL || "";
 const g = globalThis as unknown as { __neasSql?: ReturnType<typeof postgres> };
+const usesNeonTransactionPooler = /-pooler\./i.test(url);
 export const sql = g.__neasSql ?? postgres(url, {
   ssl: /localhost|127\.0\.0\.1|host=\/tmp/.test(url) ? false : "require",
+  // Neon uses PgBouncer in transaction mode. Disable named prepared statements
+  // for pooled connections so server-side statement names cannot collide
+  // when PgBouncer assigns a different backend session to a later transaction.
+  prepare: !usesNeonTransactionPooler,
   max: 5, idle_timeout: 20,
 });
 if (process.env.NODE_ENV !== "production") g.__neasSql = sql;
