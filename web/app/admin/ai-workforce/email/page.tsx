@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
-import { ensureAiwGmailAccountsTable } from "@/lib/aiw-gmail";
+import { ensureAiwGmailAccountsTable, gmailSendScopeApproved } from "@/lib/aiw-gmail";
 
 export const dynamic = "force-dynamic";
 const MAILBOXES = [
@@ -16,6 +16,8 @@ export default async function AIWorkforceEmailPage({ searchParams }: { searchPar
   const params = await searchParams;
   await ensureAiwGmailAccountsTable();
   const rows = await sql`select account_key,email,status,connected_at,expires_at,last_error from aiw_gmail_accounts`;
+  const sendReady = gmailSendScopeApproved();
+  const auditRows = await sql`select account_key,recipient,template_key,subject,status,error_code,created_at from aiw_gmail_send_audit order by id desc limit 20`;
   const byKey = new Map(rows.map((r) => [String(r.account_key), r]));
   const messages: Record<string,string> = {
     connected: "Google authorization verified and encrypted refresh token stored.",
@@ -33,7 +35,7 @@ export default async function AIWorkforceEmailPage({ searchParams }: { searchPar
     <Link href="/admin/ai-workforce" style={{color:"#ebc07e",textDecoration:"none"}}>← AI Workforce</Link>
     <p style={{color:"#ca9332",letterSpacing:".16em",fontSize:11,marginTop:24}}>NEAS AI WORKFORCE / INTEGRATIONS</p>
     <h1 style={{fontSize:30,margin:"6px 0"}}>Gmail account connections</h1>
-    <p style={{color:"#9aabba",lineHeight:1.6}}>Connect both NEAS mailboxes separately. Google consent is required for each account. This integration is restricted to mailbox reading and draft preparation; it does not send email.</p>
+    <p style={{color:"#9aabba",lineHeight:1.6}}>Connect both NEAS mailboxes separately. Google consent is required for each account. Outbound sending is disabled until Google approves the restricted Gmail send scope, both mailboxes are re-authorized, and NEAS enables the approved-template policy.</p>
     {params.gmail && <p role="status" style={{padding:12,border:"1px solid #ca933255",borderRadius:10,color:"#ebc07e"}}>{messages[params.gmail] ?? "Gmail connection status updated."}</p>}
     <section style={{display:"grid",gap:12,marginTop:22}}>
       {MAILBOXES.map((m) => {
@@ -49,8 +51,10 @@ export default async function AIWorkforceEmailPage({ searchParams }: { searchPar
         </article>;
       })}
     </section>
+    <section style={{marginTop:22,padding:14,border:"1px solid #294153",borderRadius:10,background:"#0d1d2b"}}><b>Outbound sending policy</b><p style={{color:sendReady?"#9ad0b2":"#ebc07e",fontSize:12,marginTop:8}}>{sendReady ? "Policy flags enabled. Actual sends still require the approved Gmail scope, an authorized mailbox, and an allowlisted recipient." : "DISABLED — waiting for Google gmail.send scope approval and explicit NEAS activation."}</p><p style={{color:"#9aabba",fontSize:12}}>Only fixed quotation-follow-up and training-information templates are supported. Exact recipient allowlisting, idempotency, per-mailbox daily limits, and immutable attempt records are enforced server-side.</p></section>
+    <section style={{marginTop:18,padding:14,border:"1px solid #294153",borderRadius:10}}><b>Recent outbound email audit</b>{auditRows.length ? auditRows.map((a) => <div key={String(a.created_at)+String(a.recipient)} style={{borderTop:"1px solid #294153",padding:"9px 0",fontSize:12,color:"#9aabba"}}><b style={{color:"#e7edf4"}}>{String(a.status).toUpperCase()}</b> · {String(a.account_key)} · {String(a.recipient)}<div>{String(a.template_key)} · {String(a.subject)}</div><div>{new Date(String(a.created_at)).toLocaleString("en-PH")}{a.error_code ? " · "+String(a.error_code) : ""}</div></div>) : <p style={{color:"#9aabba",fontSize:12}}>No outbound attempts recorded.</p>}</section>
     <aside style={{marginTop:22,padding:14,border:"1px solid #ca933244",borderRadius:10,color:"#c8b68f",fontSize:12,lineHeight:1.6}}>
-      <b>Security and authority</b><br/>OAuth tokens are encrypted at rest using TOKEN_ENCRYPTION_KEY. Access is limited to administrators. The selected Google scopes allow reading mail and creating drafts; outbound sending remains disabled by the NEAS workforce policy. Disconnect/revocation and automated inbox processing must be implemented and tested before describing the workforce as 24/7 operational.
+      <b>Security and authority</b><br/>OAuth tokens are encrypted at rest using TOKEN_ENCRYPTION_KEY. Access is limited to administrators. Google authorization is separate for each mailbox. Outbound sending is fail-closed and remains disabled until Google approves the restricted send scope and NEAS completes the activation checks. Disconnect/revocation and automated inbox processing must be implemented and tested before describing the workforce as 24/7 operational.
     </aside>
   </main>;
 }
