@@ -198,7 +198,7 @@ export async function GET() {
       totals: {
         requests: totals.requests,
         bytes: totals.bytes,
-        pageViews: totals.visits,
+        visits: totals.visits,
         // These metrics are not provided by this Cloudflare dataset.
         cachedRequests: null,
         cachedBytes: null,
@@ -209,7 +209,7 @@ export async function GET() {
         hour: bucket.dimensions?.datetimeHour ?? "",
         requests: Number(bucket.count ?? 0),
         bytes: Number(bucket.sum?.edgeResponseBytes ?? 0),
-        pageViews: Number(bucket.sum?.visits ?? 0),
+        visits: Number(bucket.sum?.visits ?? 0),
         cachedRequests: null,
         threats: null,
       })),
