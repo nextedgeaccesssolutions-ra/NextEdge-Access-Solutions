@@ -54,9 +54,9 @@ export async function POST(req: Request) {
   if (!hasGmailSendScope(String(account.scope ?? ""))) return recordBlocked("gmail_send_scope_missing_reconnect_required", 409);
 
   const dailyLimit = Math.max(1, Math.min(50, Number.parseInt(process.env.NEAS_GMAIL_DAILY_SEND_LIMIT ?? "20", 10) || 20));
-  const html = template.render({ contact, company, reference });
-  const plain = html.replace(/<br\s*\/?\s*>/gi, "\n").replace(/<\/p>/gi, "\n\n")
-    .replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+  const templateValues = { contact, company, reference };
+  const html = template.render(templateValues);
+  const plain = template.renderText(templateValues);
   const from = GMAIL_ACCOUNTS[accountKey];
   const mime = [
     `From: ${from}`, `To: ${recipient}`, `Subject: ${template.subject}`,

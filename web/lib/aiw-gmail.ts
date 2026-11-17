@@ -99,11 +99,15 @@ export const GMAIL_TEMPLATES = {
     subject: "Following up on your NEAS quotation",
     render: (v: { contact: string; company: string; reference: string }) =>
       `<p>Dear ${escapeHtml(v.contact)},</p><p>We are following up on NEAS quotation <strong>${escapeHtml(v.reference)}</strong> prepared for ${escapeHtml(v.company)}.</p><p>Please let us know if you would like to discuss the scope, schedule, or technical requirements.</p><p>Regards,<br/>NextEdge Access Solutions (NEAS)</p>`,
+    renderText: (v: { contact: string; company: string; reference: string }) =>
+      `Dear ${v.contact},\n\nWe are following up on NEAS quotation ${v.reference} prepared for ${v.company}.\n\nPlease let us know if you would like to discuss the scope, schedule, or technical requirements.\n\nRegards,\nNextEdge Access Solutions (NEAS)`,
   },
   training_information: {
     subject: "Your NEAS training enquiry",
     render: (v: { contact: string; company: string; reference: string }) =>
       `<p>Dear ${escapeHtml(v.contact)},</p><p>Thank you for your interest in NEAS training services for ${escapeHtml(v.company)}.</p><p>Our team can provide further information about course availability, prerequisites, and registration. Enquiry reference: ${escapeHtml(v.reference)}.</p><p>Regards,<br/>NextEdge Access Solutions (NEAS)</p>`,
+    renderText: (v: { contact: string; company: string; reference: string }) =>
+      `Dear ${v.contact},\n\nThank you for your interest in NEAS training services for ${v.company}.\n\nOur team can provide further information about course availability, prerequisites, and registration. Enquiry reference: ${v.reference}.\n\nRegards,\nNextEdge Access Solutions (NEAS)`,
   },
 } as const;
 
