@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getUser } from "@/lib/auth";
 import { loadConfig } from "@/lib/config";
-import { ensureAiwGmailAccountsTable, GMAIL_ACCOUNTS, gmailSendScopeApproved } from "@/lib/aiw-gmail";
+import { ensureAiwGmailAccountsTable, GMAIL_ACCOUNTS } from "@/lib/aiw-gmail";
 
 export const dynamic = "force-dynamic";
 function getCanonicalCallback(origin: string) {
