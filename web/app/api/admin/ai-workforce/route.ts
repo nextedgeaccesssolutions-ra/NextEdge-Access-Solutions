@@ -6,6 +6,7 @@ import { getSetting, setSetting } from "@/lib/settings";
 import { getAiwSkill, listAiwSkills } from "@/lib/aiw-skills";
 import { loadConfig } from "@/lib/config";
 import { resolveAiwSpecialistPermission } from "@/lib/aiw-authority";
+import { getAiwRuntimeReadiness } from "@/lib/aiw-readiness";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -31,7 +32,7 @@ async function ensureSpecialistTaskTable() {
   await sql`create index if not exists aiw_specialist_tasks_created_idx on aiw_specialist_tasks(created_at desc)`;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const user = await admin();
   if (!user) return json({ error: "Admin access required." }, 403);
   try {
@@ -53,8 +54,7 @@ export async function GET() {
     return json({
       workforceConfig,
       skills: listAiwSkills(),
-      aiReady: Boolean(process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY),
-      aiProvider: process.env.ANTHROPIC_API_KEY ? "anthropic" : process.env.GEMINI_API_KEY ? "gemini" : null,
+      ...getAiwRuntimeReadiness(req),
       leads: leads.map(x=>({...x,id:Number(x.id),value:Number(x.estimated_value),estimated_value:undefined,created_at:new Date(x.created_at).toISOString()})),
       drafts: drafts.map(x=>({...x,id:Number(x.id),lead_id:Number(x.lead_id),created_at:new Date(x.created_at).toISOString()})),
       runs: runs.map(x=>({...x,id:Number(x.id),created_at:new Date(x.created_at).toISOString()})),
