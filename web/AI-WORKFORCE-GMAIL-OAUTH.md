@@ -31,7 +31,9 @@ Both Gmail scopes are restricted scopes. Google must independently verify the ap
 - `TOKEN_ENCRYPTION_KEY` — dedicated 32-byte key encoded as exactly 64 hexadecimal characters.
 - `SITE_URL` — `https://www.nextedge-access-solutions.com`.
 - `GOOGLE_GMAIL_COMPOSE_SCOPE_APPROVED` — leave unset/false until Google approves the restricted compose scope.
-- `NEAS_GMAIL_SEND_ENABLED` — leave unset/false until approval, mailbox reauthorization, acceptance tests, and explicit NEAS activation.
+- `NEAS_GMAIL_AUTOMATIC_SEND_ENABLED` — leave unset/false until approval, mailbox reauthorization, acceptance tests, and explicit NEAS activation.
+- `NEAS_GMAIL_SEND_ENABLED` — a second environment gate; leave unset/false until the same approval and activation criteria are met.
+- `aiw_gmail_policy.automatic_send_enabled` — a separate database gate, default false; keep false until an authorized NEAS operator approves activation.
 - `NEAS_GMAIL_APPROVED_RECIPIENTS` — exact recipient allowlist; no wildcard support.
 - `NEAS_GMAIL_DAILY_SEND_LIMIT` — optional rolling 24-hour per-mailbox cap (default 20, maximum 50).
 
@@ -47,7 +49,7 @@ All endpoints require a NEAS administrator session:
 
 ## Sending safety
 
-Automatic sending is OFF by default. The send endpoint cannot send unless `GOOGLE_GMAIL_COMPOSE_SCOPE_APPROVED=true`, `NEAS_GMAIL_SEND_ENABLED=true`, the mailbox has the required compose grant, and the recipient is on the exact allowlist. It only accepts fixed quotation-follow-up and training-information templates. Every blocked, failed, or successful attempt is recorded in `aiw_gmail_send_audit`. Do not enable these flags until Google approval and production acceptance tests are verified.
+Automatic sending is OFF by default. The send endpoint cannot send unless `GOOGLE_GMAIL_COMPOSE_SCOPE_APPROVED=true`, `NEAS_GMAIL_AUTOMATIC_SEND_ENABLED=true`, `NEAS_GMAIL_SEND_ENABLED=true`, the database policy row is true, the mailbox has the required compose grant, and the recipient is on the exact allowlist. It only accepts fixed quotation-follow-up and training-information templates. Every blocked, failed, or successful attempt is recorded in `aiw_gmail_send_audit`. Do not enable these flags until Google approval and production acceptance tests are verified.
 
 ## Remaining operational scope
 

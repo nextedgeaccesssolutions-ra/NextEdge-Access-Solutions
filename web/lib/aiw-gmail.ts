@@ -45,6 +45,13 @@ export function ensureAiwGmailAccountsTable(): Promise<void> {
       created_at timestamptz not null default now()
     )`;
     await sql`create index if not exists aiw_gmail_audit_created_idx on aiw_gmail_audit(created_at desc)`;
+    await sql`create table if not exists aiw_gmail_policy (
+      id int primary key default 1 check (id = 1),
+      automatic_send_enabled boolean not null default false,
+      updated_by int references users(id) on delete set null,
+      updated_at timestamptz not null default now()
+    )`;
+    await sql`insert into aiw_gmail_policy (id, automatic_send_enabled) values (1, false) on conflict (id) do nothing`;
   })().catch((error) => {
     ready = null;
     throw error;
@@ -72,7 +79,8 @@ export const GMAIL_ACCOUNTS = {
 export type GmailAccountKey = keyof typeof GMAIL_ACCOUNTS;
 
 export function gmailSendScopeApproved() {
-  return process.env.NEAS_GMAIL_SEND_ENABLED === "true" &&
+  return process.env.NEAS_GMAIL_AUTOMATIC_SEND_ENABLED === "true" &&
+    process.env.NEAS_GMAIL_SEND_ENABLED === "true" &&
     process.env.GOOGLE_GMAIL_COMPOSE_SCOPE_APPROVED === "true";
 }
 export function hasGmailSendScope(scope: string) {

@@ -45,6 +45,8 @@ export async function POST(req: Request) {
     return json(code, status);
   };
 
+  const policyRows = await sql`select automatic_send_enabled from aiw_gmail_policy where id=1 limit 1`;
+  if (policyRows[0]?.automatic_send_enabled !== true) return recordBlocked("database_send_policy_disabled");
   if (!gmailSendScopeApproved()) return recordBlocked("gmail_send_policy_or_google_scope_not_approved");
   if (!approvedRecipient(recipient)) return recordBlocked("recipient_not_on_explicit_approval_allowlist");
   const account = (await sql`select scope,status,email from aiw_gmail_accounts where account_key=${accountKey} limit 1`)[0];
