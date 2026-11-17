@@ -17,22 +17,25 @@ jobs:
       contents: read
       issues: write
     steps:
-      - name: Check production availability
+      - name: Check public site and protected AI Workforce API
         shell: bash
         run: |
           set -euo pipefail
-          endpoint="https://www.nextedge-access-solutions.com/api/health"
+          login_url="https://www.nextedge-access-solutions.com/admin/login"
+          api_url="https://www.nextedge-access-solutions.com/api/admin/ai-workforce"
           for attempt in 1 2 3; do
-            status="$(curl --silent --show-error --max-time 12 -o /tmp/neas-health.json -w '%{http_code}' "$endpoint" || true)"
-            if [ "$status" = "200" ] && jq -e '.ok == true and .service == "neas-web"' /tmp/neas-health.json >/dev/null 2>&1; then
-              echo "NEAS production availability verified on attempt $attempt."
-              cat /tmp/neas-health.json
+            login_status="$(curl --silent --show-error --max-time 12 -o /tmp/neas-login.html -w '%{http_code}' "$login_url" || true)"
+            api_status="$(curl --silent --show-error --max-time 12 -H 'Accept: application/json' -o /tmp/neas-api.json -w '%{http_code}' "$api_url" || true)"
+            if [ "$login_status" = "200" ] && [ "$api_status" = "403" ] && jq -e '.error == "Admin access required."' /tmp/neas-api.json >/dev/null 2>&1; then
+              echo "NEAS production site and protected AI Workforce API verified on attempt $attempt."
+              echo "Staff login: HTTP $login_status"
+              echo "AI Workforce API: HTTP $api_status (expected unauthenticated response)"
               exit 0
             fi
-            echo "Health attempt $attempt failed with HTTP $status."
+            echo "Health attempt $attempt failed: login HTTP $login_status; AI Workforce API HTTP $api_status."
             sleep 8
           done
-          echo "::error::NEAS production availability check failed after three attempts."
+          echo "::error::NEAS production availability or admin-authentication check failed after three attempts."
           exit 1
 
       - name: Open one incident for a sustained outage
@@ -52,10 +55,10 @@ jobs:
                 body: [
                   "The scheduled production availability check failed after three attempts.",
                   "",
-                  "Endpoint: https://www.nextedge-access-solutions.com/api/health",
+                  "Checks: https://www.nextedge-access-solutions.com/admin/login and https://www.nextedge-access-solutions.com/api/admin/ai-workforce",
                   "Workflow run: " + context.serverUrl + "/" + owner + "/" + repo + "/actions/runs/" + context.runId,
                   "",
-                  "This monitor checks HTTP availability only. It does not run AI inference, consume Gateway credits, or modify production code.",
+                  "This monitor checks public site availability and the unauthenticated admin API guard only. It does not run AI inference, consume Gateway credits, or modify production code.",
                   "Investigate deployment status and logs, reproduce the issue, and make only evidence-backed repairs."
                 ].join("\n")
               });
