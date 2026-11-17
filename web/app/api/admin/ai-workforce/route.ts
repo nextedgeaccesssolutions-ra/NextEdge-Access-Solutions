@@ -16,7 +16,7 @@ export async function GET() {
   if (!user) return json({ error: "Admin access required." }, 403);
   try {
     const [leads,drafts,runs,metrics] = await Promise.all([
-      sql`select id, company, contact, email, phone, service, source, stage, estimated_value, next_step, created_at from aiw_leads order by created_at desc limit 500`,
+      sql`select id, company, contact, email, phone, service, source, stage, estimated_value, next_step, contact_status, created_at from aiw_leads order by created_at desc limit 500`,
       sql`select d.id, d.lead_id, d.channel, d.subject, d.body, d.status, d.created_at, l.company from aiw_outreach_drafts d join aiw_leads l on l.id=d.lead_id order by d.created_at desc limit 200`,
       sql`select id, workflow, status, summary, created_at from aiw_workflow_runs order by created_at desc limit 50`,
       sql`select count(*)::int as leads,
@@ -104,6 +104,22 @@ Record only factual answers, objections, requested follow-up and contact prefere
       const saved=await sql`insert into aiw_outreach_drafts(lead_id,channel,subject,body,created_by) values(${leadId},${channel},${subject},${body},${user.id}) returning id,created_at`;
       await sql`insert into aiw_workflow_runs(workflow,status,summary,lead_id,actor_id) values('Personalized outreach draft','needs_review',${channel+" draft created for "+lead.company},${leadId},${user.id})`;
       return json({ok:true,draft:{id:Number(saved[0].id),lead_id:leadId,channel,subject,body,status:"draft",created_at:new Date(saved[0].created_at).toISOString(),company:lead.company}});
+    }
+    if (b.action === "updateContactStatus") {
+      const id=Number(b.id), status=String(b.status);
+      if (!Number.isSafeInteger(id) || !["unreviewed","permitted","opted_out"].includes(status)) return json({error:"Invalid contact status."},400);
+      const row=await sql`update aiw_leads set contact_status=${status},updated_at=now() where id=${id} returning company`;
+      if (!row.length) return json({error:"Lead not found."},404);
+      await sql`insert into aiw_workflow_runs(workflow,status,summary,lead_id,actor_id) values('Contact preference update','completed',${row[0].company+" contact status set to "+status},${id},${user.id})`;
+      return json({ok:true});
+    }
+    if (b.action === "reviewDraft") {
+      const id=Number(b.id);
+      if (!Number.isSafeInteger(id)) return json({error:"Invalid draft."},400);
+      const row=await sql`update aiw_outreach_drafts set status='reviewed',reviewed_by=${user.id} where id=${id} and status='draft' returning lead_id`;
+      if (!row.length) return json({error:"Draft not found or no longer awaiting review."},409);
+      await sql`insert into aiw_workflow_runs(workflow,status,summary,lead_id,actor_id) values('Human outreach review','completed',${"Outreach draft #"+id+" reviewed by an administrator"},${row[0].lead_id},${user.id})`;
+      return json({ok:true});
     }
     return json({error:"Unknown action."},400);
   } catch (e) {
