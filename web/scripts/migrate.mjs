@@ -181,5 +181,20 @@ await sql`create table if not exists aiw_workflow_runs (
   actor_id int references users(id) on delete set null, created_at timestamptz not null default now()
 )`;
 await sql`create index if not exists aiw_workflow_runs_created_idx on aiw_workflow_runs(created_at desc)`;
+// ---- NEAS AI Workforce Gmail accounts (encrypted OAuth tokens) ----
+await sql`create table if not exists aiw_gmail_accounts (
+  id bigserial primary key,
+  account_key text not null unique check (account_key in ('info','operations')),
+  email text not null unique,
+  token_enc text not null,
+  scope text not null default '',
+  expires_at timestamptz,
+  status text not null default 'connected' check (status in ('connected','reauth_required','error')),
+  last_error text,
+  connected_by int references users(id) on delete set null,
+  connected_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+)`;
+await sql`create index if not exists aiw_gmail_accounts_status_idx on aiw_gmail_accounts(status)`;
 console.log("[migrate] Database ready.");
 await sql.end();
