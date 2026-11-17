@@ -113,7 +113,7 @@ export default function AIWorkforceClient(){
         <div className="wf-sidefoot"><small>OPERATING MODE</small><b>HYBRID · HUMAN-GOVERNED</b><small style={{marginTop:8}}>AI prepares. Humans authorize.</small></div>
       </aside>
       <main className="wf-main">
-        <header className="wf-top"><div><div className="wf-kicker">NextEdge Access Solutions · Business OS</div><h1 className="wf-title">{nav.find(n=>n[0]===tab)?.[1] || "Command"}</h1><div className="wf-sub">One coordinated workforce. Every action traceable. Every result measurable.</div></div><div className="wf-live"><span className="wf-dot"/>{data?(data.specialistAiReady?"LIVE AI WORKFORCE READY":"AI GATEWAY AUTH NOT AVAILABLE"):"CONNECTING"}</div></header>
+        <header className="wf-top"><div><div className="wf-kicker">NextEdge Access Solutions · Business OS</div><h1 className="wf-title">{nav.find(n=>n[0]===tab)?.[1] || "Command"}</h1><div className="wf-sub">One coordinated workforce. Every action traceable. Every result measurable.</div></div><div className="wf-live"><span className="wf-dot"/>{data?(data.specialistAiReady?"AI GATEWAY AUTH AVAILABLE":"AI GATEWAY AUTH NOT AVAILABLE"):"CONNECTING"}</div></header>
         {error&&<div className="wf-error">{error}</div>}{notice&&<div className="wf-success">{notice}</div>}
         {!data?<div className="wf-card wf-empty">Loading NEAS workforce intelligence…</div>:<>
         {tab==="command"&&<>
