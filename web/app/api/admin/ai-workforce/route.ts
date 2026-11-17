@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { DEFAULT_BRAND, generate } from "@/lib/marketing";
 import { getSetting, setSetting } from "@/lib/settings";
+import { resolveAiwSpecialistPermission } from "@/lib/aiw-authority";
 import { getAiwSkill, listAiwSkills } from "@/lib/aiw-skills";
 import { loadConfig } from "@/lib/config";
 
@@ -15,14 +16,6 @@ const WORKFORCE_LEVELS = ["observe", "draft", "recommend", "execute_approved"] a
 const WORKFORCE_IDS = new Set(["orchestrator","lead-research","lead-qualifier","outreach","proposal-closer","relationship","marketing-strategy","seo","content","video","publisher","rope-access","renewables","offshore-power","estimator","contracts","finance","hseq","integrity","agent-quality","model-router","code-engineer","knowledge","human-interaction"]);
 type WorkforceConfig = { agents: { id: string; enabled: boolean; authority: (typeof WORKFORCE_LEVELS)[number] }[]; updatedAt: string | null };
 const EMPTY_WORKFORCE: WorkforceConfig = { agents: [], updatedAt: null };
-const AGENT_CONFIG_IDS: Record<string, string> = {
-  JARVIS:"orchestrator", SALES:"lead-qualifier", MARKETING:"marketing-strategy", CONTENT:"content",
-  SKILLS:"knowledge", PERFORMANCE:"agent-quality", AUTHORITY:"integrity", APPROACH:"lead-research",
-  HUMAN:"relationship", EMPATHY:"human-interaction", PRO:"outreach", ENGINEERING:"rope-access",
-  QUALIFY:"proposal-closer", QUALITY:"agent-quality", INTEGRITY:"integrity", ADVANCED:"lead-research",
-  MODELS:"model-router", BRANCHES:"offshore-power", CODE:"code-engineer", FINANCE:"finance",
-  CUSTOMER:"human-interaction", PROJECTS:"renewables", AUDIT:"integrity"
-};
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status });
 const text = (v: unknown, max: number) => String(v ?? "").trim().slice(0,max);
 async function admin() { const user = await getUser(); return user?.role === "admin" ? user : null; }
@@ -115,9 +108,9 @@ export async function POST(req: Request) {
       return json({ok:true});
     }
     if (b.action === "draftOutreach") {
-      const config = await getSetting<WorkforceConfig>(WORKFORCE_KEY, EMPTY_WORKFORCE);
-      const outreachPolicy = config.agents.find((agent) => agent.id === "outreach");
-      if (outreachPolicy && (!outreachPolicy.enabled || outreachPolicy.authority === "observe")) return json({ error: "Outreach drafting is disabled by the workforce authority matrix." }, 403);
+      const workforceConfig = await getSetting<WorkforceConfig>(WORKFORCE_KEY, EMPTY_WORKFORCE);
+      const outreachPermission = resolveAiwSpecialistPermission("PRO", workforceConfig);
+      if (!outreachPermission.allowed) return json({error:outreachPermission.reason},403);
       const leadId=Number(b.leadId), channel=String(b.channel);
       if (!Number.isSafeInteger(leadId) || !(channels as readonly string[]).includes(channel)) return json({error:"Select a valid lead and outreach channel."},400);
       const lead=(await sql`select * from aiw_leads where id=${leadId}`)[0];
@@ -216,12 +209,11 @@ Record only factual answers, objections, requested follow-up and contact prefere
       const role=roles[agentId];
       if(!role) return json({error:"Unknown specialist."},400);
       if(objective.length<12) return json({error:"Provide a clear task objective of at least 12 characters."},400);
-      const config = await getSetting<WorkforceConfig>(WORKFORCE_KEY, EMPTY_WORKFORCE);
-      const configId = AGENT_CONFIG_IDS[agentId];
-      const policy = config.agents.find((agent) => agent.id === configId);
-      if (policy && (!policy.enabled || policy.authority === "observe")) return json({error:"This specialist is disabled or limited to observe-only by the workforce authority matrix."},403);
       const skill = getAiwSkill(agentId);
       await loadConfig(true);
+      const workforceConfig = await getSetting<WorkforceConfig>(WORKFORCE_KEY, EMPTY_WORKFORCE);
+      const permission = resolveAiwSpecialistPermission(agentId, workforceConfig);
+      if (!permission.allowed) return json({error:permission.reason},403);
       const taskBrief=[
         "SPECIALIST: "+role.name+" ("+agentId+")",
         "ROLE SCOPE: "+role.scope,

@@ -47,6 +47,14 @@ jobs:
         run: npm run test:aiw-email-validation
         working-directory: web
 
+      - name: Test AI Workforce authority enforcement
+        run: npm run test:aiw-authority
+        working-directory: web
+
+      - name: Test AI Workforce skill registry
+        run: npm run test:aiw-skills
+        working-directory: web
+
       - name: Verify clean public route contract
         run: npm run test:clean-routes
         working-directory: web
