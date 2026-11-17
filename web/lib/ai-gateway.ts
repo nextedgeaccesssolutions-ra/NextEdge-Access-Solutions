@@ -16,7 +16,7 @@ function collectText(value: unknown): string {
     if (typeof item.text === "string") return item.text;
     if (typeof item.output_text === "string") return item.output_text;
     return "";
-  }).filter(Boolean).join("\\n");
+  }).filter(Boolean).join("\n");
 }
 
 /** Normalise common OpenAI-compatible, Responses, and Gemini text response envelopes. */
