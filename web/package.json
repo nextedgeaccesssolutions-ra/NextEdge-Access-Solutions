@@ -13,6 +13,7 @@
     "test:aiw-email-validation": "node --experimental-strip-types --test scripts/test-aiw-email-validation.mjs",
     "test:aiw-authority": "node --experimental-strip-types --test scripts/test-aiw-authority.mjs",
     "test:aiw-skills": "node --experimental-strip-types --test scripts/test-aiw-skills.mjs",
+    "test:aiw-contact-policy": "node --experimental-strip-types --test scripts/test-aiw-contact-policy.mjs",
     "test:ai-gateway": "node --experimental-strip-types --test scripts/test-ai-gateway.mjs"
   },
   "dependencies": {

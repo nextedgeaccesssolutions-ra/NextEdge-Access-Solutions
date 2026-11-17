@@ -108,9 +108,9 @@ export async function POST(req: Request) {
       return json({ok:true});
     }
     if (b.action === "draftOutreach") {
-      const config = await getSetting<WorkforceConfig>(WORKFORCE_KEY, EMPTY_WORKFORCE);
-      const outreachPolicy = config.agents.find((agent) => agent.id === "outreach");
-      if (outreachPolicy && (!outreachPolicy.enabled || outreachPolicy.authority === "observe")) return json({ error: "Outreach drafting is disabled by the workforce authority matrix." }, 403);
+      const workforceConfig = await getSetting<WorkforceConfig>(WORKFORCE_KEY, EMPTY_WORKFORCE);
+      const outreachPermission = resolveAiwSpecialistPermission("PRO", workforceConfig);
+      if (!outreachPermission.allowed) return json({ error: outreachPermission.reason }, 403);
       const leadId=Number(b.leadId), channel=String(b.channel);
       if (!Number.isSafeInteger(leadId) || !(channels as readonly string[]).includes(channel)) return json({error:"Select a valid lead and outreach channel."},400);
       const lead=(await sql`select * from aiw_leads where id=${leadId}`)[0];
