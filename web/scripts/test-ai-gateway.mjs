@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_AI_GATEWAY_MODEL, generateAIGatewayText } from "../lib/ai-gateway.ts";
+import { DEFAULT_AI_GATEWAY_MODEL, extractGatewayText, generateAIGatewayText, usesProjectAIGateway } from "../lib/ai-gateway.ts";
 
 test("uses the live catalog-selected Recursive Flint 1.0 model by default", () => {
   assert.equal(DEFAULT_AI_GATEWAY_MODEL, "recursive/flint-v1.0");
@@ -68,56 +68,49 @@ test("reads the Vercel Functions OIDC token from the incoming request header", a
   assert.equal(request.init.headers.authorization, "Bearer runtime-oidc-token");
 });
 
-
-test("extracts text from a Responses API output_text payload", async () => {
-  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
-    token: "oidc",
-    fetchImpl: async () => new Response(JSON.stringify({ id: "resp_123", output_text: "Gateway output text" }), { status: 200 }),
-  });
-  assert.deepEqual(result, { text: "Gateway output text", model: DEFAULT_AI_GATEWAY_MODEL });
+test("normalises OpenAI-compatible string content", () => {
+  assert.equal(extractGatewayText({ choices: [{ message: { content: "  Hello NEAS  " } }] }), "Hello NEAS");
 });
 
-test("extracts text from structured chat-completion content blocks", async () => {
-  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
-    token: "oidc",
-    fetchImpl: async () => new Response(JSON.stringify({ choices: [{ message: { content: [{ type: "text", text: "First" }, { type: "text", text: "Second" }] } }] }), { status: 200 }),
-  });
-  assert.deepEqual(result, { text: "First\nSecond", model: DEFAULT_AI_GATEWAY_MODEL });
+test("normalises multipart OpenAI-compatible content", () => {
+  assert.equal(extractGatewayText({ choices: [{ message: { content: [{ type: "text", text: "Hello" }, { type: "text", text: "NEAS" }] } }] }), "Hello\nNEAS");
 });
 
-test("extracts text from a Responses API output content array", async () => {
-  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
-    token: "oidc",
-    fetchImpl: async () => new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: "Structured output" }] }] }), { status: 200 }),
-  });
-  assert.deepEqual(result, { text: "Structured output", model: DEFAULT_AI_GATEWAY_MODEL });
+test("normalises Responses API output_text and output content", () => {
+  assert.equal(extractGatewayText({ output_text: "Ready" }), "Ready");
+  assert.equal(extractGatewayText({ output: [{ content: [{ type: "output_text", text: "Gateway ready" }] }] }), "Gateway ready");
 });
 
-test("returns actionable safe diagnostics for an empty model completion", async () => {
+test("normalises Gemini candidate text parts", () => {
+  assert.equal(extractGatewayText({ candidates: [{ content: { parts: [{ text: "Gemini output" }] } }] }), "Gemini output");
+});
+
+test("returns a diagnostic reference when a successful response has no recognised text", async () => {
   const result = await generateAIGatewayText({ system: "s", user: "u" }, {
     token: "oidc",
-    fetchImpl: async () => new Response(JSON.stringify({ id: "resp_empty_1", choices: [{ finish_reason: "length", message: { content: "" } }] }), { status: 200 }),
+    fetchImpl: async () => new Response(JSON.stringify({ id: "req-neas-123", choices: [{ message: { content: "" }, finish_reason: "length" }] }), {
+      status: 200,
+      headers: { "content-type": "application/json", "x-request-id": "req-neas-123" },
+    }),
   });
   assert.equal("error" in result, true);
   if ("error" in result) {
-    assert.match(result.error, /empty completion/);
-    assert.match(result.error, /finish_reason=length/);
-    assert.match(result.error, /response_id=resp_empty_1/);
-    assert.doesNotMatch(result.error, /oidc|test prompt/i);
+    assert.match(result.error, /successful response but no recognised text content/i);
+    assert.match(result.error, /length/);
+    assert.match(result.error, /req-neas-123/);
   }
 });
 
-test("extracts text from Gemini candidate parts", async () => {
-  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
-    token: "oidc",
-    fetchImpl: async () => new Response(JSON.stringify({
-      candidates: [{ content: { parts: [{ text: "Gemini-compatible response" }] } }],
-    }), { status: 200 }),
-  });
-  assert.deepEqual(result, { text: "Gemini-compatible response", model: DEFAULT_AI_GATEWAY_MODEL });
+test("routes specialist and outreach work through the budgeted project Gateway", () => {
+  assert.equal(usesProjectAIGateway("specialist"), true);
+  assert.equal(usesProjectAIGateway("outreach"), true);
 });
 
-test("returns a model refusal as user-visible text instead of an empty completion", async () => {
+test("does not force unrelated marketing tasks onto the AI Workforce Gateway", () => {
+  for (const task of ["caption", "seo", "facebook", "campaign"]) assert.equal(usesProjectAIGateway(task), false);
+});
+
+test("preserves model refusal text from a Chat Completions response", async () => {
   const result = await generateAIGatewayText({ system: "s", user: "u" }, {
     token: "oidc",
     fetchImpl: async () => new Response(JSON.stringify({
