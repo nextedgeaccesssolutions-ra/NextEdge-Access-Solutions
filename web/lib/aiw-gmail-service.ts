@@ -7,7 +7,7 @@ const EMAILS: Record<AiwGmailAccount, string> = {
   info: "info.nextedgeaccesssolutions@gmail.com",
   operations: "nextedgeaccesssolutions@gmail.com",
 };
-const READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
+const READ_SCOPE = "https://www.googleapis.com/auth/gmail.metadata";
 const COMPOSE_SCOPE = "https://www.googleapis.com/auth/gmail.compose";
 
 type StoredTokens = {
@@ -134,11 +134,10 @@ function validateMessage(input: { to: string; subject: string; body: string }) {
   return { to, subject, body };
 }
 
-export async function listAiwGmailInbox(account: AiwGmailAccount, actorId: number, maxResults = 20, query = "") {
+export async function listAiwGmailInbox(account: AiwGmailAccount, actorId: number, maxResults = 20) {
   const requested = Number(maxResults);
   const limit = Number.isFinite(requested) ? Math.min(25, Math.max(1, Math.floor(requested))) : 20;
   const params = new URLSearchParams({ maxResults: String(limit) });
-  if (query.trim()) params.set("q", query.trim().slice(0, 500));
   const data = await gmailRequest(account, actorId, READ_SCOPE, "messages?" + params.toString());
   const messages = Array.isArray(data.messages) ? data.messages : [];
   const results = await Promise.all(messages.slice(0, limit).map(async (message: { id?: string; threadId?: string }) => {
@@ -146,7 +145,7 @@ export async function listAiwGmailInbox(account: AiwGmailAccount, actorId: numbe
     const item = await gmailRequest(account, actorId, READ_SCOPE, "messages/" + encodeURIComponent(message.id) + "?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date");
     const headers = Array.isArray(item.payload?.headers) ? item.payload.headers : [];
     const get = (name: string) => String(headers.find((h: { name?: string }) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "");
-    return { id: String(item.id), threadId: String(item.threadId ?? ""), snippet: String(item.snippet ?? ""), from: get("From"), subject: get("Subject"), date: get("Date"), unread: (item.labelIds ?? []).includes("UNREAD") };
+    return { id: String(item.id), threadId: String(item.threadId ?? ""), from: get("From"), subject: get("Subject"), date: get("Date"), unread: (item.labelIds ?? []).includes("UNREAD") };
   }));
   await recordAiwGmailAudit({ accountKey: account, actorId, action: "inbox_list", outcome: "success", detail: "Inbox metadata retrieved; message bodies are not persisted by NEAS." });
   return results.filter(Boolean);
