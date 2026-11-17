@@ -110,21 +110,22 @@ try {
     $products = @($sitemapUrls | Where-Object { $_ -match '/store/p/' })
     Write-Host "  product pages : $($products.Count)"
     Write-Host "  other pages   : $($sitemapUrls.Count - $products.Count)"
-    if (($sitemapUrls.Count - $products.Count) -lt 5) {
-        Write-Host "  WARNING: almost no non-product pages in the sitemap." -ForegroundColor Yellow
+    if (($sitemapUrls.Count - $products.Count) -lt 4) {
+        Write-Host "  WARNING: almost no standalone public pages in the sitemap." -ForegroundColor Yellow
     }
 } catch {
     Write-Host "sitemap.xml NOT reachable or not valid XML" -ForegroundColor Red
 }
 
-# --- pages that SHOULD exist for a rope-access company ------------------
+# --- current public routes ----------------------------------------------
+# Section aliases (/home, /about, /services, /partners, /contact) are
+# intentionally retained for visitors but canonicalize to the homepage.
+# Legacy Site123 detail paths such as /industries/ and /resources/ are not
+# part of the current Next.js site and must not be treated as expected pages.
 $expected = @(
-    "/", "/store", "/privacy-policy",
-    "/about", "/contact",
-    "/services/", "/services/rope-access/", "/services/facade-cleaning/",
-    "/services/lifeline-systems/", "/services/fall-protection-systems/",
-    "/services/training-consultancy/", "/services/ppe-supply/",
-    "/industries/", "/resources/"
+    "/", "/home", "/about", "/services", "/partners", "/contact",
+    "/our-clients", "/store", "/privacy-policy",
+    "/cookie-policy", "/cookie-preferences"
 )
 
 $targets = $expected | ForEach-Object { "$BaseUrl$_" }
