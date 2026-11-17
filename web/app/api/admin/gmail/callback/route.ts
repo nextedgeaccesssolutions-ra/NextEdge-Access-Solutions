@@ -48,7 +48,7 @@ export async function GET(req: Request) {
     await ensureAiwGmailAccountsTable();
     const clientId = process.env.GOOGLE_CLIENT_ID?.trim() ?? "";
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() ?? "";
-    if (!clientId || !clientSecret) return finish(req, "missing-client");
+    if (!clientId || !clientSecret) { await recordAiwGmailAudit({ accountKey, actorId: user.id, action: "oauth_callback", outcome: "failure", detail: "OAuth client credentials are missing." }).catch(() => {}); return finish(req, "missing-client"); }
     const redirectUri = getCanonicalCallback(incoming.origin);
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
