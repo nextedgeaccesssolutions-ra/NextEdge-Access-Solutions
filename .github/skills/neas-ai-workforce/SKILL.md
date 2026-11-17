@@ -13,7 +13,8 @@ Operate the NEAS AI Workforce as a coordinated business system for NextEdge Acce
 - Workforce API: `web/app/api/admin/ai-workforce/route.ts`
 - AI Gateway adapter and diagnostics: `web/lib/ai-gateway.ts`, `web/scripts/test-ai-gateway.mjs`
 - Skill registry: `web/lib/aiw-skills.ts`; Gateway reliability skill: `.github/skills/ai-gateway-reliability/SKILL.md`
-- Five-minute production availability monitor: `.github/workflows/neas-ai-workforce-health.yml`
+- Five-minute production availability and database monitor: `.github/workflows/neas-ai-workforce-health.yml`
+- Public service and database health check: `web/app/api/health/route.ts`
 - Gmail API and encrypted account services: `web/app/api/admin/gmail/`, `web/lib/aiw-gmail-service.ts`, `web/lib/aiw-gmail.ts`
 - Authority policy: `web/lib/aiw-authority.ts`
 - Product context and model generation: `web/lib/marketing.ts`
@@ -56,7 +57,8 @@ Operate the NEAS AI Workforce as a coordinated business system for NextEdge Acce
 - Check each mailbox's independent Google OAuth grant before claiming that account is connected.
 - Google restricted-scope approval and any required security assessment are external gates; code deployment does not equal Google verification.
 - Gmail send requires the documented application and database gates plus completed acceptance tests and explicit owner authorization. Keep disabled until all conditions are met.
-- ChatGPT task automations are hourly at most. The repository's GitHub Actions production availability monitor may run every five minutes; it checks the public health endpoint only, creates one GitHub issue on a sustained outage, and does not run model inference, spend Gateway credits, or modify production code.
+- The repository's GitHub Actions production monitor runs every five minutes. It checks the public login page, database connectivity through a minimal `SELECT 1`, and the unauthenticated admin API guard. It opens one GitHub issue for a sustained outage. It does not run AI inference, consume Gateway credits, or modify production code.
+- A healthy public service endpoint is not proof that the admin database or live model inference is healthy. Verify those separately.
 
 ## Required validation
 - Regression tests for role-to-authority mapping, disabled roles, observe-only roles, and missing saved permissions.
