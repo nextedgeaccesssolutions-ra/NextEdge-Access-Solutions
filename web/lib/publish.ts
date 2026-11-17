@@ -7,6 +7,25 @@ import { notifyApproval } from "./notify";
 export type PublishResult = { platform: string; name: string; ok: boolean; error?: string };
 const AUTO = ["facebook", "instagram", "linkedin", "youtube", "tiktok", "google_business"];
 
+let publishLockTableReady: Promise<void> | null = null;
+
+/** Ensure the durable publishing lease table exists once per server instance.
+ *  The main migration also creates it; this additive guard repairs older databases
+ *  without issuing CREATE TABLE on every publication request. */
+async function ensurePublishLockTable() {
+  if (!publishLockTableReady) {
+    publishLockTableReady = sql`create table if not exists mk_post_publish_locks (
+      post_id int primary key references mk_posts(id) on delete cascade,
+      lock_token uuid not null,
+      locked_at timestamptz not null default now()
+    )`.then(() => undefined).catch((error) => {
+      publishLockTableReady = null;
+      throw error;
+    });
+  }
+  await publishLockTableReady;
+}
+
 /** Publishes one post to every connected account for its chosen platforms.
  *  Marked "published" only when every platform confirms; otherwise "failed" with reasons.
  *  Accounts that already succeeded for this post are skipped, so retries never double-post. */
@@ -16,6 +35,7 @@ export async function publishPost(id: number, userId: number | null, origin: str
   if (!["approved", "scheduled", "failed"].includes(post.status)) return { error: "Only approved or scheduled posts can be published." };
   // A durable per-post lease prevents manual retries and overlapping cron runs from
   // sending the same post to a platform at the same time. Expired leases recover crashes.
+  await ensurePublishLockTable();
   const lockToken = randomUUID();
   const claimed = await sql`insert into mk_post_publish_locks (post_id, lock_token, locked_at)
     values (${id}, ${lockToken}, now())

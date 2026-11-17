@@ -21,16 +21,26 @@ const EMPTY_WORKFORCE: WorkforceConfig = { agents: [], updatedAt: null };
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status });
 const text = (v: unknown, max: number) => String(v ?? "").trim().slice(0,max);
 async function admin() { const user = await getUser(); return user?.role === "admin" ? user : null; }
+let specialistTaskTableReady: Promise<void> | null = null;
+
 async function ensureSpecialistTaskTable() {
-  await sql`create table if not exists aiw_specialist_tasks (
-    id bigserial primary key, agent_id text not null, agent_name text not null,
-    objective text not null, deliverable text not null,
-    status text not null default 'needs_review' check (status in ('needs_review','approved','rejected','completed')),
-    created_by int references users(id) on delete set null,
-    reviewed_by int references users(id) on delete set null,
-    created_at timestamptz not null default now(), updated_at timestamptz not null default now()
-  )`;
-  await sql`create index if not exists aiw_specialist_tasks_created_idx on aiw_specialist_tasks(created_at desc)`;
+  if (!specialistTaskTableReady) {
+    specialistTaskTableReady = (async () => {
+      await sql`create table if not exists aiw_specialist_tasks (
+        id bigserial primary key, agent_id text not null, agent_name text not null,
+        objective text not null, deliverable text not null,
+        status text not null default 'needs_review' check (status in ('needs_review','approved','rejected','completed')),
+        created_by int references users(id) on delete set null,
+        reviewed_by int references users(id) on delete set null,
+        created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+      )`;
+      await sql`create index if not exists aiw_specialist_tasks_created_idx on aiw_specialist_tasks(created_at desc)`;
+    })().catch((error) => {
+      specialistTaskTableReady = null;
+      throw error;
+    });
+  }
+  await specialistTaskTableReady;
 }
 
 export async function GET(req: Request) {
@@ -52,21 +62,28 @@ export async function GET(req: Request) {
         from aiw_leads`
     ]);
     let workforceConfig = await getSetting<WorkforceConfig>(WORKFORCE_KEY, EMPTY_WORKFORCE);
-    // Auto-seed / auto-upgrade: ensure every specialist is enabled at execute_approved.
-    const existingMap = new Map(workforceConfig.agents.map(a => [a.id, a]));
-    const needsUpgrade = [...WORKFORCE_IDS].some(id => {
-      const a = existingMap.get(id);
-      return !a || !a.enabled || a.authority !== "execute_approved";
-    });
-    if (needsUpgrade) {
-      const upgradedAgents = [...WORKFORCE_IDS].map(id => ({
-        id,
-        enabled: true,
-        authority: "execute_approved" as const,
-      }));
-      const upgraded: WorkforceConfig = { agents: upgradedAgents, updatedAt: new Date().toISOString() };
-      await setSetting(WORKFORCE_KEY, upgraded);
-      workforceConfig = upgraded;
+    // Seed the approved default matrix only on first setup. Preserve every
+    // explicit administrator choice on later reads, including disabled specialists
+    // and lower authority levels. Newly introduced specialists receive a safe,
+    // visible default without overwriting existing decisions.
+    const currentAgents = Array.isArray(workforceConfig.agents) ? workforceConfig.agents : [];
+    const existingMap = new Map(currentAgents.map((agent) => [agent.id, agent]));
+    const missingIds = [...WORKFORCE_IDS].filter((id) => !existingMap.has(id));
+    if (!workforceConfig.updatedAt || missingIds.length > 0) {
+      const seededAgents = workforceConfig.updatedAt
+        ? [...currentAgents, ...missingIds.map((id) => ({
+            id,
+            enabled: true,
+            authority: "execute_approved" as const,
+          }))]
+        : [...WORKFORCE_IDS].map((id) => ({
+            id,
+            enabled: true,
+            authority: "execute_approved" as const,
+          }));
+      const seeded: WorkforceConfig = { agents: seededAgents, updatedAt: new Date().toISOString() };
+      await setSetting(WORKFORCE_KEY, seeded);
+      workforceConfig = seeded;
     }
     return json({
       workforceConfig,
@@ -192,6 +209,23 @@ Record only factual answers, objections, requested follow-up and contact prefere
       if (!row.length) return json({error:"Draft not found or no longer awaiting review."},409);
       await sql`insert into aiw_workflow_runs(workflow,status,summary,lead_id,actor_id) values('Human outreach review','completed',${"Outreach draft #"+id+" reviewed by an administrator"},${row[0].lead_id},${user.id})`;
       return json({ok:true});
+    }
+
+    if (b.action === "reviewSpecialistTask") {
+      const id = Number(b.id);
+      const status = String(b.status);
+      if (!Number.isSafeInteger(id) || !["approved", "rejected"].includes(status)) {
+        return json({ error: "Select a valid specialist work order and review decision." }, 400);
+      }
+      await ensureSpecialistTaskTable();
+      const row = await sql`update aiw_specialist_tasks
+        set status = ${status}, reviewed_by = ${user.id}, updated_at = now()
+        where id = ${id} and status = 'needs_review'
+        returning agent_name, objective`;
+      if (!row.length) return json({ error: "Work order not found or no longer awaiting review." }, 409);
+      await sql`insert into aiw_workflow_runs(workflow,status,summary,actor_id)
+        values('Specialist work order review','completed',${"Work order #" + id + " " + status + " by an administrator: " + row[0].agent_name},${user.id})`;
+      return json({ ok: true, id, status });
     }
 
     if (b.action === "testGateway") {
