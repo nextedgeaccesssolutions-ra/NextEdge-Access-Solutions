@@ -25,8 +25,8 @@ export async function GET(req: Request) {
   const jar = await cookies();
   const expectedState = jar.get("neas_gmail_oauth_state")?.value ?? "";
   const accountKey = jar.get("neas_gmail_oauth_account")?.value as keyof typeof ACCOUNTS | undefined;
-  jar.delete("neas_gmail_oauth_state");
-  jar.delete("neas_gmail_oauth_account");
+  jar.set("neas_gmail_oauth_state", "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/api/admin/gmail/callback", maxAge: 0 });
+  jar.set("neas_gmail_oauth_account", "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/api/admin/gmail/callback", maxAge: 0 });
   if (!user || user.role !== "admin") return finish(req, "admin-required");
   const incoming = new URL(req.url);
   if (incoming.searchParams.has("error")) return finish(req, "google-denied");
