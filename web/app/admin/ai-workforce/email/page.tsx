@@ -27,6 +27,7 @@ export default async function AIWorkforceEmailPage({ searchParams }: { searchPar
     "wrong-google-account": "The Google account selected did not match the mailbox assigned to this connection.",
     "refresh-token-missing": "Google did not return an offline refresh token. Revoke this app's access in Google Account permissions, then reconnect.",
     "missing-encryption-key": "TOKEN_ENCRYPTION_KEY is missing or invalid. Configure a dedicated 64-character hexadecimal key in Vercel.",
+    "missing-scope": "Google did not grant both requested Gmail permissions. Reconnect and approve the requested permissions.",
     "connection-error": "Connection failed. Check server logs without exposing credentials.",
     "admin-required": "Administrator sign-in is required.",
   };
