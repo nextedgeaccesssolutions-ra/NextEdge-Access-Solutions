@@ -34,7 +34,8 @@ export default async function AIWorkforceEmailPage({ searchParams }: { searchPar
     "connection-error": "Connection failed. Check server logs without exposing credentials.",
     "admin-required": "Administrator sign-in is required.",
   };
-  return <main style={{maxWidth:900,margin:"40px auto",padding:"24px",color:"#e7edf4",background:"#07111b",minHeight:"70vh",borderRadius:18,fontFamily:"Inter,system-ui"}}>
+  return <main className="neas-gmail-page" style={{width:"min(100% - 32px,900px)",margin:"clamp(12px,4vw,40px) auto",padding:"clamp(14px,3vw,24px)",color:"#e7edf4",background:"#07111b",minHeight:"70vh",borderRadius:18,fontFamily:"Inter,system-ui",overflow:"hidden"}}>
+    <style>{`.neas-gmail-page *{box-sizing:border-box;min-width:0}.neas-gmail-page h1{font-size:clamp(23px,4vw,30px);line-height:1.2;overflow-wrap:anywhere}.neas-gmail-page p,.neas-gmail-page a,.neas-gmail-page span,.neas-gmail-page div{overflow-wrap:anywhere}.neas-gmail-page section{min-width:0}@media(max-width:600px){.neas-gmail-page{width:100%;margin:0;padding:16px 12px;border-radius:0;min-height:100vh}.neas-gmail-page section[style*="display: grid"]{grid-template-columns:minmax(0,1fr)!important}.neas-gmail-page article{padding:12px!important}.neas-gmail-page article>div:first-child{display:grid!important;grid-template-columns:minmax(0,1fr);gap:8px}.neas-gmail-page article a{display:flex!important;width:100%;min-height:44px;align-items:center;justify-content:center;text-align:center}.neas-gmail-page h2{font-size:18px!important}}`}</style>
     <Link href="/admin/ai-workforce" style={{color:"#ebc07e",textDecoration:"none"}}>← AI Workforce</Link>
     <p style={{color:"#ca9332",letterSpacing:".16em",fontSize:11,marginTop:24}}>NEAS AI WORKFORCE / INTEGRATIONS</p>
     <h1 style={{fontSize:30,margin:"6px 0"}}>Gmail account connections</h1>

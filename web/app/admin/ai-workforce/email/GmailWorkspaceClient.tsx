@@ -62,7 +62,8 @@ export default function GmailWorkspaceClient() {
 
   useEffect(() => { void loadAudit(); }, []);
 
-  return <section style={styles.panel}>
+  return <section className="neas-gmail-workspace" style={styles.panel}>
+    <style>{`.neas-gmail-workspace{min-width:0;overflow:hidden}.neas-gmail-workspace button,.neas-gmail-workspace input,.neas-gmail-workspace textarea,.neas-gmail-workspace select{max-width:100%;font:inherit}.neas-gmail-workspace article,.neas-gmail-workspace form,.neas-gmail-workspace label{min-width:0;overflow-wrap:anywhere}.neas-gmail-workspace input,.neas-gmail-workspace textarea,.neas-gmail-workspace select{width:100%}@media(max-width:600px){.neas-gmail-workspace{padding:12px!important}.neas-gmail-workspace>div{min-width:0}.neas-gmail-workspace>div[style*="justify-content: space-between"]{align-items:flex-start!important}.neas-gmail-workspace button{min-height:44px;max-width:100%;white-space:normal}.neas-gmail-workspace form>div{width:100%}.neas-gmail-workspace form>div button{width:100%}.neas-gmail-workspace div[style*="justify-content: space-between"]{flex-wrap:wrap}.neas-gmail-workspace article{padding:10px!important}}`}</style>
     <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}>
       <div><h2 style={{fontSize:19,margin:"0 0 4px"}}>NEAS Gmail workspace</h2><p style={styles.muted}>Read authorized inbox metadata and prepare drafts. Outbound sending is locked.</p></div>
       <span style={{fontSize:11,fontWeight:700,color:"#ebc07e",border:"1px solid #ca933255",borderRadius:99,padding:"6px 10px"}}>SENDING DISABLED</span>
