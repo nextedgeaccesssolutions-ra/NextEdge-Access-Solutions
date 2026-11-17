@@ -54,6 +54,14 @@ async function loadState(u: MkUser) {
     platforms: platformStatus(),
     accounts: (await sql`select id, platform, name, status, last_error, expires_at, updated_at from mk_social_accounts where ${inWs(u.ws)} order by platform, name`.catch(() => [])).map((a) => ({ id: a.id, platform: a.platform, name: a.name, status: a.status, error: a.last_error ?? "", expires_at: a.expires_at ? new Date(a.expires_at).toISOString() : null })),
     results: (await sql`select post_id, platform, ok, remote_id, error, created_at from mk_post_results where post_id in (select id from mk_posts where ${inWs(u.ws)}) order by id desc limit 500`.catch(() => [])).map((r) => ({ post_id: r.post_id, platform: r.platform, ok: r.ok, remote_id: r.remote_id ?? "", error: r.error ?? "", at: new Date(r.created_at).toISOString() })),
+    recovery: (await sql`select q.id, q.post_id, q.account_id, q.platform, q.state, q.error_class, q.error_message, q.attempts, q.resolution_note, q.updated_at, p.title, a.name as account_name
+      from mk_post_recovery_queue q join mk_posts p on p.id = q.post_id join mk_social_accounts a on a.id = q.account_id
+      where ${inWs(u.ws)} and q.state not in ('resolved','closed') order by q.updated_at desc limit 100`.catch(() => [])).map((r) => ({
+        id: Number(r.id), post_id: r.post_id, account_id: r.account_id, platform: r.platform, state: r.state,
+        error_class: r.error_class, error_message: r.error_message, attempts: r.attempts,
+        resolution_note: r.resolution_note ?? "", updated_at: new Date(r.updated_at).toISOString(),
+        title: r.title ?? "", account_name: r.account_name ?? ""
+      })),
     connectReady: { facebook: metaReady(), linkedin: linkedinReady(), linkedinPages: !!(process.env.LINKEDIN_PAGES_CLIENT_ID && process.env.LINKEDIN_PAGES_CLIENT_SECRET), google: googleReady(), tiktok: tiktokReady() },
     automation: await autoSettings(),
     reach7: await getSetting<{ fetchedAt?: string; pages?: { reached: number | null; views: number | null }[] }>(u.ws == null ? "mk_insights_7" : `mk_insights_7_ws${u.ws}`, {}).then((r) => (r.pages?.length ? { fetchedAt: r.fetchedAt, reached: r.pages.reduce((a, p) => a + (p.reached ?? 0), 0), views: r.pages.reduce((a, p) => a + (p.views ?? 0), 0) } : null)),
@@ -327,6 +335,20 @@ export async function POST(req: Request) {
       const a = (await sql`delete from mk_social_accounts where id = ${Number(b.id)} and ${inWs(u.ws)} returning platform, name`)[0];
       if (a) await log("disconnected account", `${a.platform}: ${a.name}`);
       return ok();
+    }
+    case "recoveryAuthorizeRetry": {
+      if (u.tenant || !need("admin")) return deny();
+      const postId = Number(b.postId), accountId = Number(b.accountId);
+      const note = txt(b.note, 500).trim();
+      if (!Number.isSafeInteger(postId) || postId < 1 || !Number.isSafeInteger(accountId) || accountId < 1) return bad("Invalid recovery item.");
+      if (note.length < 12) return bad("Record how you verified the post is not already live and what issue was fixed (at least 12 characters).");
+      const item = (await sql`select q.id, q.state, q.platform from mk_post_recovery_queue q join mk_posts p on p.id=q.post_id
+        where q.post_id=${postId} and q.account_id=${accountId} and ${inWs(u.ws)} for update`)[0];
+      if (!item) return bad("Recovery item not found.", 404);
+      if (!["retryable", "needs_review"].includes(item.state)) return bad("This recovery item is not eligible for manual authorization.");
+      await sql`update mk_post_recovery_queue set state='retry_ready', resolution_note=${note}, updated_at=now() where id=${item.id}`;
+      await log("authorized verified publishing retry", `${item.platform} · ${note}`, postId);
+      return ok({ authorized: true });
     }
     case "publishNow": {
       if (process.env.VERCEL_ENV !== "production") return bad("Real social publishing is disabled in staging and Preview deployments. Test the composer here; enable live publishing only after Production release.", 403);
