@@ -3,14 +3,9 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getUser } from "@/lib/auth";
 import { loadConfig } from "@/lib/config";
-import { ensureAiwGmailAccountsTable, recordAiwGmailAudit } from "@/lib/aiw-gmail";
+import { ensureAiwGmailAccountsTable, GMAIL_ACCOUNTS } from "@/lib/aiw-gmail";
 
 export const dynamic = "force-dynamic";
-const ACCOUNTS = {
-  info: "info.nextedgeaccesssolutions@gmail.com",
-  operations: "nextedgeaccesssolutions@gmail.com",
-} as const;
-
 function getCanonicalCallback(origin: string) {
   const configured = process.env.SITE_URL?.trim() || origin;
   const base = new URL(configured);
@@ -26,8 +21,8 @@ export async function GET(req: Request) {
   await loadConfig(true);
   await ensureAiwGmailAccountsTable();
   const url = new URL(req.url);
-  const key = url.searchParams.get("account") as keyof typeof ACCOUNTS | null;
-  if (!key || !(key in ACCOUNTS)) return NextResponse.json({ error: "Choose a valid NEAS mailbox." }, { status: 400 });
+  const key = url.searchParams.get("account") as keyof typeof GMAIL_ACCOUNTS | null;
+  if (!key || !(key in GMAIL_ACCOUNTS)) return NextResponse.json({ error: "Choose a valid NEAS mailbox." }, { status: 400 });
   const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
   if (!clientId) return NextResponse.redirect(new URL("/admin/ai-workforce/email?gmail=missing-client", url.origin));
   let callback: string;
@@ -49,7 +44,7 @@ export async function GET(req: Request) {
     scope: "openid email profile https://www.googleapis.com/auth/gmail.metadata https://www.googleapis.com/auth/gmail.compose",
     access_type: "offline",
     prompt: "consent select_account",
-    login_hint: ACCOUNTS[key],
+    login_hint: GMAIL_ACCOUNTS[key],
     state,
     include_granted_scopes: "true",
   }).toString();
