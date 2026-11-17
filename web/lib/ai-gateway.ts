@@ -23,32 +23,28 @@ function collectText(value: unknown): string {
   }).filter(Boolean).join("\n");
 }
 
-/** Normalise OpenAI-compatible Chat Completions, Responses API, and Gemini text envelopes. */
+/** Normalise common OpenAI-compatible, Responses, and Gemini text response envelopes. */
 export function extractGatewayText(payload: unknown): string {
   const root = record(payload);
   if (!root) return "";
   if (typeof root.output_text === "string" && root.output_text.trim()) return root.output_text.trim();
-
   const choices = Array.isArray(root.choices) ? root.choices : [];
   for (const choice of choices) {
     const item = record(choice);
     const message = record(item?.message);
     const content = collectText(message?.content ?? item?.text);
     if (content.trim()) return content.trim();
-    const refusal = typeof message?.refusal === "string" ? message.refusal.trim() : "";
-    if (refusal) return refusal;
+    const refusal = record(message?.refusal);
+    if (typeof message?.refusal === "string" && message.refusal.trim()) return message.refusal.trim();
   }
-
   const output = Array.isArray(root.output) ? root.output : [];
   for (const entry of output) {
     const item = record(entry);
     const content = collectText(item?.content ?? item?.text);
     if (content.trim()) return content.trim();
   }
-
   const content = collectText(root.content);
   if (content.trim()) return content.trim();
-
   const candidates = Array.isArray(root.candidates) ? root.candidates : [];
   for (const candidate of candidates) {
     const item = record(candidate);
@@ -75,8 +71,8 @@ export async function generateAIGatewayText(
   const apiKey = options.apiKey ?? process.env.AI_GATEWAY_API_KEY;
   const model = options.model ?? DEFAULT_AI_GATEWAY_MODEL;
 
-  // The approved monthly project budget is enforced through project OIDC.
-  // Static API keys/BYOK would be attributed elsewhere and could bypass that cap.
+  // The NEAS $10 monthly cap is a project OIDC budget. Static API keys and
+  // BYOK credentials are attributed elsewhere and would bypass this project cap.
   if (apiKey) {
     return { error: "NEAS AI Gateway is configured for project OIDC billing. Remove AI_GATEWAY_API_KEY so the monthly project budget can enforce its limit." };
   }
@@ -103,11 +99,10 @@ export async function generateAIGatewayText(
       signal: AbortSignal.timeout(45_000),
     });
 
-    const payload: unknown = await response.json().catch(() => ({}));
-    const root = record(payload) ?? {};
+    const payload = await response.json().catch(() => ({})) as UnknownRecord;
 
     if (!response.ok) {
-      const errorObject = record(root.error);
+      const errorObject = record(payload.error);
       if (response.status === 402) return { error: "NEAS AI Gateway rejected the request because the monthly project budget or available Gateway credits are exhausted. No alternate provider was used." };
       if (response.status === 401 || response.status === 403) return { error: "NEAS AI Gateway rejected Vercel project authentication. Verify AI Gateway access and OIDC federation for this Vercel project." };
       if (response.status === 429) return { error: "NEAS AI Gateway rate limit reached. Please retry later; no alternate provider was used." };
@@ -116,17 +111,13 @@ export async function generateAIGatewayText(
     }
 
     const text = extractGatewayText(payload);
-    if (text) return { text, model: typeof root.model === "string" && root.model ? root.model : model };
+    if (text) return { text, model };
 
-    const choices = Array.isArray(root.choices) ? root.choices : [];
+    const choices = Array.isArray(payload.choices) ? payload.choices : [];
     const firstChoice = record(choices[0]);
     const finishReason = String(firstChoice?.finish_reason ?? "not supplied").slice(0, 60);
-    const responseId = typeof root.id === "string" ? ", response_id=" + root.id.slice(0, 80) : "";
-    const requestId = response.headers.get("x-request-id");
-    const requestDetail = requestId ? ", request_id=" + requestId.slice(0, 80) : "";
-    return {
-      error: "NEAS AI Gateway returned an empty completion (finish_reason=" + finishReason + responseId + requestDetail + "). The request reached the Gateway, but no recognised text was returned. No unbudgeted provider fallback was attempted.",
-    };
+    const requestId = String(response.headers.get("x-request-id") ?? payload.id ?? "not supplied").slice(0, 100);
+    return { error: "NEAS AI Gateway returned a successful response but no recognised text content (finish reason: " + finishReason + "; request: " + requestId + "). The response was not saved. Please retry or inspect the Gateway response format." };
   } catch {
     return { error: "Could not reach NEAS AI Gateway or the request timed out. No alternate provider was used." };
   }
