@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { DEFAULT_AI_GATEWAY_MODEL, extractGatewayText, generateAIGatewayText, usesProjectAIGateway } from "../lib/ai-gateway.ts";
 
-test("uses the live catalog-selected Recursive Flint 1.0 model by default", () => {
-  assert.equal(DEFAULT_AI_GATEWAY_MODEL, "recursive/flint-v1.0");
+test("uses the live catalog-selected GPT-4o Mini model by default", () => {
+  assert.equal(DEFAULT_AI_GATEWAY_MODEL, "openai/gpt-4o-mini");
 });
 
 test("sends specialist prompts using project OIDC and returns generated text", async () => {
@@ -15,12 +15,11 @@ test("sends specialist prompts using project OIDC and returns generated text", a
       return new Response(JSON.stringify({ choices: [{ message: { content: "Qualified lead plan" } }] }), { status: 200 });
     },
   });
-  assert.deepEqual(result, { text: "Qualified lead plan", model: "recursive/flint-v1.0" });
+  assert.deepEqual(result, { text: "Qualified lead plan", model: "openai/gpt-4o-mini" });
   assert.equal(request.url, "https://ai-gateway.vercel.sh/v1/chat/completions");
   assert.equal(request.init.headers.authorization, "Bearer test-oidc-token");
-  assert.equal(JSON.parse(request.init.body).model, "recursive/flint-v1.0");
-  assert.equal(JSON.parse(request.init.body).max_tokens, 6000);
-  assert.deepEqual(JSON.parse(request.init.body).reasoning, { effort: "minimal" });
+  assert.equal(JSON.parse(request.init.body).model, "openai/gpt-4o-mini");
+  assert.equal(JSON.parse(request.init.body).max_tokens, 4000);
 });
 
 test("refuses static Gateway keys so the project OIDC budget cannot be bypassed", async () => {

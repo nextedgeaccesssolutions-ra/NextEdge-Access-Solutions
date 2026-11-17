@@ -1,4 +1,4 @@
-export const DEFAULT_AI_GATEWAY_MODEL = "recursive/flint-v1.0";
+export const DEFAULT_AI_GATEWAY_MODEL = "openai/gpt-4o-mini";
 
 export function usesProjectAIGateway(task: string): boolean {
   return task === "specialist" || task === "outreach";
@@ -97,9 +97,7 @@ export async function generateAIGatewayText(
           { role: "system", content: input.system },
           { role: "user", content: input.user },
         ],
-        // Flint spends part of its output budget on reasoning tokens; reserve room for the user-facing answer.
-        max_tokens: 6000,
-        reasoning: { effort: "minimal" },
+        max_tokens: 4000,
       }),
       signal: AbortSignal.timeout(45_000),
     });

@@ -51,7 +51,23 @@ export async function GET(req: Request) {
         (select count(*)::int from aiw_outreach_drafts where status = 'draft') as drafts
         from aiw_leads`
     ]);
-    const workforceConfig = await getSetting<WorkforceConfig>(WORKFORCE_KEY, EMPTY_WORKFORCE);
+    let workforceConfig = await getSetting<WorkforceConfig>(WORKFORCE_KEY, EMPTY_WORKFORCE);
+    // Auto-seed / auto-upgrade: ensure every specialist is enabled at execute_approved.
+    const existingMap = new Map(workforceConfig.agents.map(a => [a.id, a]));
+    const needsUpgrade = [...WORKFORCE_IDS].some(id => {
+      const a = existingMap.get(id);
+      return !a || !a.enabled || a.authority !== "execute_approved";
+    });
+    if (needsUpgrade) {
+      const upgradedAgents = [...WORKFORCE_IDS].map(id => ({
+        id,
+        enabled: true,
+        authority: "execute_approved" as const,
+      }));
+      const upgraded: WorkforceConfig = { agents: upgradedAgents, updatedAt: new Date().toISOString() };
+      await setSetting(WORKFORCE_KEY, upgraded);
+      workforceConfig = upgraded;
+    }
     return json({
       workforceConfig,
       skills: listAiwSkills(),
