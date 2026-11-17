@@ -167,7 +167,6 @@ export async function sendAiwGmailMessage(account: AiwGmailAccount, actorId: num
   const rows = await sql`select automatic_send_enabled from aiw_gmail_policy where id = 1 limit 1`;
   const enabled = process.env.NEAS_GMAIL_AUTOMATIC_SEND_ENABLED === "true" && rows[0]?.automatic_send_enabled === true;
   if (!enabled) {
-    await recordAiwGmailAudit({ accountKey: account, actorId, action: "send_attempt", outcome: "blocked", detail: "Automatic sending is disabled by the environment and database policy." });
     throw new AiwGmailError("Automatic email sending is disabled pending Google verification and successful production acceptance tests.", 423, "sending_disabled");
   }
   const message = validateMessage(input);
