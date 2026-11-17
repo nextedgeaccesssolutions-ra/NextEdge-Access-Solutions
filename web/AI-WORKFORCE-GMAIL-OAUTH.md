@@ -25,6 +25,15 @@ The connector requests:
 
 Request only scopes required by the actual features. Google review is required for sensitive/restricted scopes where no exception applies. Both `gmail.metadata` and `gmail.compose` are restricted Gmail scopes. Because NEAS accesses restricted Gmail data through its servers, Google requires restricted-scope verification and a Google-approved security assessment (CASA), with recurring assessment at least every 12 months when applicable. Do not represent the app as verified until Google confirms approval in the Verification Center.
 
+## Google verification scope justification
+
+Use the following truthful, least-privilege explanations in the Google Verification Center:
+
+- **Gmail metadata** — NEAS Information and NEAS Operations administrators need to see the sender, subject, date, and labels of incoming business emails to identify client enquiries, project correspondence, and operational messages and decide which item requires a response. The integration does not request message bodies, snippets, attachments, or mailbox settings.
+- **Gmail compose** — Authorized NEAS administrators use the integration to prepare a draft in the selected mailbox for human review. The draft is stored by Gmail. The application has a send API, but the production send feature remains disabled behind two independent controls and must not be activated until Google verification and acceptance testing are complete.
+
+Do not claim that NEAS only accesses metadata if the implementation later adds message-body, attachment, or full-message processing. Update the declared scopes and privacy disclosures before enabling any expanded data access.
+
 ## Vercel environment
 
 Configure these on the intended Vercel project:
