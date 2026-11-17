@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getUser } from "@/lib/auth";
 import { loadConfig } from "@/lib/config";
+import { ensureAiwGmailAccountsTable } from "@/lib/aiw-gmail";
 
 export const dynamic = "force-dynamic";
 const ACCOUNTS = {
@@ -14,6 +15,7 @@ export async function GET(req: Request) {
   const user = await getUser();
   if (!user || user.role !== "admin") return NextResponse.json({ error: "Admin access required." }, { status: 403 });
   await loadConfig(true);
+  await ensureAiwGmailAccountsTable();
   const url = new URL(req.url);
   const key = url.searchParams.get("account") as keyof typeof ACCOUNTS | null;
   if (!key || !(key in ACCOUNTS)) return NextResponse.json({ error: "Choose a valid NEAS mailbox." }, { status: 400 });
