@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_AI_GATEWAY_MODEL, extractGatewayText, generateAIGatewayText } from "../lib/ai-gateway.ts";
+import { DEFAULT_AI_GATEWAY_MODEL, extractGatewayText, generateAIGatewayText, usesProjectAIGateway } from "../lib/ai-gateway.ts";
 
 test("uses the live catalog-selected Recursive Flint 1.0 model by default", () => {
   assert.equal(DEFAULT_AI_GATEWAY_MODEL, "recursive/flint-v1.0");
@@ -99,4 +99,13 @@ test("returns a diagnostic reference when a successful response has no recognise
     assert.match(result.error, /length/);
     assert.match(result.error, /req-neas-123/);
   }
+});
+
+test("routes specialist and outreach work through the budgeted project Gateway", () => {
+  assert.equal(usesProjectAIGateway("specialist"), true);
+  assert.equal(usesProjectAIGateway("outreach"), true);
+});
+
+test("does not force unrelated marketing tasks onto the AI Workforce Gateway", () => {
+  for (const task of ["caption", "seo", "facebook", "campaign"]) assert.equal(usesProjectAIGateway(task), false);
 });
