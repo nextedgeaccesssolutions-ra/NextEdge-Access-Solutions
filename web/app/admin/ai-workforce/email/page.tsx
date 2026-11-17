@@ -13,7 +13,10 @@ export default async function AIWorkforceEmailPage({ searchParams }: { searchPar
   const user = await getUser();
   if (!user || user.role !== "admin") redirect("/admin");
   const params = await searchParams;
-  const rows = await sql`select account_key,email,status,connected_at,expires_at,last_error from aiw_gmail_accounts`;
+  let rows: Array<Record<string, unknown>> = [];
+  let migrationReady = true;
+  try { rows = await sql`select account_key,email,status,connected_at,expires_at,last_error from aiw_gmail_accounts`; }
+  catch { migrationReady = false; }
   const byKey = new Map(rows.map((r) => [String(r.account_key), r]));
   const messages: Record<string,string> = {
     connected: "Google authorization verified and encrypted refresh token stored.",
@@ -32,6 +35,7 @@ export default async function AIWorkforceEmailPage({ searchParams }: { searchPar
     <p style={{color:"#ca9332",letterSpacing:".16em",fontSize:11,marginTop:24}}>NEAS AI WORKFORCE / INTEGRATIONS</p>
     <h1 style={{fontSize:30,margin:"6px 0"}}>Gmail account connections</h1>
     <p style={{color:"#9aabba",lineHeight:1.6}}>Connect both NEAS mailboxes separately. Google consent is required for each account. This integration is restricted to mailbox reading and draft preparation; it does not send email.</p>
+    {!migrationReady && <p role="alert" style={{padding:12,border:"1px solid #b9783b",borderRadius:10,color:"#f0c48a"}}>Database migration required: run the existing web/scripts/migrate.mjs migration before connecting mailboxes.</p>}
     {params.gmail && <p role="status" style={{padding:12,border:"1px solid #ca933255",borderRadius:10,color:"#ebc07e"}}>{messages[params.gmail] ?? "Gmail connection status updated."}</p>}
     <section style={{display:"grid",gap:12,marginTop:22}}>
       {MAILBOXES.map((m) => {
