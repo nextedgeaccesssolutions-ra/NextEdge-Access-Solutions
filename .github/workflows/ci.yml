@@ -15,36 +15,20 @@ concurrency:
 
 jobs:
   verify:
-    name: Tests, types and builds
+    name: Tests, types and Next.js build
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v6
-
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: pnpm
+          cache: npm
+          cache-dependency-path: web/package-lock.json
 
-      - name: Install root dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Unit tests
-        run: pnpm test
-
-      - name: Type check
-        run: pnpm check
-
-      - name: Build Vite/Express application
-        run: pnpm build
-
-      # Deliberately use build:app. The web/package.json "build" script runs
-      # database migrations; CI must never mutate a database.
       - name: Verify package.json/package-lock.json synchronization
         run: npm run test:lockfile
         working-directory: web
@@ -53,6 +37,35 @@ jobs:
         run: npm ci
         working-directory: web
 
-      - name: Build Next.js application without migrations
+      - name: Test bounded Gmail recipient validation
+        run: npm run test:aiw-email-validation
+        working-directory: web
+
+      - name: Test Gmail opt-out enforcement
+        run: npm run test:aiw-contact-policy
+        working-directory: web
+
+      - name: Test AI Workforce authority enforcement
+        run: npm run test:aiw-authority
+        working-directory: web
+
+      - name: Test AI Gateway OIDC budget enforcement
+        run: npm run test:ai-gateway
+        working-directory: web
+
+      - name: Test AI Workforce Gateway readiness reporting
+        run: npm run test:aiw-readiness
+        working-directory: web
+
+      - name: Test AI Workforce specialist skill registry
+        run: npm run test:aiw-skills
+        working-directory: web
+
+      - name: Verify clean public route contract
+        run: npm run test:clean-routes
+        working-directory: web
+
+      # Use build:app, not build: the latter may run database migrations.
+      - name: Build Next.js application without database access
         run: npm run build:app
         working-directory: web
