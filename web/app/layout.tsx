@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
-import ChatBot from "@/components/ChatBot";
+import ElevenLabsVoiceAgent from "@/components/ElevenLabsVoiceAgent";
 import ScrollReveal from "@/components/ScrollReveal";
 import CookieConsent from "@/components/CookieConsent";
 import AnalyticsLoader from "@/components/AnalyticsLoader";
@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Header />
         <main>{children}</main>
         <ScrollReveal />
-        <ChatBot />
+        <ElevenLabsVoiceAgent />
         <CookieConsent />
         <AnalyticsLoader />
         <SpeedInsights />
