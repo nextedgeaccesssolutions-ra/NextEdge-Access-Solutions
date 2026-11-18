@@ -20,7 +20,22 @@ function assertScope(scope: string, required: string) {
 
 async function accessFor(account: AiwGmailAccount, actorId: number, requiredScope: string) {
   await ensureAiwGmailAccountsTable();
-  const token = await getGmailAccessToken(account, actorId);
+  let token: Awaited<ReturnType<typeof getGmailAccessToken>>;
+  try {
+    token = await getGmailAccessToken(account, actorId);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown";
+    if (reason === "token_refresh_failed") {
+      throw new AiwGmailError("Google rejected the stored refresh token. Reconnect this mailbox and grant the requested Gmail permissions.", 401, "gmail_reauth_required");
+    }
+    if (reason === "mailbox_not_connected" || reason === "refresh_token_missing") {
+      throw new AiwGmailError("This mailbox has no usable saved Google authorization. Reconnect it and grant the requested Gmail permissions.", 401, "gmail_reauth_required");
+    }
+    if (reason === "oauth_client_missing") {
+      throw new AiwGmailError("NEAS Google OAuth client configuration is unavailable. Check the production OAuth environment configuration.", 503, "gmail_oauth_config_missing");
+    }
+    throw new AiwGmailError("Unable to obtain a Google access token. Check the NEAS Gmail audit log for the safe failure code.", 502, "gmail_token_unavailable");
+  }
   assertScope(token.scope, requiredScope);
   return token;
 }
@@ -34,7 +49,8 @@ async function gmailRequest(account: AiwGmailAccount, actorId: number, scope: st
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const providerCode = String(data?.error?.status ?? data?.error?.code ?? response.status);
+    const providerReason = String(data?.error?.errors?.[0]?.reason ?? data?.error?.status ?? data?.error?.code ?? "unknown").replace(/[^a-zA-Z0-9_.-]/g, "").slice(0, 80);
+    const providerCode = String(response.status) + ":" + providerReason;
     await recordAiwGmailAudit({ accountKey: account, actorId, action: "gmail_api", outcome: "failure", providerCode, detail: "Gmail API request failed." });
     if (response.status === 401 || response.status === 403) {
       throw new AiwGmailError("Google rejected this mailbox authorization. Reconnect it or review the granted Gmail scopes.", response.status, "gmail_authorization_failed");
