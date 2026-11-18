@@ -1,15 +1,8 @@
 {
-  "name": "ai-engineering-from-scratch-site",
+  "name": "demo-recorder",
   "private": true,
-  "description": "Build tools for the AI Engineering from Scratch website.",
-  "license": "MIT",
-  "engines": {
-    "node": ">=20"
-  },
-  "devDependencies": {
-    "@shikijs/langs": "4.5.0",
-    "@shikijs/themes": "4.5.0",
-    "pagefind": "1.5.2",
-    "shiki": "4.5.0"
+  "type": "module",
+  "dependencies": {
+    "playwright": "1.62.1"
   }
 }
