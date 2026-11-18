@@ -62,8 +62,15 @@ export default function GmailWorkspaceClient() {
 
   useEffect(() => { void loadAudit(); }, []);
 
+  // Keep the newest occurrence of each repeated audit event so repeated
+  // retries do not flood the compact mobile security panel.
+  const visibleAudit = audit.filter((event, index, all) => {
+    const signature = [event.account_key ?? "system", event.action, event.outcome, event.provider_code ?? "", event.detail].join("|");
+    return all.findIndex((candidate) => [candidate.account_key ?? "system", candidate.action, candidate.outcome, candidate.provider_code ?? "", candidate.detail].join("|") === signature) === index;
+  }).slice(0, 10);
+
   return <section className="neas-gmail-workspace" style={styles.panel}>
-    <style>{`.neas-gmail-workspace{min-width:0;overflow:hidden}.neas-gmail-workspace button,.neas-gmail-workspace input,.neas-gmail-workspace textarea,.neas-gmail-workspace select{max-width:100%;font:inherit}.neas-gmail-workspace article,.neas-gmail-workspace form,.neas-gmail-workspace label{min-width:0;overflow-wrap:anywhere}.neas-gmail-workspace input,.neas-gmail-workspace textarea,.neas-gmail-workspace select{width:100%}@media(max-width:600px){.neas-gmail-workspace{padding:12px!important}.neas-gmail-workspace>div{min-width:0}.neas-gmail-workspace>div[style*="justify-content: space-between"]{align-items:flex-start!important}.neas-gmail-workspace button{min-height:44px;max-width:100%;white-space:normal}.neas-gmail-workspace form>div{width:100%}.neas-gmail-workspace form>div button{width:100%}.neas-gmail-workspace div[style*="justify-content: space-between"]{flex-wrap:wrap}.neas-gmail-workspace article{padding:10px!important}}`}</style>
+    <style>{`.neas-gmail-workspace{min-width:0;width:100%;max-width:100%;overflow:hidden;overflow-wrap:anywhere}.neas-gmail-workspace button,.neas-gmail-workspace input,.neas-gmail-workspace textarea,.neas-gmail-workspace select{max-width:100%;font:inherit}.neas-gmail-workspace article,.neas-gmail-workspace form,.neas-gmail-workspace label{min-width:0;overflow-wrap:anywhere}.neas-gmail-workspace input,.neas-gmail-workspace textarea,.neas-gmail-workspace select{width:100%}@media(max-width:600px){.neas-gmail-workspace{padding:12px!important;width:100%;max-width:100%;box-sizing:border-box}.neas-gmail-workspace p,.neas-gmail-workspace b,.neas-gmail-workspace span{overflow-wrap:anywhere;word-break:break-word}.neas-gmail-workspace form,.neas-gmail-workspace label,.neas-gmail-workspace>div{min-width:0;max-width:100%}.neas-gmail-workspace>div{min-width:0}.neas-gmail-workspace>div[style*="justify-content: space-between"]{align-items:flex-start!important}.neas-gmail-workspace button{min-height:44px;max-width:100%;white-space:normal}.neas-gmail-workspace form>div{width:100%}.neas-gmail-workspace form>div button{width:100%}.neas-gmail-workspace div[style*="justify-content: space-between"]{flex-wrap:wrap}.neas-gmail-workspace article{padding:10px!important}}`}</style>
     <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}>
       <div><h2 style={{fontSize:19,margin:"0 0 4px"}}>NEAS Gmail workspace</h2><p style={styles.muted}>Read authorized inbox metadata and prepare drafts. Outbound sending is locked.</p></div>
       <span style={{fontSize:11,fontWeight:700,color:"#ebc07e",border:"1px solid #ca933255",borderRadius:99,padding:"6px 10px"}}>SENDING DISABLED</span>
@@ -96,7 +103,7 @@ export default function GmailWorkspaceClient() {
     <div style={{borderTop:"1px solid #294153",marginTop:20,paddingTop:16}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}><h3 style={{fontSize:15,margin:0}}>Recent security audit</h3><button type="button" onClick={loadAudit} style={{...styles.button,padding:"7px 10px",fontSize:11}}>Refresh</button></div>
       <div style={{display:"grid",gap:8,marginTop:12}}>
-        {audit.slice(0,10).map(event=><div key={event.id} style={{display:"flex",justifyContent:"space-between",gap:12,borderBottom:"1px solid #294153",paddingBottom:8}}>
+        {visibleAudit.map(event=><div key={event.id} style={{display:"flex",justifyContent:"space-between",gap:12,borderBottom:"1px solid #294153",paddingBottom:8}}>
           <div><b style={{fontSize:12}}>{event.action.replace(/_/g," ")}</b><p style={{...styles.muted,margin:"3px 0"}}>{event.account_key || "System"} · {event.detail}</p></div>
           <span style={{fontSize:10,color:event.outcome==="success"?"#9ad0b2":event.outcome==="blocked"?"#ebc07e":"#f0a2a2",whiteSpace:"nowrap"}}>{event.outcome}</span>
         </div>)}
