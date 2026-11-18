@@ -81,7 +81,7 @@ export default function ElevenLabsVoiceAgent() {
       <aside
         aria-label="NEAS AI microphone access"
         style={{
-          position: "fixed", right: 24, bottom: 104, zIndex: 9998,
+          position: "fixed", left: 24, bottom: 24, zIndex: 9998,
           width: "min(330px, calc(100vw - 32px))", padding: 14,
           border: "1px solid #CA9332", borderRadius: 14,
           background: "#071D29", color: "#fff", boxShadow: "0 8px 28px rgba(0,0,0,.24)",
