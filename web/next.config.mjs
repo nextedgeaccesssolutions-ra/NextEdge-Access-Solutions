@@ -45,7 +45,7 @@ const nextConfig = {
       // store subdomains were not verified as HTTPS-only, and HSTS is cached client-side for the
       // full max-age, so binding them is not quickly reversible. Add it only after checking each.
       { key: "Strict-Transport-Security", value: "max-age=63072000" },
-      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
+      { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=(), payment=(), usb=()" },
       { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
       { key: "X-DNS-Prefetch-Control", value: "off" },
       { key: "Content-Security-Policy-Report-Only", value: csp },
