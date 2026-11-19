@@ -9,7 +9,7 @@ type Run = { id: number; workflow: string; status: string; summary: string; crea
 type SpecialistTask = { id:number; agent_id:string; agent_name:string; objective:string; deliverable:string; status:string; created_at:string; };
 type Skill = { id:string; name:string; domain:string; description:string; agentIds:string[]; };
 type State = { leads: Lead[]; drafts: Draft[]; runs: Run[]; tasks: SpecialistTask[]; skills: Skill[]; aiReady: boolean; aiProvider: string | null; specialistAiReady: boolean; specialistAiProvider: string | null; metrics: { leads: number; qualified: number; proposals: number; pipeline: number; drafts: number }; };
-type Tab = "ecosystem" | "command" | "agents" | "skills" | "workbench" | "leads" | "outreach" | "approvals" | "performance";
+type Tab = "ecosystem" | "agents" | "skills" | "workbench" | "leads" | "outreach" | "approvals" | "performance";
 
 const AGENTS: Agent[] = [
   { id:"JARVIS",name:"JARVIS Orchestrator",lane:"COMMAND",role:"Coordinates specialist work, budgets, permissions, handoffs and outcome reporting",status:"ready",metric:"On-time workflow completion",color:"#d6a84f" },
