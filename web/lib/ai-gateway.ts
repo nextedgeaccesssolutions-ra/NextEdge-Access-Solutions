@@ -1,11 +1,15 @@
 export const DEFAULT_AI_GATEWAY_MODEL = "openai/gpt-4o-mini";
+export const FREE_OPENROUTER_MODEL = "openrouter/free";
+export const FREE_GEMINI_MODEL = "gemini-3.8-flash";
+export const GROQ_MODEL = "openai/gpt-oss-120b";
+export const XAI_GROK_MODEL = "grok-4.7";
 
 export function usesProjectAIGateway(task: string): boolean {
-  return task === "specialist" || task === "outreach";
+  return task === "specialist" || task === "outreach" || task === "voice";
 }
 
 export type AIGatewayResult = { text: string; model: string } | { error: string };
-
+type Provider = "openrouter" | "gemini" | "groq" | "xai" | "vercel";
 type UnknownRecord = Record<string, unknown>;
 const record = (value: unknown): UnknownRecord | null =>
   value !== null && typeof value === "object" && !Array.isArray(value) ? value as UnknownRecord : null;
@@ -58,6 +62,59 @@ export function extractGatewayText(payload: unknown): string {
   return "";
 }
 
+async function generateProviderText(
+  provider: Exclude<Provider, "vercel">,
+  input: { system: string; user: string },
+  apiKey: string,
+  fetchImpl: typeof fetch,
+): Promise<AIGatewayResult> {
+  const isOpenRouter = provider === "openrouter";
+  const isGemini = provider === "gemini";
+  const isGroq = provider === "groq";
+  const url = isOpenRouter
+    ? "https://openrouter.ai/api/v1/chat/completions"
+    : isGemini
+      ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+      : isGroq
+        ? "https://api.groq.com/openai/v1/chat/completions"
+        : "https://api.x.ai/v1/chat/completions";
+  const model = isOpenRouter ? FREE_OPENROUTER_MODEL : isGemini ? FREE_GEMINI_MODEL : isGroq ? GROQ_MODEL : XAI_GROK_MODEL;
+  const providerName = isOpenRouter ? "OpenRouter" : isGemini ? "Gemini" : isGroq ? "Groq" : "xAI Grok";
+  try {
+    const response = await fetchImpl(url, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+        ...(isOpenRouter ? { "http-referer": process.env.SITE_URL || "https://www.nextedge-access-solutions.com", "x-title": "NEAS AI Workforce" } : {}),
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: input.system },
+          { role: "user", content: input.user },
+        ],
+        max_tokens: 1600,
+        temperature: 0.3,
+      }),
+      signal: AbortSignal.timeout(45_000),
+    });
+    const payload = await response.json().catch(() => ({})) as UnknownRecord;
+    if (!response.ok) {
+      const errorObject = record(payload.error);
+      if (response.status === 401 || response.status === 403) return { error: `${providerName} rejected the server-side API key. Verify the key in Vercel environment variables.` };
+      if (response.status === 429) return { error: `${providerName} rate limit or account quota reached. Wait for the quota to reset; NEAS did not switch to another model.` };
+      return { error: `${providerName} inference failed (${response.status}): ${String(errorObject?.message ?? "provider request failed").slice(0, 180)}` };
+    }
+    const text = extractGatewayText(payload);
+    return text
+      ? { text, model: `${provider}:${model}` }
+      : { error: `${providerName} returned no usable answer text. No response was saved.` };
+  } catch {
+    return { error: `Could not reach the configured ${provider} API or the request timed out. No alternate provider was used.` };
+  }
+}
+
 export async function generateAIGatewayText(
   input: { system: string; user: string },
   options: {
@@ -65,17 +122,36 @@ export async function generateAIGatewayText(
     request?: Request;
     apiKey?: string;
     model?: string;
+    provider?: Provider;
+    providerApiKey?: string;
     fetchImpl?: typeof fetch;
   } = {},
 ): Promise<AIGatewayResult> {
-  // Vercel Functions expose the deployment OIDC token on the incoming Request,
-  // not as a process environment variable. Keep env lookup for build/local use.
+  const configuredProvider = options.provider ?? (process.env.NEAS_AI_PROVIDER?.trim() || "vercel");
+  if (!["openrouter", "gemini", "groq", "xai", "vercel"].includes(configuredProvider)) {
+    return { error: "NEAS_AI_PROVIDER must be set to openrouter, gemini, groq, xai or vercel. No inference request was sent." };
+  }
+  const provider = configuredProvider as Provider;
+  const fetchImpl = options.fetchImpl ?? fetch;
+
+  if (provider !== "vercel") {
+    const keyName = provider === "openrouter" ? "OPENROUTER_API_KEY"
+      : provider === "gemini" ? "GEMINI_API_KEY"
+      : provider === "groq" ? "GROQ_API_KEY" : "XAI_API_KEY";
+    const apiKey = (options.providerApiKey ?? process.env[keyName] ?? "").trim();
+    if (!apiKey) {
+      return { error: `NEAS AI provider is set to ${provider}, but ${keyName} is missing. Add the key as a Vercel server-side environment variable. No provider fallback was used.` };
+    }
+    // Direct provider billing is separate from the Vercel project budget. Only use this path when an administrator explicitly selects and configures it.
+    return generateProviderText(provider, input, apiKey, fetchImpl);
+  }
+
+  // Vercel Functions expose the deployment OIDC token on the incoming Request.
   const token = options.token ?? options.request?.headers.get("x-vercel-oidc-token") ?? process.env.VERCEL_OIDC_TOKEN;
   const apiKey = options.apiKey ?? process.env.AI_GATEWAY_API_KEY;
   const model = options.model ?? DEFAULT_AI_GATEWAY_MODEL;
 
-  // The NEAS $10 monthly cap is a project OIDC budget. Static API keys and
-  // BYOK credentials are attributed elsewhere and would bypass this project cap.
+  // Static Gateway keys are intentionally rejected so the project OIDC budget remains enforceable.
   if (apiKey) {
     return { error: "NEAS AI Gateway is configured for project OIDC billing. Remove AI_GATEWAY_API_KEY so the monthly project budget can enforce its limit." };
   }
@@ -83,14 +159,10 @@ export async function generateAIGatewayText(
     return { error: "NEAS AI Gateway is not available in this runtime: the Vercel project OIDC token is missing. No direct-provider fallback was attempted because it would bypass the approved project budget." };
   }
 
-  const fetchImpl = options.fetchImpl ?? fetch;
   try {
     const response = await fetchImpl("https://ai-gateway.vercel.sh/v1/chat/completions", {
       method: "POST",
-      headers: {
-        authorization: `Bearer ${token}`,
-        "content-type": "application/json",
-      },
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
       body: JSON.stringify({
         model,
         messages: [
@@ -101,21 +173,16 @@ export async function generateAIGatewayText(
       }),
       signal: AbortSignal.timeout(45_000),
     });
-
     const payload = await response.json().catch(() => ({})) as UnknownRecord;
-
     if (!response.ok) {
       const errorObject = record(payload.error);
       if (response.status === 402) return { error: "NEAS AI Gateway rejected the request because the monthly project budget or available Gateway credits are exhausted. No alternate provider was used." };
       if (response.status === 401 || response.status === 403) return { error: "NEAS AI Gateway rejected Vercel project authentication. Verify AI Gateway access and OIDC federation for this Vercel project." };
       if (response.status === 429) return { error: "NEAS AI Gateway rate limit reached. Please retry later; no alternate provider was used." };
-      const detail = String(errorObject?.message ?? "Gateway request failed").slice(0, 240);
-      return { error: "NEAS AI Gateway request failed (" + response.status + "): " + detail };
+      return { error: "NEAS AI Gateway request failed (" + response.status + "): " + String(errorObject?.message ?? "Gateway request failed").slice(0, 240) };
     }
-
     const text = extractGatewayText(payload);
     if (text) return { text, model };
-
     const choices = Array.isArray(payload.choices) ? payload.choices : [];
     const firstChoice = record(choices[0]);
     const finishReason = String(firstChoice?.finish_reason ?? "not supplied").slice(0, 60);

@@ -228,6 +228,27 @@ Record only factual answers, objections, requested follow-up and contact prefere
       return json({ ok: true, id, status });
     }
 
+    if (b.action === "voiceChat") {
+      const message = text(b.message, 4000);
+      if (!message) return json({ error: "Say or type a message first." }, 400);
+      const reply = await generateAIGatewayText(
+        {
+          system: [
+            "You are NEAS AI, the private executive and operations assistant for NextEdge Access Solutions (NEAS) OPC in the Philippines.",
+            "Support the administrator with rope access, renewable energy, offshore/onshore, wind, met mast, telecom, industrial services, training, PPE, sales, proposals, operations and business planning.",
+            "Speak naturally and concisely, as a professional business assistant. Keep spoken answers short unless the user requests detail.",
+            "Do not invent facts, client information, certifications, prices, project status or external actions. Mark uncertain information clearly.",
+            "You may advise and prepare drafts. Never claim you sent an email, approved a transaction, deployed software, changed a setting or completed an external action unless a connected tool confirms it.",
+            "For technical safety, engineering, HSE and compliance matters, state when competent-person or human approval is required.",
+          ].join("\n"),
+          user: message,
+        },
+        { request: req },
+      );
+      if ("error" in reply) return json({ error: reply.error }, 503);
+      return json({ ok: true, reply: reply.text, model: reply.model });
+    }
+
     if (b.action === "testGateway") {
       const probe = await generateAIGatewayText(
         { system: "You are the NEAS AI Gateway health check. Follow the user instruction exactly.", user: "Reply with exactly: NEAS_GATEWAY_OK" },
