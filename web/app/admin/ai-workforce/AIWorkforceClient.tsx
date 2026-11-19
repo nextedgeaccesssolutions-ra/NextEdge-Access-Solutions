@@ -61,7 +61,7 @@ async function request(action:string, payload:Record<string,unknown> = {}) {
 }
 
 export default function AIWorkforceClient(){
-  const [tab,setTab]=useState<Tab>("command");
+  const [tab,setTab]=useState<Tab>("ecosystem");
   const [data,setData]=useState<State|null>(null);
   const [busy,setBusy]=useState(false);
   const [notice,setNotice]=useState("");
@@ -112,7 +112,7 @@ export default function AIWorkforceClient(){
   const filtered=useMemo(()=> (data?.leads||[]).filter(l=>(l.company+" "+l.contact+" "+l.service+" "+l.stage).toLowerCase().includes(query.toLowerCase())),[data,query]);
   const lead=data?.leads.find(l=>l.id===Number(selectedLead));
   const selectedSkill=data?.skills?.find(skill=>skill.agentIds.includes(selectedAgent));
-  const nav:[Tab,string,string][]=[["ecosystem","AI ecosystem","◎"],["command","Command graph","◈"],["agents","Agent matrix","⌘"],["skills","Skill library","?"],["workbench","Specialist workbench","✧"],["leads","Lead pipeline","↗"],["outreach","Human outreach","✉"],["approvals","Human approvals","◉"],["performance","Performance","▥"]];
+  const nav:[Tab,string,string][]=[["ecosystem","AI ecosystem","◎"],["agents","Agent matrix","⌘"],["skills","Skill library","?"],["workbench","Specialist workbench","✧"],["leads","Lead pipeline","↗"],["outreach","Human outreach","✉"],["approvals","Human approvals","◉"],["performance","Performance","▥"]];
 
   return <div className="wf">
     <style jsx global>{`
@@ -214,39 +214,6 @@ export default function AIWorkforceClient(){
               <div className="wf-toolwheel-foot">Workspace shortcuts are not proof of an active API authorization. Each service must be independently authenticated before agent actions can use it.</div>
             </section>
           </div>
-        </>}
-        {tab==="command"&&<>
-          <div className="wf-grid">
-            <div className="wf-stat"><label>Active leads</label><strong>{data.metrics.leads}</strong><small>Tracked opportunities</small></div>
-            <div className="wf-stat"><label>Qualified pipeline</label><strong>{data.metrics.qualified}</strong><small>Qualification stage and beyond</small></div>
-            <div className="wf-stat"><label>Pipeline value</label><strong>{peso(data.metrics.pipeline)}</strong><small>Entered opportunity values</small></div>
-            <div className="wf-stat"><label>Outreach drafts</label><strong>{data.metrics.drafts}</strong><small>Awaiting human review</small></div>
-          </div>
-          <div className="wf-columns">
-            <section className="wf-card"><div className="wf-row"><div><h3>Human-matrix workflow</h3><p>Business process graph · specialist hand-offs · approval gates</p></div><span className="wf-pill">LIVE DATA</span></div>
-              <div className="wf-orbit" role="img" aria-label="JARVIS orchestrator coordinating six specialist AI agents">
-                <div className="wf-orbit-grid"/>
-                <svg className="wf-orbit-lines" viewBox="0 0 900 430" preserveAspectRatio="none" aria-hidden="true">
-                  <path d="M450 215 C350 130 230 75 105 65"/><path d="M450 215 C300 215 190 215 95 215"/><path d="M450 215 C600 215 710 215 805 215"/><path d="M450 215 C560 300 690 355 790 365"/><path d="M450 215 C450 290 450 340 450 390"/><path d="M450 215 C560 130 690 75 795 65"/>
-                  <path d="M105 65 C210 110 300 160 450 215"/><path d="M95 215 C230 215 330 215 450 215"/><path d="M805 215 C670 215 570 215 450 215"/><path d="M790 365 C660 320 560 270 450 215"/><path d="M450 390 C450 320 450 270 450 215"/><path d="M795 65 C680 110 580 160 450 215"/>
-                </svg>
-                <div className="wf-orbit-status">TASK BUDGET · ACTIVE</div>
-                <div className="wf-core"><div className="wf-core-icon">✧</div><b>JARVIS</b><small>ORCHESTRATOR CORE</small></div>
-                <div className="wf-orbit-agent a1"><span/><b>01 · ANALYSIS</b><small>Research · Intelligence · Strategy</small></div>
-                <div className="wf-orbit-agent a2"><span/><b>02 · EXECUTION</b><small>Sales · Marketing · Outreach</small></div>
-                <div className="wf-orbit-agent a3"><span/><b>03 · OPTIMIZATION</b><small>Automation · Performance · Growth</small></div>
-                <div className="wf-orbit-agent a4"><span/><b>04 · REVIEW</b><small>Quality · Integrity · Compliance</small></div>
-                <div className="wf-orbit-agent a5"><span/><b>05 · DELIVERY</b><small>Engineering · Projects · Clients</small></div>
-                <div className="wf-orbit-agent a6"><span/><b>06 · COORDINATION</b><small>Delegation · Workflow · Approvals</small></div>
-                <div className="wf-orbit-footer">HUMAN GOVERNANCE · SHARED INTELLIGENCE · TRACEABLE RESULTS</div>
-              </div>
-              <div className="wf-note" style={{marginTop:12}}>External actions remain gated: no proposal issue, email send, purchase commitment, contract acceptance or safety authorization without the required human approval.</div>
-            </section>
-            <section className="wf-card"><h3>Executive priorities</h3><p>Business-first operating queue</p><div className="wf-list">
-              {[["01","Respond to new inquiries","Sales Agent · qualify and assign"],["02","Prepare high-fit proposals","Finance + service specialists"],["03","Create authority-building content","Marketing + Creative Studio"],["04","Follow up open opportunities","Human-reviewed outreach"]].map(x=><div className="wf-item" key={x[0]}><span className="wf-pill">{x[0]}</span><div><b>{x[1]}</b><small>{x[2]}</small></div></div>)}
-            </div><button className="wf-button" style={{marginTop:12}} onClick={()=>setTab("leads")}>Open lead pipeline →</button></section>
-          </div>
-          <section className="wf-card" style={{marginTop:12}}><div className="wf-row"><div><h3>Latest opportunities</h3><p>Real records entered in this portal</p></div><button className="wf-button" onClick={()=>setTab("leads")}>Manage leads</button></div>{data.leads.length?<div className="wf-tablewrap"><table><thead><tr><th>Company</th><th>Service</th><th>Stage</th><th>Value</th><th>Added</th></tr></thead><tbody>{data.leads.slice(0,6).map(l=><tr key={l.id}><td>{l.company}</td><td>{l.service}</td><td>{l.stage}</td><td>{peso(l.value)}</td><td>{dt(l.created_at)}</td></tr>)}</tbody></table></div>:<div className="wf-empty">No leads yet. Add your first opportunity in Lead Pipeline.</div>}</section>
         </>}
         {tab==="agents"&&<>
           <div className="wf-note">All 23 specialist roles are now available for bounded internal work orders, with role-specific instructions, persistent task records and human review. External actions and regulated sign-offs remain restricted by the authority matrix.</div>
