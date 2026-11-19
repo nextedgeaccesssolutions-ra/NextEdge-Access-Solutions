@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 const AGENT_ID = "agent_4401m7e4gjxfejwbvx9t4vgr8bth";
 
 type MicState = "checking" | "unknown" | "ready" | "blocked" | "unsupported";
 
 export default function ElevenLabsVoiceAgent() {
+  const pathname = usePathname();
+  const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
   const [micState, setMicState] = useState<MicState>("checking");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    if (isAdminRoute) return;
     let active = true;
     const mount = document.getElementById("neas-elevenlabs-widget-mount");
     if (mount && !mount.querySelector("elevenlabs-convai")) {
@@ -48,7 +52,7 @@ export default function ElevenLabsVoiceAgent() {
         .catch(() => active && setMicState("unknown"));
     }
     return () => { active = false; };
-  }, []);
+  }, [isAdminRoute]);
 
   async function enableMicrophone() {
     setMessage("");
@@ -74,6 +78,8 @@ export default function ElevenLabsVoiceAgent() {
       );
     }
   }
+
+  if (isAdminRoute) return null;
 
   return (
     <>
