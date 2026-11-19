@@ -172,7 +172,7 @@ export default function AIWorkforceClient(){
     <div style={{display:"flex",justifyContent:"flex-end",padding:"9px 16px",background:"#07111b",borderBottom:"1px solid #203346"}}><a href="/admin/ai-workforce/email" style={{color:"#ebc07e",fontSize:11,fontWeight:700,textDecoration:"none",border:"1px solid #ca933255",borderRadius:8,padding:"7px 11px"}}>✉ Gmail account connections →</a></div>
     <div className={`wf-shell ${menuOpen?"menu-open":"menu-closed"}`}>
       <main className="wf-main">
-        <nav className="wf-workspace-nav" aria-label="AI workforce workspace">{nav.map(([id,label,icon])=><button type="button" key={id} className={tab===id?"on":""} onClick={()=>setTab(id)}><span>{icon}</span>{label}</button>)}</nav>
+        
         <header className="wf-top" style={{justifyContent:"space-between"}}><button type="button" onClick={()=>setMenuOpen(v=>!v)} aria-expanded={menuOpen} aria-label={menuOpen?"Hide workspace menu":"Show workspace menu"} style={{background:"rgba(202,147,50,.10)",border:"1px solid #ca933255",color:"#ebc07e",borderRadius:8,padding:"7px 11px",fontSize:11,fontWeight:700}}>{menuOpen?"Hide menu":"☰ Workspace menu"}</button><div className="wf-live"><span className="wf-dot"/>{data?(data.specialistAiReady?"AI GATEWAY AUTH AVAILABLE":"AI GATEWAY AUTH NOT AVAILABLE"):"CONNECTING"}</div></header>
         {error&&<div className="wf-error">{error}</div>}{notice&&<div className="wf-success">{notice}</div>}
         {!data?<div className="wf-card wf-empty">Loading NEAS workforce intelligence…</div>:<>
@@ -285,6 +285,12 @@ export default function AIWorkforceClient(){
         </>}
         </>}
       </main>
+    </div>
+    <div className="wf-floating-menu">
+      {menuOpen&&<nav className="wf-floating-panel" aria-label="Command workspace">
+        {nav.map(([id,label,icon])=><button type="button" key={id} className={tab===id?"on":""} aria-current={tab===id?"page":undefined} onClick={()=>{setTab(id);setMenuOpen(false);}}><span>{icon}</span>{label}</button>)}
+      </nav>}
+      <button type="button" className="wf-floating-toggle" onClick={()=>setMenuOpen(v=>!v)} aria-expanded={menuOpen} aria-label={menuOpen?"Close command workspace menu":"Open command workspace menu"}><span>{menuOpen?"×":"⌘"}</span>{menuOpen?"Close workspace":"Command workspace"}<span>{menuOpen?"":"↑"}</span></button>
     </div>
   </div>;
 }
