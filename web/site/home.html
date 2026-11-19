@@ -1483,9 +1483,21 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){
       })
       .catch(function(){
         _elStop();
+        // ElevenLabs quota may be exhausted. Fall back to the browser's built-in
+        // speech engine so the assistant remains usable without repeated paid API calls.
+        if(window.speechSynthesis && typeof SpeechSynthesisUtterance!=='undefined'){
+          try{
+            window.speechSynthesis.cancel();
+            var fallbackVoice=new SpeechSynthesisUtterance(clean);
+            fallbackVoice.lang=document.documentElement.lang||'en-PH';
+            fallbackVoice.rate=1;
+            window.speechSynthesis.speak(fallbackVoice);
+          }catch(_fallbackError){}
+        }
         if(isGreeting){
           _elGreetingInFlight=false;
-          _elGreetingPending=_elGreetingRetryAvailable;
+          _elGreetingPending=false;
+          _elGreetingRetryAvailable=false;
         }
       });
   }

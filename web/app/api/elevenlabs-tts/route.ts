@@ -65,8 +65,24 @@ export async function POST(req: NextRequest) {
 
   if (!ttsRes.ok) {
     const errText = await ttsRes.text().catch(() => "");
-    console.error("[elevenlabs-tts] API error:", ttsRes.status, errText);
-    return NextResponse.json({ error: "TTS request failed" }, { status: 502 });
+    let providerCode = "";
+    try {
+      const parsed = JSON.parse(errText) as { detail?: { code?: string }; code?: string };
+      providerCode = parsed.detail?.code || parsed.code || "";
+    } catch {
+      // Do not expose or log provider response bodies; they may contain sensitive diagnostics.
+    }
+
+    if (providerCode === "quota_exceeded") {
+      console.warn("[elevenlabs-tts] Provider quota exhausted; browser speech fallback is available.");
+      return NextResponse.json(
+        { error: "Premium voice quota is exhausted. Use browser voice until the provider quota is renewed.", code: "TTS_QUOTA_EXHAUSTED", fallback: "browser" },
+        { status: 503, headers: { "Retry-After": "3600", "Cache-Control": "no-store" } },
+      );
+    }
+
+    console.warn("[elevenlabs-tts] Provider request failed:", ttsRes.status, providerCode || "unknown");
+    return NextResponse.json({ error: "Premium voice service is temporarily unavailable.", code: "TTS_PROVIDER_UNAVAILABLE", fallback: "browser" }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 
   const audioBuffer = await ttsRes.arrayBuffer();
