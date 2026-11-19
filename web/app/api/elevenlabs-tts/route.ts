@@ -57,10 +57,16 @@ export async function POST(req: NextRequest) {
         Accept: "audio/mpeg",
       },
       body: JSON.stringify(ttsBody),
+      // Leave time for a browser-voice fallback before maxDuration.
+      signal: AbortSignal.timeout(20_000),
     });
   } catch (err) {
-    console.error("[elevenlabs-tts] fetch error:", err);
-    return NextResponse.json({ error: "TTS service unavailable" }, { status: 502 });
+    const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+    console.warn("[elevenlabs-tts] provider request failed:", timedOut ? "timeout" : "network error");
+    return NextResponse.json(
+      { error: timedOut ? "Premium voice timed out. Use browser voice instead." : "TTS service unavailable. Use browser voice instead.", code: timedOut ? "TTS_TIMEOUT" : "TTS_UNAVAILABLE", fallback: "browser" },
+      { status: timedOut ? 504 : 502, headers: { "Cache-Control": "no-store" } },
+    );
   }
 
   if (!ttsRes.ok) {
@@ -85,7 +91,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Premium voice service is temporarily unavailable.", code: "TTS_PROVIDER_UNAVAILABLE", fallback: "browser" }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 
-  const audioBuffer = await ttsRes.arrayBuffer();
+  let audioBuffer: ArrayBuffer;
+  try {
+    audioBuffer = await ttsRes.arrayBuffer();
+  } catch (err) {
+    const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+    console.warn("[elevenlabs-tts] audio response could not be read:", timedOut ? "timeout" : "read error");
+    return NextResponse.json(
+      { error: "Premium voice audio is unavailable. Use browser voice instead.", code: "TTS_AUDIO_UNAVAILABLE", fallback: "browser" },
+      { status: timedOut ? 504 : 502, headers: { "Cache-Control": "no-store" } },
+    );
+  }
   return new NextResponse(audioBuffer, {
     status: 200,
     headers: {

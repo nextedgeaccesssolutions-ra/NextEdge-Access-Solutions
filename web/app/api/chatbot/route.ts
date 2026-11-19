@@ -240,7 +240,8 @@ async function askGemini(messages: Msg[], apiKey: string): Promise<string> {
         ...(withSearch ? { tools: [{ google_search: {} }] } : {}),
         generationConfig: { maxOutputTokens: 800, temperature: 0.6 },
       }),
-      signal: AbortSignal.timeout(25000),
+      // Two bounded attempts must fit inside this route's 30-second execution budget.
+      signal: AbortSignal.timeout(11_000),
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j?.error?.message || `Gemini ${r.status}`);
@@ -249,12 +250,39 @@ async function askGemini(messages: Msg[], apiKey: string): Promise<string> {
     if (!text) throw new Error("Empty Gemini response");
     return text;
   };
-  if (!searchEnabled) return call(false);
+  const isQuotaOrRateLimit = (error: unknown) =>
+    /\b429\b|quota|resource exhausted|rate.?limit/i.test(error instanceof Error ? error.message : String(error));
+  const capacityReply =
+    "Thank you for contacting NextEdge Access Solutions. Our AI assistant is temporarily at capacity. Please contact our sales team at sales@nextedge-access-solutions.com or call (+63) 991 426 5886. You can also share your project type, location, scope, and contact details so our team can assist you.";
+
+  if (!searchEnabled) {
+    try {
+      return await call(false);
+    } catch (error) {
+      if (isQuotaOrRateLimit(error)) {
+        console.warn("[chatbot] AI provider quota/rate limit reached; returning contact fallback.");
+        return capacityReply;
+      }
+      throw error;
+    }
+  }
   try {
     return await call(true);
-  } catch (e) {
-    console.error("[chatbot] grounded call failed, retrying without search:", (e as Error).message);
-    return await call(false);
+  } catch (error) {
+    if (isQuotaOrRateLimit(error)) {
+      console.warn("[chatbot] AI provider quota/rate limit reached; skipping redundant retry.");
+      return capacityReply;
+    }
+    console.warn("[chatbot] grounded request failed; retrying once without search:", (error as Error).message);
+    try {
+      return await call(false);
+    } catch (retryError) {
+      if (isQuotaOrRateLimit(retryError)) {
+        console.warn("[chatbot] AI provider quota/rate limit reached on fallback request.");
+        return capacityReply;
+      }
+      throw retryError;
+    }
   }
 }
 
