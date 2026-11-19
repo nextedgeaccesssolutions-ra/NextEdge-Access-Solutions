@@ -5,7 +5,7 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 const WELCOME: Msg = {
   role: "assistant",
-  content: "👋 Hello! I'm the NEAS AI Sales Assistant — your direct line to NextEdge Access Solutions.\n\nI can help you with:\n• Rope access services & quotes\n• IRATA/SPRAT training programs\n• Height safety equipment & PPE\n• Wind turbine & facade maintenance\n• Project consultations\n\nOr connect you directly with our team. How can I assist you today?",
+  content: "👋 Welcome to NEAS AI — the intelligent assistant for NextEdge Access Solutions.\n\nI can help you with:\n• Rope access services & quotes\n• IRATA/SPRAT training programs\n• Height safety equipment & PPE\n• Wind turbine & facade maintenance\n• Project consultations\n\nOr connect you directly with our team. How can I assist you today?",
 };
 
 const PHONE_PRIMARY = "+63 991 426 5886";
