@@ -44,7 +44,6 @@ export default function NEASVoiceAssistant() {
   const [speaking, setSpeaking] = useState(false);
   const [error, setError] = useState("");
   const [model, setModel] = useState("");
-  const [premiumVoice, setPremiumVoice] = useState(false);
   const recognition = useRef<RecognitionInstance | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
@@ -84,10 +83,6 @@ export default function NEASVoiceAssistant() {
 
   const speak = async (value: string) => {
     stopAudio();
-    if (!premiumVoice) {
-      browserSpeak(value);
-      return;
-    }
     try {
       const response = await fetch("/api/elevenlabs-tts", {
         method: "POST",
@@ -201,11 +196,6 @@ export default function NEASVoiceAssistant() {
   return (
     <section id="neas-ai-voice-console" aria-label="NEAS AI Voice Console — Talk to your AI workforce" style={{ scrollMarginTop: 24, margin: "18px 0", padding: 20, border: "1px solid #ca933266", borderRadius: 18, background: "radial-gradient(circle at 85% 0%,#3a2a1644,transparent 35%),linear-gradient(135deg,#071d29,#101b25 68%,#211b11)", color: "#e7edf4", boxShadow: "0 18px 55px #0005" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <div style={{ color: "#ebc07e", fontSize: 10, letterSpacing: ".2em", fontWeight: 800 }}>NEAS AI · VOICE CONSOLE</div>
-          <h2 style={{ fontSize: 22, margin: "5px 0" }}>Talk to your AI workforce</h2>
-          <p style={{ color: "#a7b7c4", fontSize: 12, margin: 0 }}>Speak or type. The CEO, CAIO and specialist workforce responds with spoken audio.</p>
-        </div>
         <span style={{ border: "1px solid #4b967455", color: "#9ce0ba", borderRadius: 99, padding: "6px 11px", fontSize: 10 }}>ADMIN SESSION PROTECTED</span>
       </div>
 
@@ -229,10 +219,7 @@ export default function NEASVoiceAssistant() {
             <span style={{ fontSize: 9, color: "#9ce0ba", border: "1px solid #4b967455", borderRadius: 99, padding: "4px 8px" }}>VOICE INPUT READY</span>
             <span style={{ fontSize: 9, color: "#ebc07e", border: "1px solid #ca933255", borderRadius: 99, padding: "4px 8px" }}>SPOKEN REPLIES</span>
           </div>
-          <label style={{ display: "flex", gap: 8, alignItems: "center", color: "#c9d5df", fontSize: 10, marginTop: 11 }}>
-            <input type="checkbox" checked={premiumVoice} onChange={(event) => setPremiumVoice(event.target.checked)} />
-            Use ElevenLabs premium voice (uses account credits)
-          </label>
+          <div style={{ color: "#9ce0ba", fontSize: 10, marginTop: 11 }}>Natural AI voice enabled · browser voice is fallback only</div>
         </div>
 
         <div style={{ minWidth: 0 }}>
@@ -254,7 +241,7 @@ export default function NEASVoiceAssistant() {
           {error ? <p role="alert" style={{ color: "#ffb3a9", fontSize: 12, margin: "9px 0 0" }}>{error}</p> : null}
         </div>
       </div>
-      <p style={{ color: "#71869a", fontSize: 10, margin: "13px 0 0" }}>Microphone starts only when you press Start talking. Browser speech recognition provides microphone input. Replies use free browser speech by default; ElevenLabs premium speech is optional and consumes account credits. AI reasoning runs through the configured NEAS server-side provider. Specialist agents advise and prepare work; external actions, spending, deployment and safety-critical approvals remain subject to NEAS authorization.</p>
+      <p style={{ color: "#71869a", fontSize: 10, margin: "13px 0 0" }}>Microphone starts only when you press Start talking. Browser speech recognition provides microphone input. Replies use the configured ElevenLabs natural voice and consume account credits; browser speech is used only if premium voice is unavailable. AI reasoning runs through the configured NEAS server-side provider. Specialist agents advise and prepare work; external actions, spending, deployment and safety-critical approvals remain subject to NEAS authorization.</p>
     </section>
   );
 }
