@@ -241,9 +241,8 @@ export default function ChatBot() {
                 background: "linear-gradient(135deg,rgba(249,115,22,.3),rgba(249,115,22,.1))",
                 border: "2px solid rgba(249,115,22,.4)",
                 display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
-              }}>🤖</div>
+              }}>🎙️</div>
               <div style={{ flex: 1 }}>
-                <div style={{ color: "#fff", fontWeight: 700, fontSize: 14, letterSpacing: ".01em" }}>NEAS AI Sales Assistant</div>
                 <div style={{ color: "#94a3b8", fontSize: 11 }}>Rope Access · Safety · Training · Equipment</div>
               </div>
               {/* Call button in header */}
