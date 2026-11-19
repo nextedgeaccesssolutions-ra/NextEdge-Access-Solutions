@@ -1,0 +1,98 @@
+diff --git a/web/lib/ai-gateway.ts b/web/lib/ai-gateway.ts
+index ab810c9..af4d345 100644
+--- a/web/lib/ai-gateway.ts
++++ b/web/lib/ai-gateway.ts
+@@ -1,5 +1,8 @@
+ export const DEFAULT_AI_GATEWAY_MODEL = "openai/gpt-4o-mini";
+ 
++/** Default Vercel AI Gateway endpoint (used when OMNIROUTE_BASE_URL is not set). */
++export const DEFAULT_VERCEL_GATEWAY_URL = "https://ai-gateway.vercel.sh/v1/chat/completions";
++
+ export function usesProjectAIGateway(task: string): boolean {
+   return task === "specialist" || task === "outreach";
+ }
+@@ -58,6 +61,23 @@ export function extractGatewayText(payload: unknown): string {
+   return "";
+ }
+ 
++/**
++ * Resolve the chat-completions URL.
++ * - OmniRoute mode: OMNIROUTE_BASE_URL like `http://localhost:20128/v1`
++ *   (trailing slash tolerated; a value already ending in /chat/completions is used as-is).
++ * - Default: Vercel AI Gateway.
++ */
++export function resolveGatewayUrl(baseUrl?: string): string {
++  const base = (baseUrl ?? process.env.OMNIROUTE_BASE_URL ?? "").trim().replace(/\/+$/, "");
++  if (!base) return DEFAULT_VERCEL_GATEWAY_URL;
++  if (base.endsWith("/chat/completions")) return base;
++  return `${base}/chat/completions`;
++}
++
++export function usesOmniRoute(baseUrl?: string): boolean {
++  return Boolean((baseUrl ?? process.env.OMNIROUTE_BASE_URL ?? "").trim());
++}
++
+ export async function generateAIGatewayText(
+   input: { system: string; user: string },
+   options: {
+@@ -66,8 +86,51 @@ export async function generateAIGatewayText(
+     apiKey?: string;
+     model?: string;
+     fetchImpl?: typeof fetch;
++    /** Override for OMNIROUTE_BASE_URL (e.g. http://localhost:20128/v1). Test/useful for per-request routing. */
++    baseUrl?: string;
++    /** Override for OMNIROUTE_API_KEY. */
++    omniApiKey?: string;
+   } = {},
+ ): Promise<AIGatewayResult> {
++  // ── OmniRoute path (self-hosted gateway on your VPS) ──
++  // Uses your own provider keys + fallback routing, so no Vercel OIDC budget applies.
++  const omniBase = (options.baseUrl ?? process.env.OMNIROUTE_BASE_URL ?? "").trim();
++  if (omniBase) {
++    const omniKey = options.omniApiKey ?? process.env.OMNIROUTE_API_KEY ?? "";
++    const model = options.model ?? process.env.OMNIROUTE_MODEL ?? DEFAULT_AI_GATEWAY_MODEL;
++    const url = resolveGatewayUrl(omniBase);
++    const fetchImpl = options.fetchImpl ?? fetch;
++    try {
++      const headers: Record<string, string> = { "content-type": "application/json" };
++      if (omniKey.trim()) headers.authorization = `Bearer ${omniKey.trim()}`;
++      const response = await fetchImpl(url, {
++        method: "POST",
++        headers,
++        body: JSON.stringify({
++          model,
++          messages: [
++            { role: "system", content: input.system },
++            { role: "user", content: input.user },
++          ],
++          max_tokens: 4000,
++        }),
++        signal: AbortSignal.timeout(45_000),
++      });
++      const payload = (await response.json().catch(() => ({}))) as UnknownRecord;
++      if (!response.ok) {
++        const errorObject = record(payload.error);
++        const detail = String(errorObject?.message ?? "OmniRoute request failed").slice(0, 240);
++        return { error: `OmniRoute request failed (${response.status}): ${detail}` };
++      }
++      const text = extractGatewayText(payload);
++      if (text) return { text, model };
++      return { error: "OmniRoute returned a successful response but no recognised text content. Please retry or inspect the OmniRoute response format." };
++    } catch {
++      return { error: "Could not reach OmniRoute or the request timed out. Check OMNIROUTE_BASE_URL and that the OmniRoute container is running." };
++    }
++  }
++
++  // ── Vercel AI Gateway path (unchanged, OIDC budget enforced) ──
+   // Vercel Functions expose the deployment OIDC token on the incoming Request,
+   // not as a process environment variable. Keep env lookup for build/local use.
+   const token = options.token ?? options.request?.headers.get("x-vercel-oidc-token") ?? process.env.VERCEL_OIDC_TOKEN;
+@@ -85,7 +148,7 @@ export async function generateAIGatewayText(
+ 
+   const fetchImpl = options.fetchImpl ?? fetch;
+   try {
+-    const response = await fetchImpl("https://ai-gateway.vercel.sh/v1/chat/completions", {
++    const response = await fetchImpl(DEFAULT_VERCEL_GATEWAY_URL, {
+       method: "POST",
+       headers: {
+         authorization: `Bearer ${token}`,
