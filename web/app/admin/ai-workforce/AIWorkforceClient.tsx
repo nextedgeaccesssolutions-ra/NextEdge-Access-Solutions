@@ -169,7 +169,7 @@ export default function AIWorkforceClient(){
       @media(max-width:580px){.wf-title{font-size:21px}.wf-top{align-items:flex-start;flex-direction:column}.wf-agentgrid{grid-template-columns:1fr}.wf-graph{grid-template-columns:repeat(2,minmax(0,1fr))}.wf-node:nth-child(3n):after{display:block}.wf-node:nth-child(2n):after{display:none}.wf-form{grid-template-columns:1fr}.wf-span{grid-column:auto}}
     `}</style>
     <div style={{display:"flex",justifyContent:"flex-end",padding:"9px 16px",background:"#07111b",borderBottom:"1px solid #203346"}}><a href="/admin/ai-workforce/email" style={{color:"#ebc07e",fontSize:11,fontWeight:700,textDecoration:"none",border:"1px solid #ca933255",borderRadius:8,padding:"7px 11px"}}>✉ Gmail account connections →</a></div>
-    <div className="wf-shell">
+    <div className={`wf-shell ${menuOpen?"menu-open":"menu-closed"}`}>
       <aside className="wf-side">
         <div className="wf-brand"><div className="wf-mark">N</div><div><b>NEAS INTELLIGENCE</b><small>Human + AI workforce</small></div></div>
         <div><div className="wf-navlabel">Command workspace</div><nav className="wf-nav">{nav.map(([id,label,icon])=><button key={id} className={tab===id?"on":""} onClick={()=>setTab(id)}><span>{icon}</span>{label}</button>)}</nav></div>
