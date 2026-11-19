@@ -8,7 +8,11 @@ const BASE:Specialist[]=[
 ].map(([id,name,authority])=>({id,name,authority:authority as Authority,enabled:true}));
 export default function WorkforceAuthorityPanel(){
  const [agents,setAgents]=useState(BASE),[busy,setBusy]=useState(false),[dirty,setDirty]=useState(false),[message,setMessage]=useState("Loading saved permissions…"),[hiddenIds,setHiddenIds]=useState<string[]>([]);
- const enabled=useMemo(()=>agents.filter(a=>a.enabled).length,[agents]);\n const hiddenCount=hiddenIds.length;\n const hideAll=()=>setHiddenIds(agents.map(a=>a.id));\n const unhideAll=()=>setHiddenIds([]);\n const toggleHidden=(id:string)=>setHiddenIds(current=>current.includes(id)?current.filter(x=>x!==id):[...current,id]);
+ const enabled=useMemo(()=>agents.filter(a=>a.enabled).length,[agents]);
+ const hiddenCount=hiddenIds.length;
+ const hideAll=()=>setHiddenIds(agents.map(a=>a.id));
+ const unhideAll=()=>setHiddenIds([]);
+ const toggleHidden=(id:string)=>setHiddenIds(current=>current.includes(id)?current.filter(x=>x!==id):[...current,id]);
  useEffect(()=>{let active=true;fetch("/api/admin/ai-workforce",{cache:"no-store"}).then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error||"Could not load permissions");if(!active)return;if(Array.isArray(j.workforceConfig?.agents))setAgents(current=>current.map(a=>{const saved=j.workforceConfig.agents.find((v:{id:string})=>v.id===a.id);return saved?{...a,enabled:saved.enabled,authority:saved.authority}:a}));setMessage(j.workforceConfig?.updatedAt?"Saved permissions loaded.":"Default permissions loaded; save to persist.");}).catch(e=>{if(active)setMessage(e instanceof Error?e.message:"Unable to load permissions")});return()=>{active=false}},[]);
  const update=(id:string,patch:Partial<Specialist>)=>{setAgents(current=>current.map(a=>a.id===id?{...a,...patch}:a));setDirty(true)};
  const save=async()=>{setBusy(true);setMessage("Saving permission controls…");try{const r=await fetch("/api/admin/ai-workforce",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"saveWorkforceConfig",agents:agents.map(({id,enabled,authority})=>({id,enabled,authority}))})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Save failed");setDirty(false);setMessage("Permissions saved.")}catch(e){setMessage(e instanceof Error?e.message:"Save failed")}finally{setBusy(false)}};
