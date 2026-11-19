@@ -62,6 +62,7 @@ async function request(action:string, payload:Record<string,unknown> = {}) {
 
 export default function AIWorkforceClient(){
   const [tab,setTab]=useState<Tab>("ecosystem");
+  const [menuOpen,setMenuOpen]=useState(false);
   const [data,setData]=useState<State|null>(null);
   const [busy,setBusy]=useState(false);
   const [notice,setNotice]=useState("");
@@ -118,7 +119,7 @@ export default function AIWorkforceClient(){
     <style jsx global>{`
       .wf{--ink:#e7edf4;--muted:#8292a5;--line:rgba(164,185,205,.14);--panel:rgba(12,24,37,.88);--gold:#ca9332;--sand:#ebc07e;color:var(--ink);font:14px/1.5 Inter,ui-sans-serif,system-ui;background:radial-gradient(ellipse at 48% -20%,rgba(202,147,50,.13),transparent 48%),#07111b;border:1px solid #203346;border-radius:18px;min-height:780px;overflow:hidden;box-shadow:0 24px 70px rgba(2,8,15,.35)}
       .wf *{box-sizing:border-box}.wf button,.wf input,.wf textarea,.wf select{font:inherit}.wf button{cursor:pointer}
-      .wf-shell{display:grid;grid-template-columns:224px minmax(0,1fr);min-height:780px}
+      .wf-shell{display:grid;grid-template-columns:224px minmax(0,1fr);min-height:780px;transition:grid-template-columns .2s ease}.wf-shell.menu-closed{grid-template-columns:0 minmax(0,1fr)}.wf-shell.menu-closed .wf-side{display:none}
       .wf-side{background:rgba(4,13,22,.8);border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;gap:22px}
       .wf-brand{display:flex;align-items:center;gap:10px;padding:4px 7px 18px;border-bottom:1px solid var(--line)}.wf-mark{width:35px;height:35px;border-radius:11px;display:grid;place-items:center;color:#07111b;background:linear-gradient(145deg,#f0d39a,#b47b26);font-weight:900;font-size:18px;box-shadow:0 0 24px #ca933244}.wf-brand b{letter-spacing:.12em;font-size:13px}.wf-brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
       .wf-navlabel{font-size:9px;color:#71869a;letter-spacing:.18em;text-transform:uppercase;padding:0 9px 6px}.wf-nav{display:grid;gap:4px}.wf-nav button{display:flex;gap:10px;align-items:center;text-align:left;width:100%;border:1px solid transparent;border-radius:9px;padding:10px;color:#a9b8c7;background:transparent;font-size:12px}.wf-nav button:hover,.wf-nav button.on{color:#f1d8a9;background:linear-gradient(90deg,#ca93321d,#ca933207);border-color:#ca933244}.wf-nav button span:first-child{width:18px;color:#d4ac67;font-size:16px}
@@ -175,7 +176,7 @@ export default function AIWorkforceClient(){
         <div className="wf-sidefoot"><small>OPERATING MODE</small><b>HYBRID · HUMAN-GOVERNED</b><small style={{marginTop:8}}>AI prepares. Humans authorize.</small></div>
       </aside>
       <main className="wf-main">
-        <header className="wf-top" style={{justifyContent:"flex-end"}}><div className="wf-live"><span className="wf-dot"/>{data?(data.specialistAiReady?"AI GATEWAY AUTH AVAILABLE":"AI GATEWAY AUTH NOT AVAILABLE"):"CONNECTING"}</div></header>
+        <header className="wf-top" style={{justifyContent:"space-between"}}><button type="button" onClick={()=>setMenuOpen(v=>!v)} aria-expanded={menuOpen} aria-label={menuOpen?"Hide workspace menu":"Show workspace menu"} style={{background:"rgba(202,147,50,.10)",border:"1px solid #ca933255",color:"#ebc07e",borderRadius:8,padding:"7px 11px",fontSize:11,fontWeight:700}}>{menuOpen?"Hide menu":"☰ Workspace menu"}</button><div className="wf-live"><span className="wf-dot"/>{data?(data.specialistAiReady?"AI GATEWAY AUTH AVAILABLE":"AI GATEWAY AUTH NOT AVAILABLE"):"CONNECTING"}</div></header>
         {error&&<div className="wf-error">{error}</div>}{notice&&<div className="wf-success">{notice}</div>}
         {!data?<div className="wf-card wf-empty">Loading NEAS workforce intelligence…</div>:<>
         {tab==="ecosystem"&&<>
@@ -195,7 +196,6 @@ export default function AIWorkforceClient(){
                   <button className="wf-dept-card" onClick={()=>{setSelectedAgent("SKILLS");setExpanded("SKILLS");setTab("agents")}}><b>People & Competency</b><small>Skills · Human relationships · Training</small><div className="wf-dept-metrics"><span>Specialist roles<strong>{AGENTS.length}</strong></span><span>Skill groups<strong>{data.skills.length}</strong></span></div></button>
                 </div>
               </div>
-              <div className="wf-note" style={{marginTop:12}}>Department cards open the corresponding specialist group. Financial, marketing and operational figures are limited to data actually available in NEAS AI Workforce; no unconnected accounting or advertising figures are fabricated.</div>
             </section>
             <section className="wf-tool-panel">
               <div className="wf-ecosystem-intro"><div><div className="wf-kicker" style={{color:"#f4d18a"}}>Integration topology</div><h2 style={{fontSize:20,margin:"4px 0"}}>NEAS AI · Connected tools</h2><p style={{margin:0,color:"#e2cda4"}}>Open a workspace destination or run a safe AI Gateway diagnostic.</p></div><span className="wf-pill">TOOL ROUTING</span></div>
