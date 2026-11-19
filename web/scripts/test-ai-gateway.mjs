@@ -158,6 +158,53 @@ test("uses OpenRouter free routing without paid-provider fallback", async () => 
   assert.equal(JSON.parse(request.init.body).model, "openrouter/free");
 });
 
+test("automatically switches OpenRouter 429 quota failures to configured Groq", async () => {
+  const previous = process.env.GROQ_API_KEY;
+  process.env.GROQ_API_KEY = "test-groq-fallback-key";
+  const calls = [];
+  try {
+    const result = await generateAIGatewayText({ system: "NEAS", user: "Continue the voice session" }, {
+      provider: "openrouter",
+      providerApiKey: "test-openrouter-key",
+      fetchImpl: async (url, init) => {
+        calls.push({ url, body: JSON.parse(init.body) });
+        if (url.includes("openrouter.ai")) {
+          return new Response(JSON.stringify({ error: { message: "rate limit reached" } }), { status: 429 });
+        }
+        return new Response(JSON.stringify({ choices: [{ message: { content: "Groq fallback response" } }] }), { status: 200 });
+      },
+    });
+    assert.deepEqual(result, { text: "Groq fallback response", model: "groq:openai/gpt-oss-120b (automatic fallback after OpenRouter quota)" });
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].body.model, "openrouter/free");
+    assert.equal(calls[1].body.model, "openai/gpt-oss-120b");
+  } finally {
+    if (previous === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = previous;
+  }
+});
+
+test("does not switch providers for OpenRouter authentication errors", async () => {
+  const previous = process.env.GROQ_API_KEY;
+  process.env.GROQ_API_KEY = "test-groq-fallback-key";
+  let calls = 0;
+  try {
+    const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+      provider: "openrouter",
+      providerApiKey: "bad-openrouter-key",
+      fetchImpl: async () => {
+        calls++;
+        return new Response("{}", { status: 401 });
+      },
+    });
+    assert.equal("error" in result, true);
+    assert.equal(calls, 1);
+  } finally {
+    if (previous === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = previous;
+  }
+});
+
 test("uses the Gemini free-tier model when explicitly selected", async () => {
   let request;
   const result = await generateAIGatewayText({ system: "NEAS", user: "Hello" }, {
