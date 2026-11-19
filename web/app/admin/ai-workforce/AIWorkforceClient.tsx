@@ -62,7 +62,6 @@ async function request(action:string, payload:Record<string,unknown> = {}) {
 
 export default function AIWorkforceClient(){
   const [tab,setTab]=useState<Tab>("ecosystem");
-  const [menuOpen,setMenuOpen]=useState(false);
   const [data,setData]=useState<State|null>(null);
   const [busy,setBusy]=useState(false);
   const [notice,setNotice]=useState("");
@@ -120,11 +119,7 @@ export default function AIWorkforceClient(){
       .wf-shell{display:block;min-height:780px}.wf-main{min-width:0;padding:20px 24px 28px}.wf-workspace-nav{display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:0 0 14px;margin:0 0 14px;border-bottom:1px solid var(--line)}.wf-workspace-nav button{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:9px;padding:8px 11px;background:transparent;color:#a9b8c7;font-size:12px;white-space:nowrap}.wf-workspace-nav button span{color:#d4ac67;font-size:15px}.wf-workspace-nav button:hover,.wf-workspace-nav button.on{color:#f1d8a9;background:linear-gradient(90deg,#ca93321d,#ca933207);border-color:#ca933244}
       .wf{--ink:#e7edf4;--muted:#8292a5;--line:rgba(164,185,205,.14);--panel:rgba(12,24,37,.88);--gold:#ca9332;--sand:#ebc07e;color:var(--ink);font:14px/1.5 Inter,ui-sans-serif,system-ui;background:radial-gradient(ellipse at 48% -20%,rgba(202,147,50,.13),transparent 48%),#07111b;border:1px solid #203346;border-radius:18px;min-height:780px;overflow:hidden;box-shadow:0 24px 70px rgba(2,8,15,.35)}
       .wf *{box-sizing:border-box}.wf button,.wf input,.wf textarea,.wf select{font:inherit}.wf button{cursor:pointer}
-      .wf-shell{display:grid;grid-template-columns:224px minmax(0,1fr);min-height:780px;transition:grid-template-columns .2s ease}.wf-shell.menu-closed{grid-template-columns:0 minmax(0,1fr)}.wf-shell.menu-closed .wf-side{display:none}
-      .wf-side{background:rgba(4,13,22,.8);border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;gap:22px}
-      .wf-brand{display:flex;align-items:center;gap:10px;padding:4px 7px 18px;border-bottom:1px solid var(--line)}.wf-mark{width:35px;height:35px;border-radius:11px;display:grid;place-items:center;color:#07111b;background:linear-gradient(145deg,#f0d39a,#b47b26);font-weight:900;font-size:18px;box-shadow:0 0 24px #ca933244}.wf-brand b{letter-spacing:.12em;font-size:13px}.wf-brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
-      .wf-navlabel{font-size:9px;color:#71869a;letter-spacing:.18em;text-transform:uppercase;padding:0 9px 6px}.wf-nav{display:grid;gap:4px}.wf-nav button{display:flex;gap:10px;align-items:center;text-align:left;width:100%;border:1px solid transparent;border-radius:9px;padding:10px;color:#a9b8c7;background:transparent;font-size:12px}.wf-nav button:hover,.wf-nav button.on{color:#f1d8a9;background:linear-gradient(90deg,#ca93321d,#ca933207);border-color:#ca933244}.wf-nav button span:first-child{width:18px;color:#d4ac67;font-size:16px}
-      .wf-sidefoot{margin-top:auto;border:1px solid var(--line);border-radius:12px;padding:12px;background:#0b1a28}.wf-sidefoot small{color:var(--muted);display:block;font-size:10px}.wf-sidefoot b{font-size:12px;color:#e9c98e}
+      .wf-shell{display:block;min-height:780px}
       .wf-main{min-width:0;padding:22px 24px 28px}.wf-top{display:flex;justify-content:space-between;gap:14px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:20px}.wf-kicker{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#d2aa68}.wf-title{font-size:25px;letter-spacing:-.04em;margin:2px 0 3px;font-weight:650}.wf-sub{color:var(--muted);font-size:12px}.wf-live{display:flex;align-items:center;gap:7px;border:1px solid #43856b55;color:#9ad0b2;background:#17392a44;border-radius:99px;padding:6px 10px;font-size:10px;white-space:nowrap}.wf-dot{width:6px;height:6px;border-radius:50%;background:#6bd19b;box-shadow:0 0 10px #6bd19b}
       .wf-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:18px}.wf-stat{background:linear-gradient(145deg,#122538,#0b1926);border:1px solid var(--line);border-radius:12px;padding:13px 14px}.wf-stat label{font-size:9px;letter-spacing:.13em;color:#91a4b6;text-transform:uppercase}.wf-stat strong{display:block;font-size:23px;letter-spacing:-.04em;margin-top:5px;color:#f0d5a4}.wf-stat small{font-size:10px;color:#7f91a3}
       .wf-card{background:linear-gradient(145deg,rgba(18,36,53,.92),rgba(9,22,34,.94));border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}.wf-card h3{font-size:13px;margin:0 0 4px;letter-spacing:.01em}.wf-card p{color:var(--muted);font-size:11px;margin:0 0 12px}.wf-row{display:flex;justify-content:space-between;gap:12px;align-items:center}.wf-button{border:1px solid #ca933255;background:#ca933219;color:#f1d7a7;border-radius:9px;padding:9px 12px;font-size:11px;font-weight:650}.wf-button:hover{background:#ca933233}.wf-button:disabled{opacity:.5;cursor:not-allowed}.wf-button.ghost{border-color:var(--line);background:#ffffff08;color:#c4d0db}.wf-button.danger{border-color:#b65c5c55;color:#f0aaaa;background:#7d25251c}
@@ -170,10 +165,10 @@ export default function AIWorkforceClient(){
       @media(max-width:580px){.wf-title{font-size:21px}.wf-top{align-items:flex-start;flex-direction:column}.wf-agentgrid{grid-template-columns:1fr}.wf-graph{grid-template-columns:repeat(2,minmax(0,1fr))}.wf-node:nth-child(3n):after{display:block}.wf-node:nth-child(2n):after{display:none}.wf-form{grid-template-columns:1fr}.wf-span{grid-column:auto}}
     `}</style>
     <div style={{display:"flex",justifyContent:"flex-end",padding:"9px 16px",background:"#07111b",borderBottom:"1px solid #203346"}}><a href="/admin/ai-workforce/email" style={{color:"#ebc07e",fontSize:11,fontWeight:700,textDecoration:"none",border:"1px solid #ca933255",borderRadius:8,padding:"7px 11px"}}>✉ Gmail account connections →</a></div>
-    <div className={`wf-shell ${menuOpen?"menu-open":"menu-closed"}`}>
+    <div className="wf-shell">
       <main className="wf-main">
-        
-        <header className="wf-top" style={{justifyContent:"space-between"}}><button type="button" onClick={()=>setMenuOpen(v=>!v)} aria-expanded={menuOpen} aria-label={menuOpen?"Hide workspace menu":"Show workspace menu"} style={{background:"rgba(202,147,50,.10)",border:"1px solid #ca933255",color:"#ebc07e",borderRadius:8,padding:"7px 11px",fontSize:11,fontWeight:700}}>{menuOpen?"Hide menu":"☰ Workspace menu"}</button><div className="wf-live"><span className="wf-dot"/>{data?(data.specialistAiReady?"AI GATEWAY AUTH AVAILABLE":"AI GATEWAY AUTH NOT AVAILABLE"):"CONNECTING"}</div></header>
+        <nav className="wf-workspace-nav" aria-label="AI workforce workspace">{nav.map(([id,label,icon])=><button type="button" key={id} className={tab===id?"on":""} onClick={()=>setTab(id)}><span>{icon}</span>{label}</button>)}</nav>
+        <header className="wf-top" style={{justifyContent:"flex-end"}}><div className="wf-live"><span className="wf-dot"/>{data?(data.specialistAiReady?"AI GATEWAY AUTH AVAILABLE":"AI GATEWAY AUTH NOT AVAILABLE"):"CONNECTING"}</div></header>
         {error&&<div className="wf-error">{error}</div>}{notice&&<div className="wf-success">{notice}</div>}
         {!data?<div className="wf-card wf-empty">Loading NEAS workforce intelligence…</div>:<>
         {tab==="ecosystem"&&<>
@@ -285,12 +280,6 @@ export default function AIWorkforceClient(){
         </>}
         </>}
       </main>
-    </div>
-    <div className="wf-floating-menu">
-      {menuOpen&&<nav className="wf-floating-panel" aria-label="Command workspace">
-        {nav.map(([id,label,icon])=><button type="button" key={id} className={tab===id?"on":""} aria-current={tab===id?"page":undefined} onClick={()=>{setTab(id);setMenuOpen(false);}}><span>{icon}</span>{label}</button>)}
-      </nav>}
-      <button type="button" className="wf-floating-toggle" onClick={()=>setMenuOpen(v=>!v)} aria-expanded={menuOpen} aria-label={menuOpen?"Close command workspace menu":"Open command workspace menu"}><span>{menuOpen?"×":"⌘"}</span>{menuOpen?"Close workspace":"Command workspace"}<span>{menuOpen?"":"↑"}</span></button>
     </div>
   </div>;
 }
