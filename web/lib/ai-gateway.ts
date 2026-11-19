@@ -103,7 +103,8 @@ async function generateProviderText(
     if (!response.ok) {
       const errorObject = record(payload.error);
       if (response.status === 401 || response.status === 403) return { error: `${providerName} rejected the server-side API key. Verify the key in Vercel environment variables.` };
-      if (response.status === 429) return { error: `${providerName} rate limit or account quota reached. Wait for the quota to reset; NEAS did not switch to another model.` };
+      if (response.status === 402) return { error: `${providerName} account credits or quota are exhausted.` };
+      if (response.status === 429) return { error: `${providerName} rate limit or account quota reached.` };
       return { error: `${providerName} inference failed (${response.status}): ${String(errorObject?.message ?? "provider request failed").slice(0, 180)}` };
     }
     const text = extractGatewayText(payload);
@@ -142,8 +143,16 @@ export async function generateAIGatewayText(
     if (!apiKey) {
       return { error: `NEAS AI provider is set to ${provider}, but ${keyName} is missing. Add the key as a Vercel server-side environment variable. No provider fallback was used.` };
     }
-    // Direct provider billing is separate from the Vercel project budget. Only use this path when an administrator explicitly selects and configures it.
-    return generateProviderText(provider, input, apiKey, fetchImpl);
+    // Direct provider billing is separate from the Vercel project budget. OpenRouter failover is limited to the explicitly configured Groq key; it never falls back from Vercel OIDC or changes the selected provider for other errors.
+    const primary = await generateProviderText(provider, input, apiKey, fetchImpl);
+    if (provider === "openrouter" && "error" in primary && /rate limit|account quota|credits or quota are exhausted/i.test(primary.error)) {
+      const groqKey = (process.env.GROQ_API_KEY ?? "").trim();
+      if (!groqKey) return { error: `${primary.error} Automatic Groq fallback is not configured because GROQ_API_KEY is missing.` };
+      const fallback = await generateProviderText("groq", input, groqKey, fetchImpl);
+      if (!("error" in fallback)) return { ...fallback, model: `${fallback.model} (automatic fallback after OpenRouter quota)` };
+      return { error: `${primary.error} Groq fallback also failed: ${fallback.error}` };
+    }
+    return primary;
   }
 
   // Vercel Functions expose the deployment OIDC token on the incoming Request.

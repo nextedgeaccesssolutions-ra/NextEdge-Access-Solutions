@@ -199,12 +199,12 @@ export default function NEASVoiceAssistant() {
   };
 
   return (
-    <section aria-label="NEAS AI live talking agents" style={{ margin: "18px 0", padding: 20, border: "1px solid #ca933266", borderRadius: 18, background: "radial-gradient(circle at 85% 0%,#3a2a1644,transparent 35%),linear-gradient(135deg,#071d29,#101b25 68%,#211b11)", color: "#e7edf4", boxShadow: "0 18px 55px #0005" }}>
+    <section id="neas-ai-voice-console" aria-label="NEAS AI Voice Console — Talk to your AI workforce" style={{ scrollMarginTop: 24, margin: "18px 0", padding: 20, border: "1px solid #ca933266", borderRadius: 18, background: "radial-gradient(circle at 85% 0%,#3a2a1644,transparent 35%),linear-gradient(135deg,#071d29,#101b25 68%,#211b11)", color: "#e7edf4", boxShadow: "0 18px 55px #0005" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <div style={{ color: "#ebc07e", fontSize: 10, letterSpacing: ".2em", fontWeight: 800 }}>NEAS AI ORCHESTRATION CORE</div>
-          <h2 style={{ fontSize: 22, margin: "5px 0" }}>Live Talking Agents</h2>
-          <p style={{ color: "#a7b7c4", fontSize: 12, margin: 0 }}>CEO · CAIO · SPECIALISTS — one secure voice console for your executive team</p>
+          <div style={{ color: "#ebc07e", fontSize: 10, letterSpacing: ".2em", fontWeight: 800 }}>NEAS AI · VOICE CONSOLE</div>
+          <h2 style={{ fontSize: 22, margin: "5px 0" }}>Talk to your AI workforce</h2>
+          <p style={{ color: "#a7b7c4", fontSize: 12, margin: 0 }}>Speak or type. The CEO, CAIO and specialist workforce responds with spoken audio.</p>
         </div>
         <span style={{ border: "1px solid #4b967455", color: "#9ce0ba", borderRadius: 99, padding: "6px 11px", fontSize: 10 }}>ADMIN SESSION PROTECTED</span>
       </div>
