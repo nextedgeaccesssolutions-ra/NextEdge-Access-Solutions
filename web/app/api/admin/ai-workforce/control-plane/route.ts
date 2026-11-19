@@ -97,7 +97,10 @@ export async function POST(req: Request) {
       const priority = ["low", "normal", "high", "critical"].includes(String(body.priority)) ? String(body.priority) : "normal";
       const category = String(body.approvalCategory || "");
       const approvalCategories = ["external_communication","contract","payment","hiring","safety_signoff","database_destructive","credentials_access","production_deploy","security_policy","other"];
+      // Dual-approval: critical actions need TWO distinct human approvers.
+      const DUAL_APPROVAL_CATEGORIES = ["contract","payment","safety_signoff","database_destructive","credentials_access","production_deploy","security_policy"];
       const requiresApproval = approvalCategories.includes(category);
+      const approvalsRequired = DUAL_APPROVAL_CATEGORIES.includes(category) ? 2 : requiresApproval ? 1 : 0;
       if (!title || !objective || !agentId) return response({ error: "Title, objective and assigned agent are required." }, 400);
       const found = await supabase(`aiw_agents?agent_id=eq.${encodeURIComponent(agentId)}&select=agent_id,name,department_code,enabled,execution_mode&limit=1`) as Row[];
       if (!found.length || found[0].enabled !== true) return response({ error: "Selected agent is unavailable or disabled." }, 409);
@@ -123,11 +126,16 @@ export async function POST(req: Request) {
       if (requiresApproval) {
         await supabase("aiw_approvals", {
           method: "POST", headers: { Prefer: "return=minimal" },
-          body: JSON.stringify({ task_id: task.id, category, title, details: { objective }, requested_by: String(user.id) }),
+          body: JSON.stringify({
+            task_id: task.id, category, title,
+            details: { objective, approvalsRequired, policy: approvalsRequired === 2 ? "dual_approval" : "single_approval" },
+            requested_by: String(user.id),
+            approvals_required: approvalsRequired, approval_count: 0, approved_by_ids: [],
+          }),
         });
       }
-      await audit(user.id, "task.create", "aiw_task", String(task.id), requiresApproval ? "pending" : "success", { agentId, priority, requiresApproval });
-      return response({ ok: true, task, requiresApproval }, 201);
+      await audit(user.id, "task.create", "aiw_task", String(task.id), requiresApproval ? "pending" : "success", { agentId, priority, requiresApproval, approvalsRequired });
+      return response({ ok: true, task, requiresApproval, approvalsRequired }, 201);
     }
     if (action === "saveAgentProfile") {
       const agentId = String(body.agentId || "").trim().toLowerCase().slice(0, 100);
@@ -150,23 +158,44 @@ export async function POST(req: Request) {
       const decision = String(body.decision || "");
       const note = String(body.note || "").trim().slice(0, 2000);
       if (!id || !["approved", "rejected"].includes(decision)) return response({ error: "A valid approval ID and decision are required." }, 400);
-      const pending = await supabase(`aiw_approvals?id=eq.${encodeURIComponent(id)}&status=eq.pending&select=id,task_id,category,requested_by&limit=1`) as Row[];
+      const pending = await supabase(`aiw_approvals?id=eq.${encodeURIComponent(id)}&status=eq.pending&select=id,task_id,category,requested_by,approvals_required,approval_count,approved_by_ids&limit=1`) as Row[];
       if (!pending.length) return response({ error: "Approval is no longer pending." }, 409);
       if (String(pending[0].requested_by) === String(user.id)) return response({ error: "A requester cannot approve their own request. A second authorized administrator must review it." }, 403);
+      const required = Number(pending[0].approvals_required ?? 1) === 2 ? 2 : 1;
+      const already: string[] = Array.isArray(pending[0].approved_by_ids) ? (pending[0].approved_by_ids as unknown[]).map(String) : [];
+      if (already.includes(String(user.id))) return response({ error: "This administrator has already recorded an approval. A second, distinct administrator must approve." }, 409);
+      if (decision === "rejected") {
+        await supabase(`aiw_approvals?id=eq.${encodeURIComponent(id)}&status=eq.pending`, {
+          method: "PATCH", headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ status: "rejected", reviewed_by: String(user.id), review_note: note, reviewed_at: new Date().toISOString(), approval_count: already.length }),
+        });
+        await supabase(`aiw_tasks?id=eq.${encodeURIComponent(String(pending[0].task_id))}`, {
+          method: "PATCH", headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ status: "cancelled", awaiting_second_approval: false, updated_at: new Date().toISOString() }),
+        });
+        await audit(user.id, "approval.rejected", "aiw_approval", id, "success", { taskId: pending[0].task_id, category: pending[0].category, required });
+        return response({ ok: true, id, decision, quorum: `${already.length}/${required}` });
+      }
+      const nextApprovers = [...already, String(user.id)];
+      const quorumReached = nextApprovers.length >= required;
       await supabase(`aiw_approvals?id=eq.${encodeURIComponent(id)}&status=eq.pending`, {
         method: "PATCH", headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ status: decision, reviewed_by: String(user.id), review_note: note, reviewed_at: new Date().toISOString() }),
+        body: JSON.stringify(quorumReached
+          ? { status: "approved", reviewed_by: String(user.id), review_note: note, reviewed_at: new Date().toISOString(), approval_count: nextApprovers.length, approved_by_ids: nextApprovers, first_approved_by: nextApprovers[0] ?? null }
+          : { approval_count: nextApprovers.length, approved_by_ids: nextApprovers, first_approved_by: nextApprovers[0], review_note: `First approval recorded (${nextApprovers.length}/${required}). Awaiting second administrator.` }),
       });
       await supabase(`aiw_tasks?id=eq.${encodeURIComponent(String(pending[0].task_id))}`, {
         method: "PATCH", headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ status: decision === "approved" ? "queued" : "cancelled", updated_at: new Date().toISOString() }),
+        body: JSON.stringify(quorumReached
+          ? { status: "queued", awaiting_second_approval: false, updated_at: new Date().toISOString() }
+          : { status: "needs_approval", awaiting_second_approval: true, updated_at: new Date().toISOString() }),
       });
       await supabase("aiw_task_events", {
         method: "POST", headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ task_id: pending[0].task_id, event_type: `approval_${decision}`, actor_type: "human", actor_id: String(user.id), message: note || `Approval ${decision} by administrator.`, payload: { approvalId: id, category: pending[0].category } }),
+        body: JSON.stringify({ task_id: pending[0].task_id, event_type: quorumReached ? `approval_${decision}` : "approval_first", actor_type: "human", actor_id: String(user.id), message: note || (quorumReached ? `Approval quorum reached (${nextApprovers.length}/${required}).` : `First approval recorded (${nextApprovers.length}/${required}). Awaiting second administrator.`), payload: { approvalId: id, category: pending[0].category, quorum: `${nextApprovers.length}/${required}` } }),
       });
-      await audit(user.id, `approval.${decision}`, "aiw_approval", id, "success", { taskId: pending[0].task_id, category: pending[0].category });
-      return response({ ok: true, id, decision });
+      await audit(user.id, quorumReached ? `approval.${decision}` : "approval.first", "aiw_approval", id, quorumReached ? "success" : "pending", { taskId: pending[0].task_id, category: pending[0].category, quorum: `${nextApprovers.length}/${required}` });
+      return response({ ok: true, id, decision, quorum: `${nextApprovers.length}/${required}`, quorumReached });
     }
     return response({ error: "Unsupported action." }, 400);
   } catch (error) {
