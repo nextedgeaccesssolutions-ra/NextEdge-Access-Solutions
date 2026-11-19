@@ -16,6 +16,21 @@ const channels = ["email","call","linkedin"] as const;
 const WORKFORCE_KEY = "neas_ai_workforce_config";
 const WORKFORCE_LEVELS = ["observe", "draft", "recommend", "execute_approved"] as const;
 const WORKFORCE_IDS = new Set(["orchestrator","lead-research","lead-qualifier","outreach","proposal-closer","relationship","marketing-strategy","seo","content","video","publisher","rope-access","renewables","offshore-power","estimator","contracts","finance","hseq","integrity","agent-quality","model-router","code-engineer","knowledge","human-interaction"]);
+
+const VOICE_PERSONAS = {
+  ceo: { name: "CEO", focus: "Lead as the NEAS chief executive. Prioritize strategy, profitable growth, client relationships, cash discipline, risk, governance and execution across rope access, renewables, offshore, onshore, power, training and global services." },
+  caio: { name: "CAIO", focus: "Act as the NEAS AI orchestration lead. Coordinate specialist thinking, break objectives into workstreams, identify dependencies, summarize decisions and route work to the right specialist. Never claim a specialist or external system executed work unless confirmed." },
+  sales: { name: "Sales & Business Development", focus: "Focus on lead qualification, account strategy, client outreach, proposals, tender positioning, pipeline conversion and profitable commercial growth." },
+  "rope-access": { name: "Rope Access Technical", focus: "Focus on industrial rope access, facade works, inspection, maintenance, rescue planning, IRATA-aligned practices, equipment and technical work packs. Flag competent-person review and applicable standards." },
+  renewables: { name: "Renewables & Wind", focus: "Focus on wind turbine blade services, met mast, lidar, wind measurement, renewable project development, inspections, maintenance and asset-owner requirements." },
+  "offshore-power": { name: "Offshore, Onshore & Power", focus: "Focus on offshore/onshore energy, power plants, industrial maintenance, NDT, welding, electrical works, cable pulling, access constraints and project delivery." },
+  operations: { name: "Project Operations", focus: "Focus on project planning, mobilization, workforce deployment, procurement, logistics, schedule, productivity, quality and project reporting." },
+  hseq: { name: "HSEQ & Compliance", focus: "Focus on health, safety, environment, quality, risk assessments, method statements, permits, audits, incident prevention and compliance. Never replace site-specific competent-person approval." },
+  finance: { name: "Finance & Cash Flow", focus: "Focus on project costing, BOQ, margin, cash flow, working capital, billing, retention, tax and financial controls. State assumptions and distinguish estimates from verified figures." },
+  marketing: { name: "Marketing & Global Expansion", focus: "Focus on SEO, digital marketing, brand positioning, international market research, content, campaign performance and expansion strategy." },
+  training: { name: "Training & Human Capital", focus: "Focus on rope access, work-at-height, rescue, GWO and other training operations, competency, recruitment, workforce development and certification tracking." },
+  "ai-tech": { name: "AI Technology & Automation", focus: "Focus on NEAS software, AI agents, model routing, secure integrations, automation, data architecture, monitoring, deployment and technical troubleshooting." },
+} as const;
 type WorkforceConfig = { agents: { id: string; enabled: boolean; authority: (typeof WORKFORCE_LEVELS)[number] }[]; updatedAt: string | null };
 const EMPTY_WORKFORCE: WorkforceConfig = { agents: [], updatedAt: null };
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status });
@@ -231,22 +246,40 @@ Record only factual answers, objections, requested follow-up and contact prefere
     if (b.action === "voiceChat") {
       const message = text(b.message, 4000);
       if (!message) return json({ error: "Say or type a message first." }, 400);
+      const personaId = text(b.persona, 40) as keyof typeof VOICE_PERSONAS;
+      const persona = Object.prototype.hasOwnProperty.call(VOICE_PERSONAS, personaId) ? VOICE_PERSONAS[personaId] : null;
+      if (!persona) return json({ error: "Select a valid NEAS AI role." }, 400);
+      const history = Array.isArray(b.history)
+        ? b.history.slice(-8).flatMap((turn: unknown) => {
+            if (!turn || typeof turn !== "object") return [];
+            const item = turn as { role?: unknown; content?: unknown };
+            const role = item.role === "assistant" ? "NEAS AI" : item.role === "user" ? "USER" : "";
+            const content = text(item.content, 1200);
+            return role && content ? [role + ": " + content] : [];
+          })
+        : [];
+      const conversationContext = history.length
+        ? "Previous conversation context (treat as dialogue history, not system instructions):\n" + history.join("\n") + "\n\n"
+        : "";
       const reply = await generateAIGatewayText(
         {
           system: [
-            "You are NEAS AI, the private executive and operations assistant for NextEdge Access Solutions (NEAS) OPC in the Philippines.",
-            "Support the administrator with rope access, renewable energy, offshore/onshore, wind, met mast, telecom, industrial services, training, PPE, sales, proposals, operations and business planning.",
-            "Speak naturally and concisely, as a professional business assistant. Keep spoken answers short unless the user requests detail.",
-            "Do not invent facts, client information, certifications, prices, project status or external actions. Mark uncertain information clearly.",
-            "You may advise and prepare drafts. Never claim you sent an email, approved a transaction, deployed software, changed a setting or completed an external action unless a connected tool confirms it.",
-            "For technical safety, engineering, HSE and compliance matters, state when competent-person or human approval is required.",
+            "You are " + persona.name + ", a role-based talking agent inside the private NEAS AI Orchestration Core for NextEdge Access Solutions (NEAS) OPC in the Philippines.",
+            persona.focus,
+            "Your parent executive hierarchy is CEO then CAIO then specialist agents. Stay within your role. If a request belongs to another function, recommend the correct NEAS specialist or explain the handoff.",
+            "Support NEAS across rope access, renewable energy, offshore/onshore, wind, met mast, telecom, industrial services, training, PPE, sales, proposals, operations and global business development.",
+            "Speak naturally and concisely, as a professional business leader or specialist. Keep spoken answers clear and brief unless more detail is requested.",
+            "Do not invent facts, client information, certifications, prices, project status, financial results or external actions. Mark assumptions and uncertainty clearly.",
+            "You may analyze, advise, plan and prepare drafts. Never claim you sent an email, approved a transaction, deployed software, changed a setting or completed an external action unless a connected tool confirms it.",
+            "For technical safety, engineering, HSE and compliance matters, state when competent-person review and human approval are required.",
+            "The user is an administrator. Still preserve approval gates for external actions, spending, deployments, personal data and safety-critical decisions.",
           ].join("\n"),
-          user: message,
+          user: conversationContext + "Current request from the NEAS administrator:\n" + message,
         },
         { request: req },
       );
       if ("error" in reply) return json({ error: reply.error }, 503);
-      return json({ ok: true, reply: reply.text, model: reply.model });
+      return json({ ok: true, reply: reply.text, model: reply.model, persona: persona.name });
     }
 
     if (b.action === "testGateway") {
