@@ -44,13 +44,14 @@ export async function GET() {
   const user = await requireAdmin();
   if (!user) return response({ error: "Admin access required." }, 403);
   try {
-    const [agents, tasks, approvals, schedules, events, auditEvents] = await Promise.all([
-      supabase("aiw_agents?select=agent_id,name,department,department_code,sort_order,manager_agent_id,job_description,skills,tools,permissions,approval_level,enabled,execution_mode,runtime_status,last_execution_at,next_scheduled_at,performance_score&order=sort_order.asc"),
+    const [agents, tasks, approvals, schedules, events, auditEvents, modelRoutes] = await Promise.all([
+      supabase("aiw_agents?select=agent_id,name,department,department_code,sort_order,manager_agent_id,job_description,skills,system_prompt,tools,permissions,approval_level,enabled,execution_mode,runtime_status,last_execution_at,next_scheduled_at,performance_score&order=sort_order.asc"),
       supabase("aiw_tasks?select=id,title,objective,agent_id,parent_task_id,department_code,status,priority,dependencies,attempt_count,max_attempts,requires_approval,approval_category,created_by,assigned_by,created_at,updated_at,due_at,error_message&order=created_at.desc&limit=100"),
       supabase("aiw_approvals?select=id,task_id,category,title,details,status,requested_by,reviewed_by,review_note,requested_at,reviewed_at&order=requested_at.desc&limit=100"),
       supabase("aiw_schedules?select=id,name,description,cadence,cron_expression,timezone,enabled,agent_id,last_run_at,next_run_at&order=name.asc"),
       supabase("aiw_task_events?select=id,task_id,event_type,actor_type,actor_id,message,created_at&order=created_at.desc&limit=50"),
       supabase("aiw_audit_events?select=id,actor_type,actor_id,action,resource_type,resource_id,outcome,details,created_at&order=created_at.desc&limit=50"),
+      supabase("aiw_model_routes?select=id,route_name,provider,model,enabled,priority,data_classification,config&order=priority.asc"),
     ]);
     const taskRows = tasks as Row[];
     const agentRows = agents as Row[];
@@ -64,6 +65,7 @@ export async function GET() {
       schedules,
       events,
       auditEvents,
+      modelRoutes,
       metrics: {
         agentProfiles: agentRows.length,
         enabledProfiles: agentRows.filter((a) => a.enabled === true).length,
@@ -126,6 +128,22 @@ export async function POST(req: Request) {
       }
       await audit(user.id, "task.create", "aiw_task", String(task.id), requiresApproval ? "pending" : "success", { agentId, priority, requiresApproval });
       return response({ ok: true, task, requiresApproval }, 201);
+    }
+    if (action === "saveAgentProfile") {
+      const agentId = String(body.agentId || "").trim().toLowerCase().slice(0, 100);
+      const systemPrompt = String(body.systemPrompt || "").trim().slice(0, 12000);
+      const executionMode = String(body.executionMode || "draft_only");
+      const approvalLevel = Number(body.approvalLevel);
+      if (!agentId || !systemPrompt || !["draft_only", "execute_approved", "disabled"].includes(executionMode) || !Number.isInteger(approvalLevel) || approvalLevel < 1 || approvalLevel > 5) {
+        return response({ error: "Valid agent, system prompt, execution mode and approval level are required." }, 400);
+      }
+      const updated = await supabase(`aiw_agents?agent_id=eq.${encodeURIComponent(agentId)}&select=agent_id`, {
+        method: "PATCH", headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ system_prompt: systemPrompt, execution_mode: executionMode, approval_level: approvalLevel, updated_at: new Date().toISOString() }),
+      }) as Row[];
+      if (!updated.length) return response({ error: "Agent profile not found." }, 404);
+      await audit(user.id, "agent.profile.update", "aiw_agent", agentId, "success", { executionMode, approvalLevel });
+      return response({ ok: true, agentId });
     }
     if (action === "reviewApproval") {
       const id = String(body.id || "");
