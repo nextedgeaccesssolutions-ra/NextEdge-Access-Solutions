@@ -61,7 +61,7 @@ async function request(action:string, payload:Record<string,unknown> = {}) {
 }
 
 export default function AIWorkforceClient(){
-  const [tab,setTab]=useState<Tab>("command");
+  const [tab,setTab]=useState<Tab>("ecosystem");
   const [data,setData]=useState<State|null>(null);
   const [busy,setBusy]=useState(false);
   const [notice,setNotice]=useState("");
@@ -112,7 +112,7 @@ export default function AIWorkforceClient(){
   const filtered=useMemo(()=> (data?.leads||[]).filter(l=>(l.company+" "+l.contact+" "+l.service+" "+l.stage).toLowerCase().includes(query.toLowerCase())),[data,query]);
   const lead=data?.leads.find(l=>l.id===Number(selectedLead));
   const selectedSkill=data?.skills?.find(skill=>skill.agentIds.includes(selectedAgent));
-  const nav:[Tab,string,string][]=[["ecosystem","AI ecosystem","◎"],["command","Command graph","◈"],["agents","Agent matrix","⌘"],["skills","Skill library","?"],["workbench","Specialist workbench","✧"],["leads","Lead pipeline","↗"],["outreach","Human outreach","✉"],["approvals","Human approvals","◉"],["performance","Performance","▥"]];
+  const nav:[Tab,string,string][]=[["ecosystem","AI ecosystem","◎"],["agents","Agent matrix","⌘"],["skills","Skill library","?"],["workbench","Specialist workbench","✧"],["leads","Lead pipeline","↗"],["outreach","Human outreach","✉"],["approvals","Human approvals","◉"],["performance","Performance","▥"]];
 
   return <div className="wf">
     <style jsx global>{`
