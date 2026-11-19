@@ -52,7 +52,8 @@ export default function NEASControlPlane(){
    <div style={panel}><b style={{fontSize:13}}>Schedules & activity history</b><div className="neas-cp-list" style={{marginTop:9}}>{data.schedules.map(s=><div className="neas-cp-row" key={s.id} style={{cursor:"default"}}><b style={{fontSize:11}}>{s.name}</b><div style={muted}>{s.cadence} · {s.enabled?"Enabled":"Disabled until scheduler is configured"}</div></div>)}</div><div style={{borderTop:"1px solid #293a4b",marginTop:10,paddingTop:10}}><b style={{fontSize:11}}>Recent events</b>{data.events.slice(0,8).map(e=><p key={e.id} style={{...muted,borderBottom:"1px solid #233140",paddingBottom:6}}>{e.event_type} · {e.message}</p>)}</div></div>
   </div>
   {message&&<p style={{...muted,marginTop:12}}>{message}</p>}
-  <div style={{...panel,marginTop:12}}><b style={{fontSize:13}}>Governance audit trail</b>{data.auditEvents.slice(0,10).map(e=><p key={e.id} style={{...muted,borderBottom:"1px solid #293a4b",paddingBottom:6}}>{e.action} · {e.resource_type} · {e.outcome} · {fmt(e.created_at)}</p>)}{!data.auditEvents.length&&<p style={muted}>No audit events recorded yet.</p>}</div>\n  <p style={{...muted,marginTop:12}}>Snapshot: {fmt(data.generatedAt)} · Data source: Supabase · Agent runtime state remains “not configured” until a verified worker is deployed.</p>
+  <div style={{...panel,marginTop:12}}><b style={{fontSize:13}}>Governance audit trail</b>{data.auditEvents.slice(0,10).map(e=><p key={e.id} style={{...muted,borderBottom:"1px solid #293a4b",paddingBottom:6}}>{e.action} · {e.resource_type} · {e.outcome} · {fmt(e.created_at)}</p>)}{!data.auditEvents.length&&<p style={muted}>No audit events recorded yet.</p>}</div>
+  <p style={{...muted,marginTop:12}}>Snapshot: {fmt(data.generatedAt)} · Data source: Supabase · Agent runtime state remains “not configured” until a verified worker is deployed.</p>
   </>}
  </section>;
 }
