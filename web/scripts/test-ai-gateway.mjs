@@ -136,9 +136,99 @@ test("includes safe reasoning-token diagnostics when answer content is empty", a
   }
 });
 
-test("routes specialist and outreach work through the budgeted project Gateway", () => {
+test("routes specialist, outreach and voice tasks through the configured AI runtime", () => {
   assert.equal(usesProjectAIGateway("specialist"), true);
   assert.equal(usesProjectAIGateway("outreach"), true);
+  assert.equal(usesProjectAIGateway("voice"), true);
+});
+
+test("uses OpenRouter free routing without paid-provider fallback", async () => {
+  let request;
+  const result = await generateAIGatewayText({ system: "NEAS", user: "Hello" }, {
+    provider: "openrouter",
+    providerApiKey: "test-openrouter-key",
+    fetchImpl: async (url, init) => {
+      request = { url, init };
+      return new Response(JSON.stringify({ choices: [{ message: { content: "Hello from free routing" } }] }), { status: 200 });
+    },
+  });
+  assert.deepEqual(result, { text: "Hello from free routing", model: "openrouter:openrouter/free" });
+  assert.equal(request.url, "https://openrouter.ai/api/v1/chat/completions");
+  assert.equal(request.init.headers.authorization, "Bearer test-openrouter-key");
+  assert.equal(JSON.parse(request.init.body).model, "openrouter/free");
+});
+
+test("uses the Gemini free-tier model when explicitly selected", async () => {
+  let request;
+  const result = await generateAIGatewayText({ system: "NEAS", user: "Hello" }, {
+    provider: "gemini",
+    providerApiKey: "test-gemini-key",
+    fetchImpl: async (url, init) => {
+      request = { url, init };
+      return new Response(JSON.stringify({ choices: [{ message: { content: "Hello from Gemini" } }] }), { status: 200 });
+    },
+  });
+  assert.deepEqual(result, { text: "Hello from Gemini", model: "gemini:gemini-3.8-flash" });
+  assert.equal(request.url, "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
+  assert.equal(JSON.parse(request.init.body).model, "gemini-3.8-flash");
+});
+
+test("uses Groq GPT-OSS inference only when explicitly selected", async () => {
+  let request;
+  const result = await generateAIGatewayText({ system: "NEAS", user: "Hello" }, {
+    provider: "groq",
+    providerApiKey: "test-groq-key",
+    fetchImpl: async (url, init) => {
+      request = { url, init };
+      return new Response(JSON.stringify({ choices: [{ message: { content: "Hello from Groq" } }] }), { status: 200 });
+    },
+  });
+  assert.deepEqual(result, { text: "Hello from Groq", model: "groq:openai/gpt-oss-120b" });
+  assert.equal(request.url, "https://api.groq.com/openai/v1/chat/completions");
+  assert.equal(JSON.parse(request.init.body).model, "openai/gpt-oss-120b");
+});
+
+test("routes xAI Grok through its separate paid API endpoint only when explicitly selected", async () => {
+  let request;
+  const result = await generateAIGatewayText({ system: "NEAS", user: "Hello" }, {
+    provider: "xai",
+    providerApiKey: "test-xai-key",
+    fetchImpl: async (url, init) => {
+      request = { url, init };
+      return new Response(JSON.stringify({ choices: [{ message: { content: "Hello from Grok" } }] }), { status: 200 });
+    },
+  });
+  assert.deepEqual(result, { text: "Hello from Grok", model: "xai:grok-4.7" });
+  assert.equal(request.url, "https://api.x.ai/v1/chat/completions");
+  assert.equal(JSON.parse(request.init.body).model, "grok-4.7");
+});
+
+test("treats an empty provider setting as the budgeted Vercel Gateway default", async () => {
+  const previous = process.env.NEAS_AI_PROVIDER;
+  process.env.NEAS_AI_PROVIDER = "";
+  try {
+    const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+      token: "test-project-oidc-token",
+      fetchImpl: async (_url, init) => {
+        assert.equal(init.headers.authorization, "Bearer test-project-oidc-token");
+        return new Response(JSON.stringify({ choices: [{ message: { content: "budgeted gateway response" } }] }), { status: 200 });
+      },
+    });
+    assert.deepEqual(result, { text: "budgeted gateway response", model: DEFAULT_AI_GATEWAY_MODEL });
+  } finally {
+    if (previous === undefined) delete process.env.NEAS_AI_PROVIDER;
+    else process.env.NEAS_AI_PROVIDER = previous;
+  }
+});
+
+test("does not silently fall back to paid inference when Groq has no key", async () => {
+  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+    provider: "groq",
+    providerApiKey: "",
+    fetchImpl: async () => { throw new Error("must not call network"); },
+  });
+  assert.equal("error" in result, true);
+  if ("error" in result) assert.match(result.error, /GROQ_API_KEY is missing/i);
 });
 
 test("does not force unrelated marketing tasks onto the AI Workforce Gateway", () => {
