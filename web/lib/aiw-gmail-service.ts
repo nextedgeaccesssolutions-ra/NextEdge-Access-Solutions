@@ -1,5 +1,8 @@
 import { ensureAiwGmailAccountsTable, getGmailAccessToken, recordAiwGmailAudit } from "@/lib/aiw-gmail";
 import { isValidEmailAddress } from "@/lib/aiw-email-validation";
+import { explainGmailFailure } from "@/lib/aiw-gmail-errors";
+
+export { explainGmailFailure };
 
 export type AiwGmailAccount = "info" | "operations";
 const READ_SCOPE = "https://www.googleapis.com/auth/gmail.metadata";
@@ -52,9 +55,8 @@ async function gmailRequest(account: AiwGmailAccount, actorId: number, scope: st
     const providerReason = String(data?.error?.errors?.[0]?.reason ?? data?.error?.status ?? data?.error?.code ?? "unknown").replace(/[^a-zA-Z0-9_.-]/g, "").slice(0, 80);
     const providerCode = String(response.status) + ":" + providerReason;
     await recordAiwGmailAudit({ accountKey: account, actorId, action: "gmail_api", outcome: "failure", providerCode, detail: "Gmail API request failed." });
-    if (response.status === 401 || response.status === 403) {
-      throw new AiwGmailError("Google rejected this mailbox authorization. Reconnect it or review the granted Gmail scopes.", response.status, "gmail_authorization_failed");
-    }
+    const explained = explainGmailFailure(response.status, providerReason);
+    if (explained) throw new AiwGmailError(explained.message, response.status, explained.code);
     throw new AiwGmailError("Gmail API request failed. Check the NEAS audit log for the provider status.", 502, "gmail_api_failed");
   }
   return data;
