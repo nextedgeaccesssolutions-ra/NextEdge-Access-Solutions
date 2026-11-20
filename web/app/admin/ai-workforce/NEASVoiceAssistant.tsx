@@ -22,10 +22,13 @@ type Turn = { role: "user" | "assistant"; content: string };
 
 export type NEASVoiceStatus = "idle" | "listening" | "thinking" | "speaking" | "error";
 export type NEASVoiceAssistantHandle = { toggleConversation: () => void };
-type NEASVoiceAssistantProps = { onStatusChange?: (status: NEASVoiceStatus, detail?: string) => void };
+type NEASVoiceAssistantProps = {
+  onStatusChange?: (status: NEASVoiceStatus, detail?: string) => void;
+  onTranscript?: (answer: string) => void;
+};
 
 const NEASVoiceAssistant = forwardRef<NEASVoiceAssistantHandle, NEASVoiceAssistantProps>(
-function NEASVoiceAssistant({ onStatusChange }, ref) {
+function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
   const persona = "ceo";
   const [history, setHistory] = useState<Turn[]>([]);
   const [busy, setBusy] = useState(false);
@@ -87,7 +90,7 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
           audioRef.current = null;
           conversationActive.current = false;
           recognition.current?.stop();
-          reportError("Natural voice playback failed. The microphone has stopped so this error remains visible.");
+          reportError("AI replied in text, but natural voice playback failed. Check the voice provider and try again.");
         }
       };
       onStatusChange?.("speaking");
@@ -95,7 +98,7 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
     } catch (cause) {
       conversationActive.current = false;
       recognition.current?.stop();
-      reportError(cause instanceof Error ? cause.message : "Natural AI voice generation failed. Your written response remains available. The microphone has stopped so this error remains visible.");
+      reportError(cause instanceof Error ? cause.message : "AI replied in text, but natural voice generation failed. Check the voice provider and try again.");
     }
   };
 
@@ -120,6 +123,8 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
       const answer = String(data.reply || "").trim();
       if (!answer) throw new Error("The AI provider returned an empty response.");
       setHistory([...nextHistory, { role: "assistant" as const, content: answer }].slice(-16));
+      // Publish the answer before TTS so a voice-provider outage never hides a successful AI reply.
+      onTranscript?.(answer);
       await speak(answer);
     } catch (cause) {
       conversationActive.current = false;
@@ -169,7 +174,6 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
         reportError(detail);
       };
       instance.onend = () => {
-        // Do not let the browser end event erase an actionable recognition error.
         if (!capturedSpeech && !recognitionFailed && conversationActive.current) onStatusChange?.("idle");
       };
       recognition.current = instance;
@@ -191,12 +195,8 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
     startListening();
   };
 
-  // The central core remains visible throughout the conversation. A tap
-  // toggles the microphone; after each spoken answer, listening resumes.
   useImperativeHandle(ref, () => ({ toggleConversation }), [toggleConversation]);
 
-  // Voice runs headlessly: tapping the NEAS AI core starts recognition
-  // and responses play through the configured natural voice provider.
   return null;
 });
 
