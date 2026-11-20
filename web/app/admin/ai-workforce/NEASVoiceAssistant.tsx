@@ -20,6 +20,9 @@ type SpeechWindow = Window & {
 };
 type Turn = { role: "user" | "assistant"; content: string };
 
+// Matches MAX_TEXT_LENGTH in app/api/neas-voice-tts/route.ts.
+const MAX_SPOKEN_CHARS = 1000;
+
 export type NEASVoiceStatus = "idle" | "listening" | "thinking" | "speaking" | "error";
 export type NEASVoiceAssistantHandle = { toggleConversation: () => void };
 type NEASVoiceAssistantProps = {
@@ -38,12 +41,23 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
   const conversationActive = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  // Set before any deliberate speechSynthesis.cancel() so the resulting "canceled"
+  // error is not mistaken for the browser voice failing.
+  const speechCancelled = useRef(false);
+
+  const cancelBrowserSpeech = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    speechCancelled.current = true;
+    window.speechSynthesis.cancel();
+  };
 
   useEffect(() => () => {
     conversationActive.current = false;
     recognition.current?.stop();
     audioRef.current?.pause();
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    // Without this the browser keeps talking after the page is left.
+    cancelBrowserSpeech();
   }, []);
 
   const stopAudio = () => {
@@ -51,7 +65,83 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
     audioRef.current = null;
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
     audioUrlRef.current = null;
-    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    cancelBrowserSpeech();
+  };
+
+  // Last-resort voice: the browser's own speech synthesiser. Needs no API key and no
+  // network, so NEAS AI still speaks when every remote natural-voice provider is down.
+  const browserSpeech = (value: string) =>
+    new Promise<void>((resolve, reject) => {
+      if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+        reject(new Error("This browser has no built-in speech synthesiser."));
+        return;
+      }
+      const synth = window.speechSynthesis;
+      // Same cap the remote provider gets, so the spoken reply never runs far longer
+      // than the natural-voice path would have.
+      const utterance = new SpeechSynthesisUtterance(value.slice(0, MAX_SPOKEN_CHARS));
+      utterance.lang = "en-PH";
+      utterance.rate = 1;
+      utterance.pitch = 1;
+
+      let settled = false;
+      let started = false;
+      let keepAlive = 0;
+      let watchdog = 0;
+
+      const finish = (failure?: Error) => {
+        if (settled) return;
+        settled = true;
+        window.clearInterval(keepAlive);
+        window.clearTimeout(watchdog);
+        if (failure) reject(failure);
+        else resolve();
+      };
+
+      // The watchdog only settles while nothing is being spoken. Re-arming while
+      // synth.speaking keeps the microphone from reopening over NEAS AI's own voice,
+      // which would otherwise transcribe the assistant back into the conversation.
+      const armWatchdog = (ms: number) => {
+        window.clearTimeout(watchdog);
+        watchdog = window.setTimeout(() => {
+          if (speechCancelled.current) return finish();
+          if (synth.speaking) return armWatchdog(15_000);
+          finish(started ? undefined : new Error("The browser voice produced no audio."));
+        }, ms);
+      };
+
+      utterance.onstart = () => { started = true; };
+      utterance.onend = () => finish();
+      utterance.onerror = (event) => {
+        // stopAudio() and toggleConversation() cancel speech deliberately; Chrome
+        // reports that as an error, but it is a user action, not a voice failure.
+        if (speechCancelled.current || event.error === "canceled" || event.error === "interrupted") finish();
+        else finish(new Error(`The browser speech synthesiser failed (${event.error}).`));
+      };
+
+      // Chrome pauses long utterances after ~15s; pumping resume() keeps it talking.
+      keepAlive = window.setInterval(() => { if (synth.speaking) synth.resume(); }, 10_000);
+      armWatchdog(12_000);
+      synth.cancel();
+      speechCancelled.current = false;
+      synth.speak(utterance);
+    });
+
+  // Shared by every path that leaves NEAS AI without remote audio.
+  const fallbackToBrowserVoice = async (value: string, remoteFailure: string) => {
+    try {
+      onStatusChange?.("speaking", "Natural voice is unavailable. Using the built-in browser voice.");
+      await browserSpeech(value);
+      if (speechCancelled.current) return;
+      if (conversationActive.current) startListening();
+      else onStatusChange?.("idle");
+    } catch (cause) {
+      conversationActive.current = false;
+      recognition.current?.stop();
+      const detail = cause instanceof Error ? cause.message : "The built-in browser voice is unavailable.";
+      console.error("[NEASVoiceAssistant] Every voice output failed.", { remoteFailure, fallback: detail });
+      reportError(`${remoteFailure} ${detail} Your written AI response remains available.`);
+    }
   };
 
   const speak = async (value: string) => {
@@ -62,7 +152,7 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
         credentials: "same-origin",
         cache: "no-store",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: value.slice(0, 1000) }),
+        body: JSON.stringify({ text: value.slice(0, MAX_SPOKEN_CHARS) }),
         signal: AbortSignal.timeout(30_000),
       });
       if (!response.ok) {
@@ -89,17 +179,17 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
           URL.revokeObjectURL(audioUrl);
           audioUrlRef.current = null;
           audioRef.current = null;
-          conversationActive.current = false;
-          recognition.current?.stop();
-          reportError("Natural AI audio could not be played. Check browser audio permissions and try again.");
+          void fallbackToBrowserVoice(value, "Natural AI audio could not be played.");
         }
       };
       onStatusChange?.("speaking");
       await audio.play();
     } catch (cause) {
-      conversationActive.current = false;
-      recognition.current?.stop();
-      reportError(cause instanceof Error ? cause.message : "Natural AI voice is unavailable. Your written AI response remains available.");
+      // A natural-voice outage must not end the conversation: fall back to the browser voice.
+      await fallbackToBrowserVoice(
+        value,
+        cause instanceof Error ? cause.message : "Natural AI voice is unavailable.",
+      );
     }
   };
 
