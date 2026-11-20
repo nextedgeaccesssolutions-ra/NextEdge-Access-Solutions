@@ -26,7 +26,6 @@ function NEASVoiceAssistant(_props, ref) {
   const persona = "ceo";
   const [history, setHistory] = useState<Turn[]>([]);
   const [busy, setBusy] = useState(false);
-  const [listening, setListening] = useState(false);
   const [, setError] = useState("");
   const recognition = useRef<RecognitionInstance | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -135,12 +134,9 @@ function NEASVoiceAssistant(_props, ref) {
         }
       };
       instance.onerror = (event) => setError(event.error === "not-allowed" ? "Microphone permission is blocked. Allow microphone access for this website in your browser settings." : "Voice recognition stopped: " + event.error);
-      instance.onend = () => setListening(false);
       recognition.current = instance;
-      setListening(true);
       instance.start();
     } catch {
-      setListening(false);
       setError("Could not start the microphone. Check browser permission and try again.");
     }
   };
