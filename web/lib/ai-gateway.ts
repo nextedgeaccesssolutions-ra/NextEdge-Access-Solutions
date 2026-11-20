@@ -140,6 +140,7 @@ async function generateProviderText(
   apiKey: string,
   fetchImpl: typeof fetch,
   modelOverride?: string,
+  requestOptions: { maxTokens?: number; timeoutMs?: number } = {},
 ): Promise<AIGatewayResult> {
   const isOpenRouter = provider === "openrouter";
   const isGemini = provider === "gemini";
@@ -167,10 +168,10 @@ async function generateProviderText(
           { role: "system", content: input.system },
           { role: "user", content: input.user },
         ],
-        max_tokens: 1600,
+        max_tokens: requestOptions.maxTokens ?? 1600,
         temperature: 0.3,
       }),
-      signal: AbortSignal.timeout(45_000),
+      signal: AbortSignal.timeout(requestOptions.timeoutMs ?? 45_000),
     });
     const payload = await response.json().catch(() => ({})) as UnknownRecord;
     if (!response.ok) {
@@ -250,13 +251,13 @@ export async function generateAIGatewayText(
       return { error: `NEAS AI provider is set to ${provider}, but ${keyName} is missing. Add the key as a Vercel server-side environment variable. No provider fallback was used.` };
     }
     // Direct provider billing is separate from the Vercel project budget. OpenRouter failover is limited to the explicitly configured Groq key; it never falls back from Vercel OIDC or changes the selected provider for other errors.
-    const primary = await generateProviderText(provider, input, apiKey, fetchImpl, registryModel);
+    const primary = await generateProviderText(provider, input, apiKey, fetchImpl, registryModel, options);
     if (provider === "openrouter" && "error" in primary) {
       const failoverReason = openRouterFailoverReason(primary.error);
       if (failoverReason) {
         const groqKey = (process.env.GROQ_API_KEY ?? "").trim();
         if (!groqKey) return { error: `${primary.error} Automatic Groq fallback is not configured because GROQ_API_KEY is missing.` };
-        const fallback = await generateProviderText("groq", input, groqKey, fetchImpl);
+        const fallback = await generateProviderText("groq", input, groqKey, fetchImpl, undefined, options);
         if (!("error" in fallback)) return { ...fallback, model: `${fallback.model} (automatic fallback after ${failoverReason})` };
         return { error: `${primary.error} Groq fallback also failed: ${fallback.error}` };
       }
