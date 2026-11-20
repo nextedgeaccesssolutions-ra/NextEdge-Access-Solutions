@@ -1,13 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
-
-export type AdminSection = "orders" | "products" | "customers" | "sheet" | "website";
+export type AdminSection = "orders" | "products" | "customers" | "sheet" | "website" | "analytics";
 type Item = { id: AdminSection; label: string; icon: string; badge?: number; hint: string };
-
 export default function AdminShell({ counts, sections, adminName }: { counts: { awaiting: number; customers: number; products: number }; adminName: string; sections: Record<AdminSection, React.ReactNode> }) {
   const [sec, setSec] = useState<AdminSection>("orders");
   useEffect(() => {
-    try { const s = new URLSearchParams(location.search).get("s") as AdminSection | null; if (s && ["orders", "products", "customers", "sheet", "website"].includes(s)) setSec(s); } catch {}
+    try { const s = new URLSearchParams(location.search).get("s") as AdminSection | null; if (s && ["orders", "products", "customers", "sheet", "website", "analytics"].includes(s)) setSec(s); } catch {}
   }, []);
   const go = (s: AdminSection) => { setSec(s); try { history.replaceState(null, "", "?s=" + s); } catch {} window.scrollTo({ top: 0 }); };
   const groups: { title: string; items: Item[] }[] = [
@@ -19,6 +17,7 @@ export default function AdminShell({ counts, sections, adminName }: { counts: { 
     ] },
     { title: "Website", items: [
       { id: "website", label: "SEO, Google & Social", icon: "🌐", hint: "Logo, SEO, Business Profile, social links" },
+      { id: "analytics", label: "Website Analytics", icon: "📊", hint: "Rybbit traffic, sessions and visitors" },
     ] },
   ];
   const all = groups.flatMap((g) => g.items);
