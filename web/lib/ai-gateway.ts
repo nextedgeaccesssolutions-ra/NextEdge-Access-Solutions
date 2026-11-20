@@ -224,6 +224,7 @@ export async function generateAIGatewayText(
     providerApiKey?: string;
     fetchImpl?: typeof fetch;
     maxTokens?: number;
+    timeoutMs?: number;
   } = {},
 ): Promise<AIGatewayResult> {
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -288,7 +289,7 @@ export async function generateAIGatewayText(
         ],
         max_tokens: options.maxTokens ?? 4000,
       }),
-      signal: AbortSignal.timeout(45_000),
+      signal: AbortSignal.timeout(options.timeoutMs ?? 45_000),
     });
     let response = await gatewayRequest();
     // Retry one short, transient 429 in-place. Respect Retry-After, but keep the

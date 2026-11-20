@@ -46,6 +46,7 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
   // error is not mistaken for the browser voice failing.
   const speechCancelled = useRef(false);
   const silenceTimer = useRef<number | null>(null);
+  const restartTimer = useRef<number | null>(null);
   const pendingFinalTranscript = useRef("");
   const pendingInterimTranscript = useRef("");
   const busyRef = useRef(false);
@@ -59,6 +60,7 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
   useEffect(() => () => {
     conversationActive.current = false;
     if (silenceTimer.current !== null) window.clearTimeout(silenceTimer.current);
+    if (restartTimer.current !== null) window.clearTimeout(restartTimer.current);
     recognition.current?.stop();
     audioRef.current?.pause();
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
@@ -218,8 +220,8 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
         credentials: "same-origin",
         cache: "no-store",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "voiceChat", persona, message: prompt, history: history.slice(-8) }),
-        signal: AbortSignal.timeout(55_000),
+        body: JSON.stringify({ action: "voiceChat", persona, message: prompt, history: history.slice(-4) }),
+        signal: AbortSignal.timeout(35_000),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "NEAS AI could not answer this request.");
@@ -249,8 +251,20 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
     }
   };
 
+  const scheduleListeningRestart = (delay: number) => {
+    if (restartTimer.current !== null) window.clearTimeout(restartTimer.current);
+    restartTimer.current = window.setTimeout(() => {
+      restartTimer.current = null;
+      if (conversationActive.current && !busyRef.current && !audioRef.current) startListening();
+    }, delay);
+  };
+
   const startListening = () => {
     if (!conversationActive.current) return;
+    if (restartTimer.current !== null) {
+      window.clearTimeout(restartTimer.current);
+      restartTimer.current = null;
+    }
     setError("");
     const speechWindow = window as SpeechWindow;
     const Recognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
@@ -279,7 +293,7 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
         instance.stop();
         void sendMessage(transcript);
       };
-      instance.onstart = () => onStatusChange?.("listening", "Speak naturally. NEAS AI sends automatically when you finish.");
+      instance.onstart = () => onStatusChange?.("listening", "Microphone on · speak naturally. NEAS AI will respond automatically when you finish.");
       instance.onresult = (event) => {
         let finalChunk = "";
         let interimChunk = "";
@@ -303,14 +317,18 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
         if (!capturedSpeech) return;
         onStatusChange?.("listening", "Finishing your sentence…");
         if (silenceTimer.current !== null) window.clearTimeout(silenceTimer.current);
-        silenceTimer.current = window.setTimeout(submitRecognizedTurn, 1100);
+        silenceTimer.current = window.setTimeout(submitRecognizedTurn, 900);
       };
       instance.onerror = (event) => {
         recognitionFailed = true;
         if (event.error === "no-speech") {
-          if (conversationActive.current) {
-            window.setTimeout(() => { if (conversationActive.current && !busyRef.current) startListening(); }, 350);
-          }
+          onStatusChange?.("listening", "I didn't catch that. Microphone remains active—please speak when ready.");
+          if (conversationActive.current) scheduleListeningRestart(450);
+          return;
+        }
+        if (event.error === "network") {
+          onStatusChange?.("listening", "Reconnecting speech recognition… please keep the page open.");
+          if (conversationActive.current) scheduleListeningRestart(1200);
           return;
         }
         const detail = event.error === "not-allowed" || event.error === "service-not-allowed"
@@ -328,7 +346,7 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
           return;
         }
         if (!capturedSpeech && !recognitionFailed && conversationActive.current) {
-          window.setTimeout(() => { if (conversationActive.current && !busyRef.current) startListening(); }, 250);
+          scheduleListeningRestart(250);
         }
       };
       recognition.current = instance;
@@ -342,6 +360,8 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
     if (conversationActive.current) {
       conversationActive.current = false;
       if (silenceTimer.current !== null) window.clearTimeout(silenceTimer.current);
+      if (restartTimer.current !== null) window.clearTimeout(restartTimer.current);
+      restartTimer.current = null;
       silenceTimer.current = null;
       pendingFinalTranscript.current = "";
       pendingInterimTranscript.current = "";
