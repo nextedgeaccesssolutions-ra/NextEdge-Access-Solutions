@@ -51,6 +51,35 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
     audioRef.current = null;
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
     audioUrlRef.current = null;
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+  };
+
+  const speakWithDeviceVoice = (value: string) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
+      reportError("NEAS AI received a response, but audio playback is unavailable in this browser. Check your device audio settings.");
+      if (conversationActive.current) startListening();
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(value.slice(0, 1000));
+    utterance.lang = "en-PH";
+    utterance.rate = 0.96;
+    utterance.pitch = 1;
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find((voice) => voice.lang.toLowerCase() === "en-ph")
+      ?? voices.find((voice) => voice.lang.toLowerCase().startsWith("en-us"))
+      ?? voices.find((voice) => voice.lang.toLowerCase().startsWith("en-gb"));
+    if (preferredVoice) utterance.voice = preferredVoice;
+    utterance.onend = () => {
+      if (conversationActive.current) startListening();
+      else onStatusChange?.("idle");
+    };
+    utterance.onerror = (event) => {
+      reportError("Device voice playback failed: " + event.error);
+      if (conversationActive.current) startListening();
+    };
+    onStatusChange?.("speaking", "Using the device voice fallback because natural voice service is unavailable.");
+    window.speechSynthesis.speak(utterance);
   };
 
   const speak = async (value: string) => {
@@ -88,17 +117,14 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
           URL.revokeObjectURL(audioUrl);
           audioUrlRef.current = null;
           audioRef.current = null;
-          conversationActive.current = false;
-          recognition.current?.stop();
-          reportError("AI replied in text, but natural voice playback failed. Check the voice provider and try again.");
+          speakWithDeviceVoice(value);
         }
       };
       onStatusChange?.("speaking");
       await audio.play();
-    } catch (cause) {
-      conversationActive.current = false;
-      recognition.current?.stop();
-      reportError(cause instanceof Error ? cause.message : "AI replied in text, but natural voice generation failed. Check the voice provider and try again.");
+    } catch {
+      // Preserve the written AI reply and use the browser voice if natural TTS is unavailable.
+      speakWithDeviceVoice(value);
     }
   };
 
