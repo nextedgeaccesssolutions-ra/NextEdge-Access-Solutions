@@ -36,9 +36,10 @@ const personas = [
 
 export default function NEASVoiceAssistant() {
   const [persona, setPersona] = useState<string>("ceo");
+  const [panelOpen, setPanelOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [history, setHistory] = useState<Turn[]>([]);
-  const [reply, setReply] = useState("Good day. NEAS AI is ready. Select the CEO, CAIO or a specialist, then speak or type your instruction.");
+  const [reply, setReply] = useState("Good day. NEAS AI Orchestration Core is ready. Speak your instruction and I will coordinate the right specialist.");
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -47,18 +48,17 @@ export default function NEASVoiceAssistant() {
   const recognition = useRef<RecognitionInstance | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const startListeningRef = useRef<() => void>(() => undefined);
 
   const active = personas.find((item) => item.id === persona) ?? personas[0];
 
   useEffect(() => () => {
     recognition.current?.stop();
-    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
     audioRef.current?.pause();
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
   }, []);
 
   const stopAudio = () => {
-    window.speechSynthesis?.cancel();
     audioRef.current?.pause();
     audioRef.current = null;
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
@@ -66,34 +66,24 @@ export default function NEASVoiceAssistant() {
     setSpeaking(false);
   };
 
-  const browserSpeak = (value: string) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      setError("Spoken output is not supported in this browser. The text response is still available.");
-      return;
-    }
-    const utterance = new SpeechSynthesisUtterance(value.slice(0, 3500));
-    utterance.lang = "en-PH";
-    utterance.rate = 1;
-    utterance.pitch = 1;
-    utterance.onstart = () => setSpeaking(true);
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-    window.speechSynthesis.speak(utterance);
-  };
-
   const speak = async (value: string) => {
     stopAudio();
     try {
-      const response = await fetch("/api/elevenlabs-tts", {
+      const response = await fetch("/api/neas-voice-tts", {
         method: "POST",
         credentials: "same-origin",
         cache: "no-store",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text: value.slice(0, 1000) }),
-        signal: AbortSignal.timeout(25_000),
+        signal: AbortSignal.timeout(30_000),
       });
-      if (!response.ok) throw new Error("Premium voice is unavailable");
-      const audioUrl = URL.createObjectURL(await response.blob());
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(typeof data.error === "string" ? data.error : "Natural AI voice is temporarily unavailable.");
+      }
+      const blob = await response.blob();
+      if (!blob.size) throw new Error("The natural voice provider returned an empty audio file.");
+      const audioUrl = URL.createObjectURL(blob);
       audioUrlRef.current = audioUrl;
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
@@ -112,12 +102,13 @@ export default function NEASVoiceAssistant() {
           audioRef.current = null;
         }
         setSpeaking(false);
+        setError("Natural voice playback failed. Your written AI response is still available.");
       };
       await audio.play();
       setSpeaking(true);
-    } catch {
-      setError("ElevenLabs voice is unavailable or out of credits. Falling back to free browser voice.");
-      browserSpeak(value);
+    } catch (cause) {
+      setSpeaking(false);
+      setError(cause instanceof Error ? cause.message : "Natural AI voice generation failed. Your written response remains available.");
     }
   };
 
@@ -183,6 +174,28 @@ export default function NEASVoiceAssistant() {
     }
   };
 
+  startListeningRef.current = startListening;
+
+  useEffect(() => {
+    const activateVoice = () => {
+      setPanelOpen(true);
+      startListeningRef.current();
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setPanelOpen(false);
+        recognition.current?.stop();
+        stopAudio();
+      }
+    };
+    window.addEventListener("neas-ai-talk", activateVoice);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("neas-ai-talk", activateVoice);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
   const selectPersona = (value: string) => {
     setPersona(value);
     setHistory([]);
@@ -193,8 +206,24 @@ export default function NEASVoiceAssistant() {
     stopAudio();
   };
 
+  if (!panelOpen) return null;
+
+  const closeVoicePanel = () => {
+    setPanelOpen(false);
+    recognition.current?.stop();
+    stopAudio();
+  };
+
   return (
-    <section id="neas-ai-voice-console" aria-label="NEAS AI Orchestration Core voice interface" style={{ scrollMarginTop: 24, margin: "18px 0", padding: 20, border: "1px solid #ca933266", borderRadius: 18, background: "radial-gradient(circle at 85% 0%,#3a2a1644,transparent 35%),linear-gradient(135deg,#071d29,#101b25 68%,#211b11)", color: "#e7edf4", boxShadow: "0 18px 55px #0005" }}>
+    <div
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) closeVoicePanel();
+      }}
+      style={{ position: "fixed", inset: 0, zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, background: "rgba(0,0,0,.78)", backdropFilter: "blur(8px)" }}
+    >
+    <section id="neas-ai-voice-console" role="dialog" aria-modal="true" aria-label="NEAS AI Orchestration Core voice interface" style={{ position: "relative", width: "min(860px, 100%)", maxHeight: "92vh", overflowY: "auto", padding: 20, border: "1px solid #ca933266", borderRadius: 18, background: "radial-gradient(circle at 85% 0%,#3a2a1644,transparent 35%),linear-gradient(135deg,#071d29,#101b25 68%,#211b11)", color: "#e7edf4", boxShadow: "0 18px 55px #0009" }}>
+      <button type="button" onClick={closeVoicePanel} aria-label="Close NEAS AI voice session" style={{ position: "absolute", top: 12, right: 12, zIndex: 2, width: 34, height: 34, borderRadius: 99, border: "1px solid #ca933288", background: "#07111c", color: "#f2d6a2", fontSize: 20, cursor: "pointer" }}>×</button>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div><div style={{ color: "#ebc07e", fontSize: 10, letterSpacing: ".2em", fontWeight: 800 }}>NEAS AI ORCHESTRATION CORE</div><h2 style={{ fontSize: 22, margin: "5px 0", color: "#f1d5a0" }}>CEO · CAIO · SPECIALISTS</h2><p style={{ color: "#a7b7c4", fontSize: 12, margin: 0 }}>One secure voice interface for the NEAS executive and specialist workforce</p></div>
         <span style={{ border: "1px solid #4b967455", color: "#9ce0ba", borderRadius: 99, padding: "6px 11px", fontSize: 10 }}>ADMIN SESSION PROTECTED</span>
@@ -218,9 +247,9 @@ export default function NEASVoiceAssistant() {
           </div>
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 10 }}>
             <span style={{ fontSize: 9, color: "#9ce0ba", border: "1px solid #4b967455", borderRadius: 99, padding: "4px 8px" }}>VOICE INPUT READY</span>
-            <span style={{ fontSize: 9, color: "#ebc07e", border: "1px solid #ca933255", borderRadius: 99, padding: "4px 8px" }}>SPOKEN REPLIES</span>
+            <span style={{ fontSize: 9, color: "#ebc07e", border: "1px solid #ca933255", borderRadius: 99, padding: "4px 8px" }}>NATURAL VOICE OUTPUT</span>
           </div>
-          <div style={{ color: "#9ce0ba", fontSize: 10, marginTop: 11 }}>Natural AI voice enabled · browser voice is fallback only</div>
+          <div style={{ color: "#9ce0ba", fontSize: 10, marginTop: 11 }}>Natural AI voice · OpenRouter Fish Audio · no robotic fallback</div>
         </div>
 
         <div style={{ minWidth: 0 }}>
@@ -242,7 +271,8 @@ export default function NEASVoiceAssistant() {
           {error ? <p role="alert" style={{ color: "#ffb3a9", fontSize: 12, margin: "9px 0 0" }}>{error}</p> : null}
         </div>
       </div>
-      <p style={{ color: "#71869a", fontSize: 10, margin: "13px 0 0" }}>Microphone starts only when you press Start talking. Browser speech recognition provides microphone input. Replies use the configured ElevenLabs natural voice and consume account credits; browser speech is used only if premium voice is unavailable. AI reasoning runs through the configured NEAS server-side provider. Specialist agents advise and prepare work; external actions, spending, deployment and safety-critical approvals remain subject to NEAS authorization.</p>
+      <p style={{ color: "#71869a", fontSize: 10, margin: "13px 0 0" }}>Microphone starts only after you press the central NEAS AI core. Browser speech recognition provides microphone input. Replies use the configured natural AI voice provider; robotic browser speech is deliberately disabled. AI reasoning runs through the configured NEAS server-side provider. Specialist agents advise and prepare work; external actions, spending, deployment and safety-critical approvals remain subject to NEAS authorization.</p>
     </section>
+    </div>
   );
 }
