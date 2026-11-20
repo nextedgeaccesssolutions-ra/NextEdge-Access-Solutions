@@ -1,24 +1,21 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useRef } from "react";
 import NEASCommandVisual from "./NEASCommandVisual";
 import NEASVoiceAssistant, { type NEASVoiceAssistantHandle } from "./NEASVoiceAssistant";
 
 export default function NEASOrchestrationCore() {
-  const [consoleOpen, setConsoleOpen] = useState(false);
   const voiceAssistantRef = useRef<NEASVoiceAssistantHandle>(null);
-  const openConsole = useCallback(() => {
-    // Start recognition in the actual tap event so browser user-activation
-    // requirements are respected; then reveal the voice console.
+  const startVoice = () => {
+    // Start speech recognition directly from the user's tap.
+    // The voice engine is headless; no popup or modal is rendered.
     voiceAssistantRef.current?.startListening();
-    setConsoleOpen(true);
-  }, []);
-  const closeConsole = useCallback(() => setConsoleOpen(false), []);
+  };
 
   return (
     <>
-      <NEASCommandVisual onOpenConsole={openConsole} />
-      <NEASVoiceAssistant ref={voiceAssistantRef} open={consoleOpen} onClose={closeConsole} />
+      <NEASCommandVisual onOpenConsole={startVoice} />
+      <NEASVoiceAssistant ref={voiceAssistantRef} />
     </>
   );
 }
