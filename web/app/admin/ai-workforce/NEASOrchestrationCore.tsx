@@ -1,8 +1,18 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import NEASCommandVisual from "./NEASCommandVisual";
+import NEASVoiceAssistant from "./NEASVoiceAssistant";
 
-/** The executive command-center visual remains; the legacy voice modal is removed. */
 export default function NEASOrchestrationCore() {
-  return <NEASCommandVisual />;
+  const [consoleOpen, setConsoleOpen] = useState(false);
+  const openConsole = useCallback(() => setConsoleOpen(true), []);
+  const closeConsole = useCallback(() => setConsoleOpen(false), []);
+
+  return (
+    <>
+      <NEASCommandVisual onOpenConsole={openConsole} />
+      <NEASVoiceAssistant open={consoleOpen} onClose={closeConsole} />
+    </>
+  );
 }
