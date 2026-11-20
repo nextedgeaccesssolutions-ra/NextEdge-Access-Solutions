@@ -24,15 +24,17 @@ function layout(title: string, body: string) {
 <div style="padding:14px 22px;background:#f8fafc;color:#64748b;font-size:12px">NextEdge Access Solutions (NEAS) OPC · +63 991 426 5886 · ${esc(SITE().replace(/^https?:\/\//, ""))}</div></div></div>`;
 }
 
-export async function sendMail(to: string, subject: string, html: string, kind: string): Promise<boolean> {
+export async function sendMail(to: string, subject: string, html: string, kind: string, replyTo?: string): Promise<boolean> {
   await loadConfig().catch(() => {});
   const key = process.env.RESEND_API_KEY;
   let ok = false, error: string | null = null;
   if (!key) error = "RESEND_API_KEY not set";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) error = "Invalid recipient";
+  else if (replyTo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyTo)) error = "Invalid reply-to";
   else {
     try {
-      const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ from: FROM(), to, subject, html }) });
+      const payload = { from: FROM(), to, subject, html, ...(replyTo ? { reply_to: replyTo } : {}) };
+      const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify(payload) });
       ok = r.ok; if (!ok) error = ((await r.json().catch(() => ({}))) as { message?: string }).message || `Resend answered ${r.status}`;
     } catch (e) { error = (e as Error).message; }
   }

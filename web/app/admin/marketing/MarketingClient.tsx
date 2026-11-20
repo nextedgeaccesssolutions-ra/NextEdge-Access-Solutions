@@ -15,8 +15,10 @@ type State = {
   site: { orders30: number; sales30: number; products: number; customers: number };
   accounts?: { id: number; platform: string; name: string; status: string; error: string; expires_at: string | null }[];
   results?: { post_id: number; platform: string; ok: boolean; remote_id: string; error: string; at: string }[];
+  recovery?: { id: number; post_id: number; account_id: number; platform: string; state: "needs_review" | "retryable" | "retry_ready"; error_class: string; error_message: string; attempts: number; resolution_note: string; updated_at: string; title: string; account_name: string }[];
   connectReady?: { facebook: boolean; linkedin: boolean; linkedinPages?: boolean; google?: boolean; tiktok?: boolean };
   media?: { id: number; url: string; title: string; width: number | null; height: number | null; at: string }[];
+  studioLogo?: string;
   automation?: { orderAlert: boolean; orderConfirm: boolean; orderStatus: boolean; approval: boolean; publishFail: boolean; alertEmail: string };
   emailReady?: boolean;
   emailLog?: { to: string; subject: string; kind: string; ok: boolean; error: string; at: string }[];
@@ -24,7 +26,8 @@ type State = {
   tenant?: boolean; dailyLimit?: number | null; publishedToday?: number | null;
   members?: { id: number; name: string; email: string; status: string; ref: string; at: string | null; until?: string | null }[];
   reach7?: { fetchedAt?: string; reached: number; views: number } | null;
-  scheduler?: { url: string; hasCronSecret: boolean; last: { at?: string; published?: number; failed?: number } };
+  scheduler?: { url: string; hasCronSecret: boolean; last: { at?: string; published?: number; failed?: number; store?: { created?: number; skipped?: string; error?: string; catalogCount?: number } } };
+  storeAutomation?: { enabled: boolean; dailyCount: number; platforms: string[] } | null;
 };
 type Mod = "dashboard" | "compose" | "calendar" | "inbox" | "analytics" | "brands" | "accounts" | "reports" | "strategy" | "feeds" | "automation" | "studio" | "bio" | "team" | "settings";
 
@@ -79,7 +82,20 @@ export default function MarketingClient() {
   useEffect(() => { try { const m = new URLSearchParams(location.search).get("m") as Mod | null; if (m) setMod(m); setCollapsed(localStorage.getItem("mkCollapsed") === "1"); } catch {} }, []);
   const go = (m: Mod) => { setMod(m); setMobileNav(false); try { history.replaceState(null, "", "?m=" + m); } catch {} };
   const flash = (t: string) => { setToast(t); setTimeout(() => setToast(""), 3500); };
-  const run = async (body: unknown, okMsg: string) => { try { const r = await call(body); flash(okMsg); await load(); return r; } catch (e) { flash("⚠ " + (e as Error).message); return null; } };
+  const run = async (body: unknown, okMsg: string) => {
+    try {
+      const r = await call(body);
+      const action = body && typeof body === "object" ? (body as { action?: string }).action : "";
+      if (action === "publishNow") {
+        const result = r as { allOk?: boolean; results?: { platform: string; name?: string; ok: boolean; error?: string }[] };
+        const successes = (result.results ?? []).filter((x) => x.ok).length;
+        const failures = (result.results ?? []).filter((x) => !x.ok);
+        flash(result.allOk ? `Published successfully to ${successes} connected account(s) ✓` : `Publishing incomplete: ${successes} succeeded, ${failures.length} failed. ${failures.slice(0, 2).map((x) => x.platform + ": " + (x.error || "failed")).join(" · ")}`);
+      } else flash(okMsg);
+      await load();
+      return r;
+    } catch (e) { flash("⚠ " + (e as Error).message); return null; }
+  };
 
   if (err) return <div className="mk"><Style /><div className="mk-main"><div className="mk-card">⚠ {err}</div></div></div>;
   if (!s) return <div className="mk"><Style /><div className="mk-main"><div className="mk-card">Loading Marketing Command Center…</div></div></div>;
@@ -159,6 +175,7 @@ function Dashboard({ s, go, openCompose, can, run, refresh }: { s: State; go: (m
   const today = s.posts.filter((p) => p.scheduled_at && sameDay(new Date(p.scheduled_at), now));
   const pending = s.posts.filter((p) => p.status === "pending");
   const failed = s.posts.filter((p) => p.status === "failed");
+  const readyToPublish = s.posts.filter((p) => p.status === "approved" || p.status === "scheduled").slice(0, 6);
   const pubMonth = s.posts.filter((p) => p.status === "published" && new Date(p.updated_at).getMonth() === now.getMonth() && new Date(p.updated_at).getFullYear() === now.getFullYear()).length;
   const hr = now.getHours(); const greet = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
   const goal = s.brand.goal || 0;
@@ -181,14 +198,23 @@ function Dashboard({ s, go, openCompose, can, run, refresh }: { s: State; go: (m
       <button type="button" className="mk-btn ghost" onClick={() => go("calendar")}>▤ View Calendar</button>
       <button type="button" className="mk-btn ghost" onClick={() => go("reports")}>⎙ Run Report</button>
       <button type="button" className="mk-btn ghost" onClick={() => go("strategy")}>✦ AI Content</button>
+      <button type="button" className="mk-btn ghost" onClick={() => go("automation")}>⚡ Store Autopilot</button>
     </div></div>
     <div className="mk-card"><div className="mk-label between">Connection health <button type="button" className="mk-link" onClick={() => go("accounts")}>Manage connections →</button></div>
-      <div className="mk-grid3">{s.platforms.map((p) => <div key={p.id} className="mk-item"><div><b>{p.name}</b><small>{p.ready ? "Credentials configured" : p.needs || "Not configured"}</small></div><span className={"mk-pill " + (p.ready ? "st-published" : "st-failed")}>{p.ready ? "Ready" : "Needs setup"}</span></div>)}</div>
+      <div className="mk-grid3">{s.platforms.map((p) => {
+        const records = (s.accounts ?? []).filter((a) => a.platform === p.id);
+        const healthy = records.filter((a) => a.status === "ok").length;
+        const label = healthy ? `${healthy} connected account(s) healthy` : records.length ? "Connected account needs attention" : p.ready ? "Credentials set · account not connected" : p.needs || "Not configured";
+        return <div key={p.id} className="mk-item"><div><b>{p.name}</b><small>{label}</small></div><span className={"mk-pill " + (healthy ? "st-published" : records.length || !p.ready ? "st-failed" : "st-draft")}>{healthy ? "Connected" : records.length ? "Error" : p.ready ? "Not connected" : "Needs setup"}</span></div>;
+      })}</div>
       {accountErrors.length > 0 && <div className="mk-note" style={{ marginTop: 12 }}>{accountErrors.length} connected account(s) need attention. Open Social Accounts for details.</div>}
       {(s.accounts ?? []).length > 0 && <div className="mk-mini" style={{ marginTop: 10 }}>{connectedCount} of {s.accounts!.length} account records are healthy.</div>}
     </div>
-    {(pending.length > 0 || failed.length > 0) && <div className="mk-card"><div className="mk-label">Action items <span className="mk-badge">{pending.length + failed.length}</span></div>
-      {[...failed, ...pending].map((p) => <div key={p.id} className={"mk-item " + (p.status === "failed" ? "bad" : "warn")}><div><b>{p.status === "failed" ? "Failed: " : "Waiting for approval: "}{p.title || "Untitled"}</b><small>{p.author} · updated {fmt(p.updated_at)}</small></div><PostActions p={p} can={can} run={run} onEdit={() => openCompose(p)} /></div>)}
+    {(pending.length > 0 || failed.length > 0 || readyToPublish.length > 0) && <div className="mk-card"><div className="mk-label">Action items <span className="mk-badge">{pending.length + failed.length + readyToPublish.length}</span></div>
+      {[...failed, ...pending, ...readyToPublish].map((p) => {
+        const resultRows = (s.results ?? []).filter((r) => r.post_id === p.id);
+        return <div key={p.id} className={"mk-item " + (p.status === "failed" ? "bad" : p.status === "approved" || p.status === "scheduled" ? "warn" : "")}><div><b>{p.status === "failed" ? "Publishing failed: " : p.status === "approved" ? "Ready for real publishing: " : p.status === "scheduled" ? "Scheduled · publish now available: " : "Waiting for approval: "}{p.title || "Untitled"}</b><small>{p.author} · {p.platforms.map((x) => PLAT[x]).join(", ") || "No platform selected"} · updated {fmt(p.updated_at)}</small>{resultRows.length > 0 && <small>{resultRows.map((r) => `${PLAT[r.platform] ?? r.platform}: ${r.ok ? "published" : r.error || "failed"}`).join(" · ")}</small>}</div><PostActions p={p} can={can} run={run} onEdit={() => openCompose(p)} /></div>;
+      })}
     </div>}
     <div className="mk-grid4">
       <div className="mk-card mk-kpi"><small>Posts published · this month</small><b>{pubMonth}</b></div>
@@ -211,12 +237,22 @@ function Dashboard({ s, go, openCompose, can, run, refresh }: { s: State; go: (m
 }
 
 function Compose({ s, can, post, setPost, run }: { s: State; can: Can; post: Partial<Post> | null; setPost: (p: Partial<Post> | null) => void; run: Run }) {
+  const [previewPlatform, setPreviewPlatform] = useState("facebook");
   const p = post ?? { title: "", body: "", platforms: [], status: "draft" as Status, scheduled_at: null, media_url: "", campaign: "", notes: "" };
   const set = (k: keyof Post, v: unknown) => setPost({ ...p, [k]: v });
   const locked = p.status === "published" || (!can("manager") && !!p.id && !["draft", "failed"].includes(p.status as string)) || !can("editor");
   const history = p.id ? s.activity.filter((a) => a.post_id === p.id) : [];
   const limits: Record<string, number> = { instagram: 2200, linkedin: 3000, tiktok: 2200, facebook: 63206, youtube: 5000, google_business: 1500 };
   const over = (p.platforms ?? []).filter((x) => (p.body ?? "").length > limits[x]);
+  const selectedPlatforms = p.platforms ?? [];
+  const previewTarget = selectedPlatforms.includes(previewPlatform) ? previewPlatform : selectedPlatforms[0] ?? "facebook";
+  const previewLimit = limits[previewTarget] ?? 5000;
+  const qualityChecks = [
+    { label: "Post copy", ok: !!(p.body ?? "").trim() },
+    { label: "Platform selected", ok: selectedPlatforms.length > 0 },
+    { label: "Media attached", ok: !!(p.media_url ?? "").trim() },
+    { label: "Schedule set", ok: !!p.scheduled_at },
+  ];
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState("");
@@ -261,6 +297,26 @@ function Compose({ s, can, post, setPost, run }: { s: State; can: Can; post: Par
         <label className="mk-f">Post text<textarea rows={10} value={p.body ?? ""} disabled={locked} onChange={(e) => set("body", e.target.value)} placeholder="Write your post, or generate one with AI on the right →" /></label>
         <div className="mk-mini">{(p.body ?? "").length} characters{over.length > 0 && <span className="mk-warn"> · too long for {over.map((x) => PLAT[x]).join(", ")}</span>}</div>
         <div className="mk-f">Platforms<div className="mk-row">{Object.entries(PLAT).map(([id, name]) => <label key={id} className={"mk-chip" + ((p.platforms ?? []).includes(id) ? " on" : "")}><input type="checkbox" disabled={locked} checked={(p.platforms ?? []).includes(id)} onChange={(e) => set("platforms", e.target.checked ? [...(p.platforms ?? []), id] : (p.platforms ?? []).filter((x) => x !== id))} />{name}</label>)}</div></div>
+        <section className="mk-preview-panel" aria-label="Platform preview">
+          <div className="mk-row between">
+            <div><div className="mk-label" style={{ marginBottom: 3 }}>Live content preview</div><div className="mk-mini">Review the post before submitting it for approval.</div></div>
+            <span className="mk-pill st-approved">{PLAT[previewTarget]}</span>
+          </div>
+          <div className="mk-row mk-preview-tabs">{Object.entries(PLAT).filter(([id]) => !selectedPlatforms.length || selectedPlatforms.includes(id)).map(([id, name]) => <button key={id} type="button" className={"mk-btn sm " + (previewTarget === id ? "" : "ghost")} onClick={() => setPreviewPlatform(id)}>{name}</button>)}</div>
+          <div className={"mk-preview-card preview-" + previewTarget}>
+            <div className="mk-preview-head"><span className="mk-preview-avatar">N</span><span><b>NextEdge Access Solutions</b><small>NEAS OPC · {PLAT[previewTarget]} preview</small></span></div>
+            {p.media_url && /\.(png|jpe?g|gif|webp)(\?.*)?$/i.test(p.media_url) && <img className="mk-preview-image" src={p.media_url} alt="Selected post creative" />}
+            {p.media_url && /\.(mp4|webm|ogg)(\?.*)?$/i.test(p.media_url) && <video className="mk-preview-image" src={p.media_url} controls playsInline />}
+            <div className="mk-preview-copy">{(p.body ?? "").trim() || "Your post copy will appear here as you write."}</div>
+            {p.title && previewTarget === "youtube" && <div className="mk-preview-title">{p.title}</div>}
+            <div className="mk-preview-footer">{previewTarget === "linkedin" ? "Professional network post" : previewTarget === "youtube" ? "Video title and description preview" : previewTarget === "tiktok" ? "Short-form vertical video caption" : "Social post preview"} · {((p.body ?? "").length).toLocaleString("en-PH")} / {previewLimit.toLocaleString("en-PH")} characters</div>
+          </div>
+          <div className="mk-row between mk-preview-checks">
+            <div className="mk-row">{qualityChecks.map((item) => <span key={item.label} className={"mk-check " + (item.ok ? "ok" : "")}>{item.ok ? "✓" : "○"} {item.label}</span>)}</div>
+            <span className={over.includes(previewTarget) ? "mk-warn" : "mk-mini"}>{over.includes(previewTarget) ? "Over platform limit" : "Within text limit"}</span>
+          </div>
+          <p className="mk-mini">Preview is an editorial approximation. Each social network may crop media and render text differently.</p>
+        </section>
         <div className="mk-grid2">
           <label className="mk-f">Publish date &amp; time (Asia/Manila)<input type="datetime-local" disabled={locked} value={toLocalInput(p.scheduled_at ?? null)} onChange={(e) => set("scheduled_at", fromPhInput(e.target.value))} /><span className="mk-mini">Times are saved in Philippine time (UTC+8), regardless of your computer time zone.</span></label>
           <label className="mk-f">Campaign<input value={p.campaign ?? ""} disabled={locked} onChange={(e) => set("campaign", e.target.value)} placeholder="e.g. Q4 Wind Services" /></label>
@@ -626,31 +682,72 @@ function Automation({ s, can, run }: { s: State; can: Can; run: Run }) {
   const sc = s.scheduler; const connected = (s.accounts ?? []).some((a) => a.status === "ok");
   const due = s.posts.filter((p) => p.status === "scheduled").length;
   const [copied, setCopied] = useState(false);
+  const [storeAuto, setStoreAuto] = useState(s.storeAutomation ?? { enabled: false, dailyCount: 5, platforms: ["facebook", "instagram"] });
+  const ro = !can("admin");
   const autoCard = <div className="mk-card"><div className="mk-row between"><div className="mk-label" style={{ margin: 0 }}>Publish scheduled posts automatically</div>
-      <span className={"mk-pill " + (connected && sc?.last?.at ? "st-published" : connected ? "st-approved" : "st-draft")}>{connected && sc?.last?.at ? "Active" : connected ? "Ready: start the scheduler" : "Waiting for a connected account"}</span></div>
+      <span className={"mk-pill " + (connected && sc?.last?.at ? "st-published" : connected ? "st-approved" : "st-draft")}>{connected && sc?.last?.at ? "Scheduler has run" : connected ? "Ready: waiting for scheduler run" : "Waiting for a connected account"}</span></div>
     <p className="mk-mini">Posts set to <b>Scheduled</b> with a date and time are picked up by the scheduler. Publishing is attempted only for due posts and results are recorded per platform. {due} post(s) currently scheduled.</p>
     <table className="mk-t"><tbody>
       <tr><td>Last run</td><td>{sc?.last?.at ? `${fmt(sc.last.at)} · ${sc.last.published ?? 0} published, ${sc.last.failed ?? 0} failed` : "Not run yet"}</td></tr>
-      <tr><td>Daily run (free, built in)</td><td>Every day at 9:00 AM PH via Vercel Cron. {sc?.hasCronSecret ? "✅ CRON_SECRET is set." : <>Add a <code>CRON_SECRET</code> setting in Vercel (any 32+ random characters), then Redeploy, to switch it on.</>}</td></tr>
-      <tr><td>On-time runs (optional)</td><td>Use an external scheduler every 5–15 minutes with an <code>Authorization: Bearer</code> header containing your CRON_SECRET. Keep the secret in Vercel environment settings; do not put it in a public URL.</td></tr>
+      <tr><td>Store product batch</td><td>{sc?.last?.store?.error ? <span className="mk-warn">{sc.last.store.error}</span> : sc?.last?.store?.created ? `${sc.last.store.created} product posts created from ${sc.last.store.catalogCount ?? "the"} catalogue items` : sc?.last?.store?.skipped ?? "Waiting for the first enabled 8 PM run."}</td></tr>
+      <tr><td>Daily run</td><td>8:00 PM Philippines time (12:00 UTC) after the staging changes are released to Production. Preview deployments do not execute Vercel Cron.</td></tr>
+      <tr><td>Scheduler secret</td><td>{sc?.hasCronSecret ? "CRON_SECRET is set." : "CRON_SECRET is not configured; scheduled publishing is disabled (HTTP 503) until a dedicated secret is set in Vercel."}</td></tr>
     </tbody></table>
     {sc?.url ? <div className="mk-row" style={{ marginTop: 8 }}><code style={{ wordBreak: "break-all", fontSize: 12, flex: 1, minWidth: 0 }}>{sc.url}</code><button type="button" className="mk-btn sm ghost" onClick={() => { navigator.clipboard?.writeText(sc.url).then(() => setCopied(true)).catch(() => {}); }}>{copied ? "Copied ✓" : "Copy"}</button></div>
       : <p className="mk-mini">Only marketing admins can see the scheduler address.</p>}
     <p className="mk-mini">The endpoint is not a publishing credential. Authentication remains server-side; never share CRON_SECRET or include it in a public link.</p>
+  </div>;
+  const storeCard = <div className="mk-card">
+    <div className="mk-row between"><div><div className="mk-label" style={{ margin: 0 }}>NEAS Store Product Autopilot</div><div className="mk-mini">Promote every active item in the live store, five products per day, rotating through the full catalogue.</div></div>
+      <span className={"mk-pill " + (storeAuto.enabled ? "st-published" : "st-draft")}>{storeAuto.enabled ? "Enabled in settings" : "Off"}</span></div>
+    <div className="mk-grid2" style={{ marginTop: 14 }}>
+      <div className="mk-stat"><small>Live store catalogue</small><b>{s.site.products.toLocaleString("en-PH")}</b><span>active product records · duplicate public listings are deduplicated</span></div>
+      <div className="mk-stat"><small>Daily publishing target</small><b>{storeAuto.dailyCount} / day</b><span>Every day at 8:00 PM · Asia/Manila</span></div>
+    </div>
+    <label className="mk-row" style={{ marginTop: 14, justifyContent: "flex-start" }}>
+      <span className="mk-switch"><input type="checkbox" disabled={ro} checked={storeAuto.enabled} onChange={(e) => setStoreAuto({ ...storeAuto, enabled: e.target.checked })} /><span /></span>
+      <b>Enable automatic store product publishing</b>
+    </label>
+    <label className="mk-f" style={{ marginTop: 12 }}>Products per day (maximum 5)<input type="number" min={1} max={5} disabled={ro} value={storeAuto.dailyCount} onChange={(e) => setStoreAuto({ ...storeAuto, dailyCount: Math.max(1, Math.min(5, Number(e.target.value) || 5)) })} /></label>
+    <div className="mk-f">Publish to connected accounts<div className="mk-row">
+      {([["facebook","Facebook Pages"],["instagram","Instagram Business"],["linkedin","LinkedIn"],["google_business","Google Business Profile"]] as [string,string][]).map(([id,name]) => <label key={id} className={"mk-chip" + (storeAuto.platforms.includes(id) ? " on" : "")}><input type="checkbox" disabled={ro} checked={storeAuto.platforms.includes(id)} onChange={(e) => setStoreAuto({ ...storeAuto, platforms: e.target.checked ? [...storeAuto.platforms, id] : storeAuto.platforms.filter((x) => x !== id) })} />{name}</label>)}
+    </div></div>
+    {!ro && <button type="button" className="mk-btn" onClick={() => run({ action: "saveStoreAutomation", storeAutomation: storeAuto }, "Store product autopilot settings saved ✓")}>Save store autopilot settings</button>}
+    <p className="mk-mini" style={{ marginTop: 10 }}>AI writes a fresh product description from the catalogue facts, includes the product link and NEAS enquiry call-to-action, and avoids inventing technical specifications. Products without images are excluded from Instagram but can still publish as text/link posts on other selected platforms. YouTube and TikTok are excluded because their current NEAS publishing integrations require video files.</p>
+    <p className="mk-mini">The staging build will not publish to real accounts. Vercel Cron runs only after a Production release; the Production release remains untouched until separately approved.</p>
   </div>;
   const rules = [
     ["Weekly marketing report by email", "Needs an email provider key and Vercel Cron."],
     ["RSS-to-social drafts", "Available now manually in Feed Reader; automatic mode needs Vercel Cron."],
     ["Webhooks (n8n / Zapier)", "Needs a webhook URL to send events to."],
   ];
-  return <><H t="Automation" sub="Each rule will have on/off control, an execution log and failure handling." />
+  return <><H t="Automation" sub="Control automatic publishing, product rotation and notification workflows." />
+    {storeCard}
     {autoCard}
+    <div className="mk-card">
+      <div className="mk-row between"><div><div className="mk-label" style={{ margin: 0 }}>Publishing recovery queue</div><p className="mk-mini">Unconfirmed outcomes are held here. No post is resent until an administrator checks the destination platform, confirms it is not live, fixes the issue and records that verification.</p></div>
+        <span className={"mk-pill " + ((s.recovery ?? []).length ? "st-failed" : "st-published")}>{(s.recovery ?? []).length} item(s) need review</span></div>
+      {!(s.recovery ?? []).length ? <p className="mk-mini" style={{ marginTop: 12 }}>No unresolved publishing recovery items.</p> :
+        <div style={{ overflowX: "auto" }}><table className="mk-t"><thead><tr><th>Post / destination</th><th>State</th><th>Attempts</th><th>Last error</th><th>Action</th></tr></thead><tbody>
+          {(s.recovery ?? []).map((item) => <tr key={item.id}>
+            <td><b>{item.title || "Untitled post"}</b><div className="mk-mini">{PLAT[item.platform] || item.platform} · {item.account_name}</div></td>
+            <td><span className={"mk-pill " + (item.state === "retryable" ? "st-scheduled" : "st-failed")}>{item.state.replaceAll("_", " ")}</span><div className="mk-mini">{item.error_class}</div></td>
+            <td>{item.attempts}</td><td className="mk-mini" style={{ minWidth: 220, whiteSpace: "normal" }}>{item.error_message}</td>
+            <td style={{ minWidth: 220 }}>{can("admin") ? <button type="button" className="mk-btn sm" onClick={async () => {
+              const evidence = prompt("Confirm you checked the destination account and the post is NOT live. Record what you checked and the fix applied:");
+              if (!evidence || evidence.trim().length < 12) return;
+              const authorized = await run({ action: "recoveryAuthorizeRetry", postId: item.post_id, accountId: item.account_id, note: evidence.trim() }, "Verified retry authorized");
+              if (authorized) await run({ action: "publishNow", id: item.post_id }, "Recovery attempt completed");
+            }}>Verify not live &amp; retry</button> : <span className="mk-mini">Administrator action required</span>}</td>
+          </tr>)}
+        </tbody></table></div>}
+      <p className="mk-mini" style={{ marginTop: 10 }}>Important: timeouts and network/server errors are treated as ambiguous. Check the live platform first; never authorize a retry just because an API request returned an error.</p>
+    </div>
     <EmailAutomations s={s} can={can} run={run} />
     <div className="mk-card"><table className="mk-t"><thead><tr><th>Rule</th><th>Status</th><th>What it needs</th></tr></thead><tbody>
       {rules.map(([r, n]) => <tr key={r}><td>{r}</td><td><span className="mk-pill st-draft">Not active</span></td><td className="mk-mini">{n}</td></tr>)}
     </tbody></table><p className="mk-mini">These aren't built yet. Recent manual workflow actions are in Settings &amp; Logs ({s.activity.length}).</p></div></>;
 }
-
 function EmailAutomations({ s, can, run }: { s: State; can: Can; run: Run }) {
   const [a, setA] = useState(s.automation ?? { orderAlert: true, orderConfirm: true, orderStatus: true, approval: true, publishFail: true, alertEmail: "" });
   const ro = !can("admin");
@@ -752,8 +849,36 @@ function Studio({ s, can, run, openCompose }: { s: State; can: Can; run: Run; op
   const [img, setImg] = useState<HTMLImageElement | null>(null); const [logo, setLogo] = useState<HTMLImageElement | null>(null);
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false); const [topic, setTopic] = useState("");
   const ref = useRef<HTMLCanvasElement>(null);
+  async function uploadLogo(f?: File) {
+    if (!f) return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(f.type)) {
+      setMsg("Choose a JPG, PNG, WebP or GIF logo.");
+      return;
+    }
+    if (f.size > 3 * 1024 * 1024) {
+      setMsg("Logo must be 3 MB or smaller.");
+      return;
+    }
+    setBusy(true);
+    setMsg("Uploading logo…");
+    try {
+      const fd = new FormData();
+      fd.append("file", f);
+      const response = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.url) throw new Error(result.error || "Logo upload failed.");
+      const saved = await runAction({ action: "saveStudioLogo", url: result.url }, "Creative Studio logo updated ✓");
+      if (!saved) throw new Error("The logo uploaded, but it could not be saved to your workspace settings.");
+      setMsg("Logo updated and saved for this workspace.");
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const runAction: Run = run;
   const [, W, GH] = SIZES[size];
-  useEffect(() => { const l = new Image(); l.onload = () => setLogo(l); l.src = "/img/logo.png"; }, []);
+  useEffect(() => { const l = new Image(); l.onload = () => setLogo(l); l.onerror = () => setLogo(null); l.src = s.studioLogo || "/img/logo.png"; }, [s.studioLogo]);
   useEffect(() => { if (ref.current) drawGraphic(ref.current, { W, H: GH, tpl, head, sub, cta, logo: useLogo }, img, logo); }, [W, GH, tpl, head, sub, cta, useLogo, img, logo]);
   const loadFile = (f?: File) => { if (!f) return; if (!/^image\//.test(f.type)) { setMsg("Choose a JPG or PNG photo."); return; } const im = new Image(); im.onload = () => setImg(im); im.src = URL.createObjectURL(f); };
   const pickExisting = (url: string) => { const im = new Image(); im.onload = () => setImg(im); im.onerror = () => setMsg("That image can't be used here."); im.src = url; };
@@ -802,6 +927,13 @@ function Studio({ s, can, run, openCompose }: { s: State; can: Can; run: Run; op
         <label className="mk-f">Supporting line<input value={sub} onChange={(e) => setSub(e.target.value)} /></label>
         <label className="mk-f">Button text<input value={cta} onChange={(e) => setCta(e.target.value)} placeholder="Leave empty to hide" /></label>
         <label className="mk-chip on" style={{ marginBottom: 12 }}><input type="checkbox" checked={useLogo} onChange={(e) => setUseLogo(e.target.checked)} style={{ display: "inline" }} /> Show NEAS logo</label>
+        {can("admin") && <div className="mk-row" style={{ gap: 8, marginBottom: 12 }}>
+          <label className="mk-btn sm ghost" style={{ cursor: busy ? "wait" : "pointer" }}>
+            Upload logo<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; void uploadLogo(f); e.currentTarget.value = ""; }} />
+          </label>
+          {s.studioLogo && <button type="button" className="mk-btn sm ghost" disabled={busy} onClick={() => void runAction({ action: "saveStudioLogo", url: "" }, "Default NEAS logo restored ✓")}>Use default logo</button>}
+        </div>}
+
         <div className="mk-label">✦ Headline from AI</div>
         <div className="mk-row"><input className="mk-sel" style={{ flex: 1, minWidth: 0 }} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. wind turbine blade inspection in Ilocos" /><button type="button" className="mk-btn sm" disabled={busy || !s.aiReady} onClick={suggest}>Suggest</button></div>
         {!s.aiReady && <p className="mk-mini">Add GEMINI_API_KEY to use AI headlines.</p>}
@@ -976,6 +1108,23 @@ function Style() {
 .mk-biobtn{width:100%;border:1px solid var(--gold);border-radius:999px;padding:10px;font-weight:700;font-size:13px}
 .mk-scroll{max-height:480px;overflow:auto}
 .mk-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0b1220;border:1px solid var(--gold);color:#fff;padding:10px 16px;border-radius:10px;z-index:100;font-size:14px}
+.mk-btn:not(.ghost){background:linear-gradient(135deg,#CA9332,#EBC07E);color:#071D29;box-shadow:0 5px 16px rgba(202,147,50,.16)}
+.mk-btn.ghost:hover,.mk-nav:hover{border-color:rgba(235,192,126,.55);background:rgba(202,147,50,.10)}
+.mk-btn:focus-visible,.mk-nav:focus-visible,.mk-link:focus-visible,.mk-f input:focus-visible,.mk-f textarea:focus-visible,.mk-f select:focus-visible{outline:2px solid var(--sand);outline-offset:2px}
+.mk-preview-panel{display:grid;gap:12px;padding:14px;margin:16px 0;background:rgba(7,29,41,.58);border:1px solid rgba(235,192,126,.22);border-radius:12px}
+.mk-preview-tabs{padding:2px 0}
+.mk-preview-card{max-width:560px;width:100%;margin:0 auto;background:#fff;color:#172235;border-radius:12px;overflow:hidden;box-shadow:0 8px 26px rgba(0,0,0,.18)}
+.mk-preview-head{display:flex;align-items:center;gap:10px;padding:12px 14px;color:#172235}
+.mk-preview-head b,.mk-preview-head small{display:block}
+.mk-preview-head b{font-size:13px}.mk-preview-head small{font-size:11px;color:#64748b}
+.mk-preview-avatar{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,#071D29,#CA9332);color:#EBC07E;font-weight:900}
+.mk-preview-image{display:block;width:100%;max-height:340px;object-fit:contain;background:#e2e8f0}
+.mk-preview-copy{padding:14px 16px;color:#172235;font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.mk-preview-title{padding:0 16px 12px;color:#0f172a;font-weight:800}
+.mk-preview-footer{border-top:1px solid #e2e8f0;padding:9px 14px;color:#64748b;font-size:10px}
+.mk-preview-checks{gap:8px}
+.mk-check{font-size:11px;color:#94a3b8}.mk-check.ok{color:#86efac}
+@media (max-width:760px){.mk-preview-panel{padding:10px}.mk-preview-tabs{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px}.mk-preview-tabs .mk-btn{white-space:nowrap}.mk-preview-card{max-width:100%}.mk-preview-image{max-height:240px}.mk-preview-checks{align-items:flex-start;flex-direction:column}}
 @media (max-width:1100px){.mk-grid4{grid-template-columns:1fr 1fr}.mk-grid3{grid-template-columns:1fr 1fr}.mk-grid2,.mk-grid2.wide{grid-template-columns:1fr}}
 @media (max-width:760px){.mk-side{position:fixed;left:-260px;transition:left .2s;width:248px!important}.mk-side.open{left:0}.mk-col .mk-hide{display:initial}.mk-burger{display:block}.mk-ws,.mk-hide-sm{display:none}
  .mk-main{padding:14px}.mk-stats,.mk-grid4,.mk-grid3{grid-template-columns:1fr 1fr}.mk-hero{grid-template-columns:1fr}.mk-cal.v-month .mk-day{min-height:58px}.mk-ev{font-size:10px}}

@@ -1,4 +1,5 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { decrypt, encrypt } from "./social-token-crypto";
+export { decrypt, encrypt };
 import { sql } from "./db";
 import { googleAuthUrl, tiktokAuthUrl, connectGoogle, connectTikTok, publishVideoPlatform } from "./social-video";
 
@@ -11,22 +12,6 @@ export type ConnectPlatform = (typeof SOCIAL_PLATFORMS)[number];
 const env = (k: string) => (process.env[k] ?? "").trim().replace(/^["']|["']$/g, "").trim();
 const GRAPH = () => `https://graph.facebook.com/${process.env.META_GRAPH_VERSION || "v25.0"}`;
 const LI_VERSION = () => process.env.LINKEDIN_API_VERSION || "202608";
-
-function encKey() {
-  const base = process.env.TOKEN_ENCRYPTION_KEY || process.env.SESSION_SECRET || process.env.DATABASE_URL || process.env.POSTGRES_URL;
-  if (!base) throw new Error("No secret available to encrypt tokens.");
-  return createHash("sha256").update("neas-token-v1:" + base).digest();
-}
-export function encrypt(text: string) {
-  const iv = randomBytes(12), c = createCipheriv("aes-256-gcm", encKey(), iv);
-  const data = Buffer.concat([c.update(text, "utf8"), c.final()]);
-  return [iv, c.getAuthTag(), data].map((b) => b.toString("base64url")).join(".");
-}
-export function decrypt(blob: string) {
-  const [iv, tag, data] = blob.split(".").map((s) => Buffer.from(s, "base64url"));
-  const d = createDecipheriv("aes-256-gcm", encKey(), iv); d.setAuthTag(tag);
-  return Buffer.concat([d.update(data), d.final()]).toString("utf8");
-}
 
 /** Page permissions by default; Instagram ones only when META_INSTAGRAM=1 (after that use case is added). META_SCOPES overrides all. */
 export function metaScopes() {
@@ -42,6 +27,24 @@ const pagesApp = (pages: boolean) => pages && !!env("LINKEDIN_PAGES_CLIENT_ID");
 const liId = (pages: boolean) => env(pagesApp(pages) ? "LINKEDIN_PAGES_CLIENT_ID" : "LINKEDIN_CLIENT_ID");
 const liSecret = (pages: boolean) => env(pagesApp(pages) ? "LINKEDIN_PAGES_CLIENT_SECRET" : "LINKEDIN_CLIENT_SECRET");
 export const linkedinReady = () => !!(process.env.LINKEDIN_CLIENT_ID && env("LINKEDIN_CLIENT_SECRET"));
+
+/**
+ * Explains a LinkedIn scope refusal on the Company Pages flow.
+ *
+ * The right advice depends on whether the separate Pages app has been wired up
+ * yet. Before it has, the operator genuinely needs to create it and set its
+ * credentials. Once LINKEDIN_PAGES_CLIENT_ID is present that work is done and
+ * only LinkedIn's approval of the Community Management API is outstanding, so
+ * repeating the setup instructions sends them to re-do something finished and
+ * hides the real cause. A missing authorised redirect URL surfaces the same
+ * way, so it is named as the one misconfiguration still worth checking.
+ */
+export function linkedinScopeErrorMessage(): string {
+  const id = env("LINKEDIN_PAGES_CLIENT_ID");
+  if (!id)
+    return "LinkedIn hasn't approved Company Page access yet. In your LinkedIn developer portal, create a second app with only the Community Management API product and request access; once approved, add LINKEDIN_PAGES_CLIENT_ID and LINKEDIN_PAGES_CLIENT_SECRET in Vercel. Your profile connection still works.";
+  return `LinkedIn refused the Company Page scopes for app ${id}, which is already configured here — there is nothing further to add in Vercel. The Community Management API still needs LinkedIn's approval on that app: check its Products tab. Also confirm the callback URL is listed under the app's authorised redirect URLs, which fails the same way. Your profile connection still works.`;
+}
 export const redirectUri = (origin: string, p: ConnectPlatform) => `${origin}/api/admin/social/callback/${p}`;
 
 export function authorizeUrl(p: ConnectPlatform, origin: string, state: string, pages = false) {

@@ -12,8 +12,8 @@ export type Business = { name: string; phone: string; email: string; street: str
 
 export const DEFAULT_SEO: Seo = {
   title: "NEAS — IRATA Rope Access & Height Safety, Philippines",
-  description: "IRATA-certified rope access, NDT inspection, facade, telecom, met mast and wind turbine services, plus certified PPE supply. Serving the Philippines and Asia.",
-  keywords: "rope access Philippines, IRATA, NDT inspection, facade cleaning, wind turbine blade repair, met mast, telecom tower, PPE supplier, Skylotec, NEAS",
+  description: "Rope access, NDT inspection, façade, telecom, met mast and wind turbine services, plus PPE supply. Supporting industrial and renewable-energy projects across the Philippines.",
+  keywords: "rope access Philippines, IRATA rope access, NDT inspection Philippines, facade cleaning, wind turbine blade repair, met mast installation, telecom tower maintenance, PPE supplier, NEAS",
   ogImage: "/img/hero-city.jpg", canonical: "https://www.nextedge-access-solutions.com/",
   googleVerification: "", bingVerification: "", gaMeasurementId: "", robotsIndex: true,
 };
@@ -27,7 +27,7 @@ export const DEFAULT_SOCIAL: Social = {
   x: "",
 };
 export const DEFAULT_BUSINESS: Business = {
-  name: "NextEdge Access Solutions OPC", phone: "+63 991 426 5886", email: "info@nextedge-access-solutions.com",
+  name: "NextEdge Access Solutions OPC", phone: "+63 991 426 5886", email: "info.nextedgeaccesssolutions@gmail.com",
   street: "B 15 Lot 6, Marilao Grand Villas, Barangay Loma de Gato", city: "Marilao", region: "Bulacan", postal: "3019", country: "PH", hours: "Mo-Su 00:00-23:59", logo: "/img/logo.png",
 };
 
@@ -40,7 +40,6 @@ export async function getSetting<T extends object>(key: string, fallback: T): Pr
     const merged = { ...fallback, ...v } as T;
     if (key === "business") {
       const business = merged as unknown as Business;
-      if (business.email?.trim().toLowerCase() === "info.nextedgeaccesssolutions@gmail.com") business.email = "info@nextedge-access-solutions.com";
       business.street = "B 15 Lot 6, Marilao Grand Villas, Barangay Loma de Gato";
       business.city = "Marilao";
       business.region = "Bulacan";
@@ -49,6 +48,16 @@ export async function getSetting<T extends object>(key: string, fallback: T): Pr
     }
     return merged;
   } catch { return fallback; }
+}
+export async function getStringSetting(key: string, fallback: string): Promise<string> {
+  try {
+    const rows = await sql`select value from settings where key = ${key}`;
+    if (!rows[0]) return fallback;
+    const value: unknown = JSON.parse(rows[0].value);
+    return typeof value === "string" ? value : fallback;
+  } catch {
+    return fallback;
+  }
 }
 export async function setSetting(key: string, value: unknown) {
   await sql`insert into settings (key, value) values (${key}, ${JSON.stringify(value)}) on conflict (key) do update set value = excluded.value`;

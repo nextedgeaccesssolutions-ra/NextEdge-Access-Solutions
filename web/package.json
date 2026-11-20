@@ -4,22 +4,32 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/migrate.mjs && next build",
+    "build": "next build",
     "build:app": "next build",
     "start": "next start",
-    "migrate": "node scripts/migrate.mjs"
+    "migrate": "node scripts/migrate.mjs",
+    "test:clean-routes": "node scripts/test-clean-routes.mjs",
+    "test:lockfile": "node scripts/test-package-lock-sync.mjs",
+    "test:aiw-email-validation": "node --experimental-strip-types --test scripts/test-aiw-email-validation.mjs",
+    "test:aiw-authority": "node --experimental-strip-types --test scripts/test-aiw-authority.mjs",
+    "test:aiw-skills": "node --experimental-strip-types --test scripts/test-aiw-skills.mjs",
+    "test:ai-gateway": "node --experimental-strip-types --test scripts/test-ai-gateway.mjs",
+    "test:aiw-contact-policy": "node --experimental-strip-types --test scripts/test-aiw-contact-policy.mjs",
+    "test:aiw-readiness": "node --experimental-strip-types --test scripts/test-aiw-readiness.mjs"
   },
   "dependencies": {
+    "@vercel/speed-insights": "^2.1.0",
     "bcryptjs": "^3.0.2",
-    "jose": "^6.0.11",
-    "next": "^16.4.5",
-    "postgres": "^3.4.7",
-    "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "ipaddr.js": "^2.5.0",
+    "jose": "^6.2.17",
+    "next": "^16.4.6",
+    "postgres": "^4.1.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
-    "@types/node": "^22.15.0",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.1.0",
-    "typescript": "^5.8.3"
+    "typescript": "^7.0.2"
   }
 }

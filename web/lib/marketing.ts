@@ -1,5 +1,6 @@
 import { sql } from "./db";
 import { getUser } from "./auth";
+import { generateAIGatewayText, usesProjectAIGateway } from "./ai-gateway";
 
 export const ROLES = ["viewer", "editor", "manager", "admin"] as const;
 export type MkRole = (typeof ROLES)[number];
@@ -73,11 +74,13 @@ export const AI_TASKS: Record<string, string> = {
   repurpose: "versions of the given content for Facebook, Instagram, LinkedIn and TikTok",
   reply: "a short, friendly customer-service reply (2-4 sentences) to the customer message below, in the same language they used (English, Tagalog or Taglish). Answer what you can, invite them to WhatsApp +63 991 426 5886 for quotes, and never invent prices or availability",
   schedule: "a recommended 2-week publishing schedule (day, time in Philippine time, platform, post idea) with reasons",
+  outreach: "a concise, genuinely personalized first-contact business email or LinkedIn introduction for a NEAS prospect, with a truthful subject line, relevant value proposition, one low-pressure discovery-call question, professional signature and a brief opt-out line. Do not invent facts about the prospect, relationship, projects, certifications, prices or availability. If prospect-specific context is missing, use cautious wording and placeholders.",
+  specialist: "a complete, role-specific internal business work product with clear headings, practical recommendations, action steps, assumptions, missing inputs, dependencies, risks, measurable acceptance criteria and a concise executive summary. Follow the supplied role scope and authority boundaries exactly. Do not fabricate facts, certifications, client details, project status, research or completed actions. Mark unknowns as [TO VERIFY] and clearly distinguish facts, assumptions and recommendations.",
 };
 
-export async function generate(task: string, topic: string, extra: { tone?: string; brand: Brand; tenant?: boolean }): Promise<{ text: string } | { error: string }> {
+export async function generate(task: string, topic: string, extra: { tone?: string; brand: Brand; tenant?: boolean; request?: Request }): Promise<{ text: string } | { error: string }> {
   const key = process.env.ANTHROPIC_API_KEY, gkey = process.env.GEMINI_API_KEY;
-  if (!key && !gkey) return { error: "AI is not switched on yet. Paste a free GEMINI_API_KEY in Marketing Command Center → Settings & Logs → API keys, then try again." };
+  if (!key && !gkey && !usesProjectAIGateway(task)) return { error: "AI is not switched on yet. Configure a provider in Marketing Command Center Settings & Logs API keys, then try again." };
   const what = AI_TASKS[task];
   if (!what) return { error: "Unknown content type." };
   const b = extra.brand;
@@ -92,6 +95,10 @@ Preferred hashtags: ${b.hashtags}
 Avoid: ${b.avoid}
 Never invent certifications, project names, client names, statistics or prices. If a fact is needed and not given, leave a clear [placeholder].`;
   const user = `Write ${(extra.tenant ? what.replace("invite them to WhatsApp +63 991 426 5886 for quotes", "invite them to contact the business for quotes") : what)}.\nTopic / source content:\n${topic.slice(0, 6000)}${extra.tone ? `\nTone: ${extra.tone}` : ""}\nReturn only the content, ready to edit.`;
+  if (usesProjectAIGateway(task)) {
+    const gateway = await generateAIGatewayText({ system, user }, { request: extra.request });
+    return "error" in gateway ? gateway : { text: gateway.text };
+  }
   if (!key && gkey) {
     const models = [process.env.MK_GEMINI_MODEL, "gemini-flash-latest", "gemini-flash-lite-latest"].filter((m, i, a): m is string => !!m && a.indexOf(m) === i);
     let last = "";

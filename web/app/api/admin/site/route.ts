@@ -28,6 +28,18 @@ export async function PUT(req: Request) {
     for (const k of Object.keys(DEFAULT_SOCIAL)) out[k] = cleanUrl(b.social[k]);
     await setSetting("social", out);
   }
+  if (b.sitePhotos && typeof b.sitePhotos === "object") {
+    const allowed = ["hero", "ropeAccess", "inspection", "coatings", "metMast", "training", "windEnergy", "clientTriconti", "clientAtimonan", "clientPhilsurv"];
+    const current = b.sitePhotos as Record<string, unknown>;
+    const out: Record<string, string> = {};
+    for (const key of allowed) {
+      const value = String(current[key] ?? "").trim();
+      if (!value) { out[key] = ""; continue; }
+      if (/^\/api\/img\/[A-Za-z0-9_-]{1,40}$/.test(value) || /^https:\/\/[^\s"<>]{1,450}$/i.test(value)) out[key] = value;
+      else return bad("Invalid image URL for " + key + ".");
+    }
+    await setSetting("site_photos", out);
+  }
   if (b.business) {
     const out: Record<string, string> = {};
     for (const k of Object.keys(DEFAULT_BUSINESS)) out[k] = cleanText(b.business[k], 200);

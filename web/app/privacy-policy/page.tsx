@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicy() {
   return <div className="wrap" style={{ padding: "40px 20px", maxWidth: 860 }}>
-    <div className="eyebrow">Legal</div>
-    <h1>Privacy Policy</h1>
-    <article className="policy" style={{ lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: POLICY_HTML }} />
+    <div className="reveal"><div className="eyebrow">Legal</div>
+    <h1>Privacy Policy</h1></div>
+    <article className="policy reveal" style={{ lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: POLICY_HTML }} />
   </div>;
 }

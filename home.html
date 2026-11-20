@@ -147,6 +147,11 @@ section{padding-block:80px}
 .modal-title{font-size:24px;font-weight:800;color:#fff;margin-bottom:12px}
 .modal-desc{font-size:14px;color:var(--fg2);line-height:1.7;margin-bottom:20px}
 .modal-features{display:flex;flex-direction:column;gap:8px}
+.modal-featrow{display:flex;gap:28px;align-items:flex-start}
+.modal-featrow .modal-features{flex:1 1 auto;min-width:0}
+.modal-shareside{flex:0 0 260px;display:flex;flex-direction:column;gap:8px}
+.modal-shareside .sm-sharebox{margin:0}
+@media(max-width:760px){.modal-featrow{flex-direction:column;gap:16px}.modal-shareside{flex:1 1 auto;width:100%}}
 .modal-feature{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--fg)}
 .modal-feature::before{content:'✓';color:var(--accent);font-weight:700;flex-shrink:0}
 .modal-close{position:absolute;top:16px;right:16px;width:32px;height:32px;background:rgba(0,0,0,0.5);border:1px solid var(--border);border-radius:50%;color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -348,7 +353,7 @@ body{background:var(--bg);color:var(--fg)}
 .hero{align-items:flex-end!important}
 .hero>.container{width:100%;max-width:none!important;padding-inline:clamp(16px,4vw,56px)!important}
 .hero-content{margin:0 0 150px 0!important}
-@media(max-width:768px){.hero{flex-direction:column;align-items:stretch!important;justify-content:flex-end}.hero-content{margin:90px 0 24px!important}.hero-stats{position:relative!important}.hero-stats-inner{flex-direction:row!important;flex-wrap:wrap}.hero-stat{flex:1 1 50%!important;padding:14px 10px!important}}
+@media(max-width:768px){.hero{flex-direction:column;align-items:stretch!important;justify-content:flex-end}.hero-content{margin:90px 0 24px!important}.hero-stats{position:relative!important;margin-top:auto!important}.hero-stats-inner{flex-direction:row!important;flex-wrap:wrap}.hero-stat{flex:1 1 50%!important;padding:14px 10px!important}}
 </style>
 <style id="quote-pop">
 @keyframes quotePop{0%,86%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(249,115,22,0)}
@@ -841,7 +846,7 @@ section[id]{scroll-margin-top:64px}
     </div>
     <div class="contact-grid">
       <div class="contact-details reveal">
-        <div class="contact-item"><div class="contact-icon">📞</div><div><div class="contact-lbl">Phone / WhatsApp / Viber</div><div class="contact-val"><div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639914265886" target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639957708144" target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div></div></div></div>
+        <div class="contact-item"><div class="contact-icon">📞</div><div><div class="contact-lbl">Phone / WhatsApp / Viber</div><div class="contact-val"><div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://api.whatsapp.com/send?phone=639914265886" target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://api.whatsapp.com/send?phone=639957708144" target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div></div></div></div>
         <div class="contact-item"><div class="contact-icon">✉️</div><div><div class="contact-lbl">Email</div><div class="contact-val">info@nextedge-access-solutions.com<br>sales@nextedge-access-solutions.com</div></div></div>
         <div class="contact-item"><div class="contact-icon">🌐</div><div><div class="contact-lbl">Website</div><div class="contact-val">www.nextedge-access-solutions.com</div></div></div>
         <div class="contact-item"><div class="contact-icon">📍</div><div><div class="contact-lbl">Address</div><div class="contact-val">B 15 Lot 6, Marilao Grand Villas<br>Barangay Loma de Gato, Marilao, Bulacan 3019<br>Philippines</div></div></div>
@@ -889,7 +894,7 @@ section[id]{scroll-margin-top:64px}
       <div class="footer-brand">
         <img src="/img/83c162b165ae.png" alt="NEAS">
         <div style="font-size:13px;font-weight:700;color:#fff;margin-top:8px">NEXTEDGE ACCESS SOLUTIONS</div>
-        <p>IRATA-certified rope access specialists serving Asia since 2025. Safe · Reliable · Professional.</p>
+        <p>IRATA-certified rope access specialists with 20+ years of combined international experience, serving Asia since 2025. Safe · Reliable · Professional.</p>
       </div>
       <div class="footer-links">
         <div class="footer-col"><h4>Services</h4><ul><li><a href="#services">Rope Access &amp; Facade</a></li><li><a href="#services">NDT Inspection</a></li><li><a href="#services">Blasting &amp; Painting</a></li><li><a href="#services">Wind &amp; Met Mast</a></li><li><a href="#services">Telecom Tower</a></li><li><a href="#services">Training &amp; PPE</a></li><li><a href="#services">Wind Turbine</a></li></ul></div>
@@ -897,7 +902,7 @@ section[id]{scroll-margin-top:64px}
       </div>
       <div class="footer-emergency">
         <p>🚨 24/7 Emergency</p>
-        <div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639914265886" target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639957708144" target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div>
+        <div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://api.whatsapp.com/send?phone=639914265886" target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://api.whatsapp.com/send?phone=639957708144" target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div>
         <div style="font-size:11px;color:var(--fg3);margin-top:6px">Tap to call or message — available 24/7</div>
       </div>
     </div>
@@ -935,7 +940,13 @@ section[id]{scroll-margin-top:64px}
       <div class="modal-tag" id="modal-tag"></div>
       <div class="modal-title" id="modal-title"></div>
       <div class="modal-desc" id="modal-desc"></div>
-      <div class="modal-features" id="modal-features"></div>
+      <div class="modal-featrow">
+        <div class="modal-features" id="modal-features"></div>
+        <div class="modal-shareside">
+          <button type="button" class="sm-share" id="svc-share" aria-expanded="false">⤴ Share</button>
+          <div id="svc-sharebox" class="sm-sharebox" hidden></div>
+        </div>
+      </div>
       <div class="modal-cta">
         <button type="button" class="modal-quote" onclick="quoteFromModal()">Request a Quote</button>
         <div class="modal-contact">
@@ -998,8 +1009,26 @@ function openModal(id){
   const card=document.querySelector(`[onclick="openModal('${id}')"] .service-photo`);
   const bg=card?card.style.backgroundImage:'';
   document.getElementById('modal-hero').style.backgroundImage=bg||'linear-gradient(135deg,#0d1117,#1c2333)';
+  currentSvc=id;
+  var _sb=document.getElementById('svc-sharebox'),_st=document.getElementById('svc-share');
+  if(_sb){_sb.hidden=true;_sb.innerHTML='';}
+  if(_st){_st.setAttribute('aria-expanded','false');}
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow='hidden';
+}
+let currentSvc=null;
+function svcShareUrl(id){return location.origin+location.pathname+'?service='+encodeURIComponent(id);}
+function shareSvc(){
+  const s=SERVICES[currentSvc];if(!s)return;
+  const u=svcShareUrl(currentSvc),t=s.title+' | NextEdge Access Solutions',e=encodeURIComponent;
+  if(navigator.share&&matchMedia('(pointer:coarse)').matches){navigator.share({title:t,text:t,url:u}).catch(function(){});return;}
+  const b=document.getElementById('svc-sharebox'),btn=document.getElementById('svc-share');
+  b.hidden=!b.hidden;btn.setAttribute('aria-expanded',String(!b.hidden));
+  if(b.hidden){b.innerHTML='';return;}
+  const L=[['Facebook','https://www.facebook.com/sharer/sharer.php?u='+e(u)],['Messenger','fb-messenger://share/?link='+e(u)],['WhatsApp','https://api.whatsapp.com/send?text='+e(t+' '+u)],['Viber','viber://forward?text='+e(t+' '+u)],['X','https://twitter.com/intent/tweet?text='+e(t)+'&url='+e(u)],['LinkedIn','https://www.linkedin.com/sharing/share-offsite/?url='+e(u)],['Email','mailto:?subject='+e(t)+'&body='+e(t+'\n'+u)]];
+  b.innerHTML=L.map(function(x){return '<a href="'+x[1]+'" target="_blank" rel="noopener">'+x[0]+'</a>';}).join('')+'<button type="button" id="svc-copylink">Copy link</button>';
+  const c=document.getElementById('svc-copylink');
+  c.onclick=function(){(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){c.textContent='Copied ✓';clearTimeout(c._t);c._t=setTimeout(function(){c.textContent='Copy link';},2000);},function(){prompt('Copy link:',u);});};
 }
 function closeModal(e){
   if(e&&e.target!==document.getElementById('modal')&&!e.target.classList.contains('modal-close'))return;
@@ -1007,6 +1036,11 @@ function closeModal(e){
   document.body.style.overflow='';
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal({target:document.getElementById('modal')});});
+(function(){
+  var b=document.getElementById('svc-share');
+  if(b)b.addEventListener('click',shareSvc);
+  try{var q=new URLSearchParams(location.search).get('service');if(q&&SERVICES[q])openModal(q);}catch(err){}
+})();
 function submitForm(e){
   e.preventDefault();
   const btn=e.target.querySelector('.form-submit');
@@ -1085,7 +1119,7 @@ try{wish=JSON.parse(localStorage.getItem('neasWish')||'{}')}catch(e){}
 var $=function(id){return document.getElementById(id)};
 var peso=function(n){return '₱'+Math.round(n).toLocaleString('en-PH')};
 var esc=function(s){var d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML};
-function price(p){if(p.live!=null)return p.live;var o=overrides[p.id];return (o!=null&&o!=='')?Number(o):Math.ceil(p.dealer*(1+markup/100)/5)*5;}
+function price(p){if(!p)return 0;if(p.live!=null)return p.live;var o=overrides[p.id];return (o!=null&&o!=='')?Number(o):Math.ceil(p.dealer*(1+markup/100)/5)*5;}
 function byId(id){return CATALOG.find(function(x){return x.id===id})}
 var cats=['All','♥ Wishlist'].concat(CATALOG.map(function(p){return p.cat}).filter(function(c,i,a){return a.indexOf(c)===i}));
 function renderCats(){$('store-cats').innerHTML='';cats.forEach(function(c){var b=document.createElement('button');b.type='button';b.textContent=c;if(c===cat)b.className='on';b.onclick=function(){cat=c;renderCats();render()};$('store-cats').appendChild(b)})}
@@ -1112,7 +1146,10 @@ function render(){
     g.appendChild(d);
   });
 }
-function totals(){var n=0,t=0;Object.keys(cart).forEach(function(id){n+=cart[id];t+=cart[id]*price(byId(id))});return {n:n,t:t}}
+/* A cart saved on /store holds database ids this page's built-in catalogue only learns
+   about once loadLive() returns. Unresolved ids are skipped here - never counted, never
+   dropped from the cart - because throwing on one killed the whole store script. */
+function totals(){var n=0,t=0;Object.keys(cart).forEach(function(id){var p=byId(id);if(!p)return;n+=cart[id];t+=cart[id]*price(p)});return {n:n,t:t}}
 function renderCart(){var x=totals();$('store-quote').hidden=!x.n;$('sq-count').textContent=x.n;$('sq-total').textContent=peso(x.t);}
 $('sq-clear').onclick=function(){cart={};renderCart();render()};
 $('sq-send').onclick=function(){openCheckout()};
@@ -1140,15 +1177,29 @@ function openCheckout(){
   openModal('<button type="button" class="sm-close" aria-label="Close">×</button><h3>Checkout</h3><div class="sm-ref">Order reference: <b>'+ref+'</b></div>'+
    '<table class="sm-order"><tr><th>Item</th><th>Qty</th><th>Amount</th></tr>'+rows+'<tr class="sm-tot"><td>Total</td><td>'+x.n+'</td><td>'+peso(x.t)+'</td></tr></table>'+
    bankHtml()+'<ol class="sm-steps"><li>Transfer the total to the account above. Use <b>'+ref+'</b> as the reference.</li><li>Fill in your details and send the order.</li><li>Email or Viber your deposit slip; we confirm stock and delivery.</li></ol>'+
-   '<form id="sm-form" class="sm-form"><input name="name" placeholder="Full name / Company" required><input name="phone" placeholder="Mobile number" required><input name="email" type="email" placeholder="Email"><textarea name="addr" placeholder="Delivery address" rows="2" required></textarea><label class="sm-slip"><span>📎 Upload payment slip <small>(photo or PDF of your deposit/transfer receipt)</small></span><input type="file" name="slip" accept="image/*,application/pdf"></label><div class="sm-slip-prev" id="sm-slip-prev"></div>'+
+   '<form id="sm-form" class="sm-form"><input name="name" placeholder="Full name / Company" required><input name="phone" placeholder="Mobile number" required><input name="email" type="email" placeholder="Email"><textarea name="addr" placeholder="Delivery address" rows="2" required></textarea><label class="sm-slip"><span>📎 Upload payment slip <small>(photo or PDF of your deposit/transfer receipt)</small></span><input type="file" name="slip" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"></label><div class="sm-slip-prev" id="sm-slip-prev"></div>'+
    '<button type="submit" class="sp-buy">SEND ORDER</button></form><p class="sm-fine">Prices subject to stock confirmation. Payment is verified manually by NEAS before release.</p>');
   wireCopy();
-  var slipIn=MB.querySelector('input[name=slip]');slipIn.onchange=function(){var fl=slipIn.files[0],pv=$('sm-slip-prev');pv.innerHTML='';if(!fl)return;if(fl.size>10*1024*1024){pv.textContent='File is over 10 MB — please choose a smaller photo.';slipIn.value='';return}if(/^image\//.test(fl.type)){var im=document.createElement('img');im.src=URL.createObjectURL(fl);pv.appendChild(im)}var t=document.createElement('span');t.textContent='✓ '+fl.name;pv.appendChild(t)};
+  var slipIn=MB.querySelector('input[name=slip]');slipIn.onchange=function(){var fl=slipIn.files[0],pv=$('sm-slip-prev');pv.replaceChildren();if(!fl)return;if(fl.size>10*1024*1024){pv.textContent='File is over 10 MB — please choose a smaller photo.';slipIn.value='';return}/* Keep payment-slip previews text-only; never create a DOM image URL from an untrusted local file. */var t=document.createElement('span');t.textContent='✓ '+fl.name;pv.appendChild(t)};
   $('sm-form').onsubmit=function(e){e.preventDefault();var f=e.target;var slip=slipIn.files[0];
     var lines=Object.keys(cart).map(function(id){var p=byId(id);return '- '+cart[id]+' x '+p.name+(p.code?' ('+p.code+')':'')+' = '+peso(cart[id]*price(p))});
     var body='Order reference: '+ref+'\n\n'+lines.join('\n')+'\nTOTAL: '+peso(x.t)+'\n\nPayment: Bank transfer to '+BANK.bank+' '+BANK.acct+'\n\nName: '+f.name.value+'\nMobile: '+f.phone.value+'\nEmail: '+f.email.value+'\nDelivery address: '+f.addr.value;
     body+='\nPayment slip: '+(slip?'attached ('+slip.name+')':'to follow');
-    var done=function(how){MB.querySelector('.sm-form').outerHTML='<div class="sm-done">✓ Order '+how+'. Reference <b>'+ref+'</b>.'+(slip&&how!=='shared'?'<br><b>Please attach your payment slip ('+esc(slip.name)+') to that email before sending</b> — browsers cannot attach files automatically.':'')+'<br>You can also send the slip by Viber to +63 991 426 5886 or email '+ORDER_EMAIL+'.</div>'};
+    var done=function(how){
+      var form=MB.querySelector('.sm-form');if(!form)return;
+      var message=document.createElement('div');message.className='sm-done';
+      message.appendChild(document.createTextNode('✓ Order '+how+'. Reference '));
+      var reference=document.createElement('b');reference.textContent=ref;message.appendChild(reference);
+      if(slip&&how!=='shared'){
+        message.appendChild(document.createElement('br'));
+        var reminder=document.createElement('b');reminder.textContent='Please attach your payment slip ('+slip.name+') to that email before sending';
+        message.appendChild(reminder);
+        message.appendChild(document.createTextNode(' — browsers cannot attach files automatically.'));
+      }
+      message.appendChild(document.createElement('br'));
+      message.appendChild(document.createTextNode('You can also send the slip by Viber to +63 991 426 5886 or email '+ORDER_EMAIL+'.'));
+      form.replaceWith(message);
+    };
     if(slip&&navigator.canShare&&navigator.canShare({files:[slip]})){navigator.share({files:[slip],title:'Online order '+ref,text:'To: '+ORDER_EMAIL+'\n\n'+body}).then(function(){done('shared')},function(){location.href='mailto:'+ORDER_EMAIL+'?subject='+encodeURIComponent('Online order '+ref)+'&body='+encodeURIComponent(body);done('opened in your email app')});return}
     location.href='mailto:'+ORDER_EMAIL+'?subject='+encodeURIComponent('Online order '+ref)+'&body='+encodeURIComponent(body);done('opened in your email app');
   };
@@ -1165,7 +1216,7 @@ function editPrice(p){
 renderCats();render();
 function shareP(p){var u=location.origin+'/store/p/'+encodeURIComponent(p.id),t=p.name+' — '+peso(price(p))+' | NEAS Online Store',e=encodeURIComponent;
   if(navigator.share&&matchMedia('(pointer:coarse)').matches){navigator.share({title:t,text:t,url:u}).catch(function(){});return}
-  var L=[['Facebook','https://www.facebook.com/sharer/sharer.php?u='+e(u)],['Messenger','fb-messenger://share/?link='+e(u)],['WhatsApp','https://wa.me/?text='+e(t+' '+u)],['Viber','viber://forward?text='+e(t+' '+u)],['X','https://twitter.com/intent/tweet?text='+e(t)+'&url='+e(u)],['LinkedIn','https://www.linkedin.com/sharing/share-offsite/?url='+e(u)],['Email','mailto:?subject='+e(t)+'&body='+e(t+'\n'+u)]];
+  var L=[['Facebook','https://www.facebook.com/sharer/sharer.php?u='+e(u)],['Messenger','fb-messenger://share/?link='+e(u)],['WhatsApp','https://api.whatsapp.com/send?text='+e(t+' '+u)],['Viber','viber://forward?text='+e(t+' '+u)],['X','https://twitter.com/intent/tweet?text='+e(t)+'&url='+e(u)],['LinkedIn','https://www.linkedin.com/sharing/share-offsite/?url='+e(u)],['Email','mailto:?subject='+e(t)+'&body='+e(t+'\n'+u)]];
   var b=$('sm-sharebox');b.hidden=!b.hidden;b.innerHTML=L.map(function(x){return '<a href="'+x[1]+'" target="_blank" rel="noopener">'+x[0]+'</a>'}).join('')+'<button type="button" id="sm-copylink">Copy link</button><a href="'+u+'" target="_blank">Product page ↗</a>';
   $('sm-copylink').onclick=function(){(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){$('sm-copylink').textContent='Copied ✓'},function(){prompt('Copy link:',u)})};}
 function loadLive(){fetch('/api/products',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(d){var a=d&&(d.products||d.data||d);if(!Array.isArray(a)||!a.length)return;

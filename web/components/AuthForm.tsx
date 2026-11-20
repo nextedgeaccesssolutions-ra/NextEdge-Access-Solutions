@@ -4,15 +4,39 @@ import { useState } from "react";
 export default function AuthForm({ portal, next, social = { google: false, facebook: false }, initialError = "" }: { portal: "customer" | "admin"; next: string; social?: { google: boolean; facebook: boolean }; initialError?: string }) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [err, setErr] = useState(initialError); const [busy, setBusy] = useState(false);
+
   async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault(); setErr(""); setBusy(true);
-    const f = Object.fromEntries(new FormData(e.currentTarget).entries());
-    const res = await fetch(mode === "login" ? "/api/auth/login" : "/api/auth/signup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...f, portal }) });
-    const data = await res.json().catch(() => ({}));
-    setBusy(false);
-    if (!res.ok) { setErr(data.error || "Something went wrong. Please try again."); return; }
-    location.href = data.role === "admin" && portal === "admin" ? "/admin" : next;
+    e.preventDefault();
+    if (busy) return;
+    setErr("");
+    setBusy(true);
+    const form = e.currentTarget;
+    const f = Object.fromEntries(new FormData(form).entries());
+    try {
+      const res = await fetch(mode === "login" ? "/api/auth/login" : "/api/auth/signup", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...f, portal }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErr(typeof data.error === "string" ? data.error : res.status >= 500
+          ? "The sign-in service is temporarily unavailable. Please try again shortly."
+          : "We could not complete your sign-in. Please check your details and try again.");
+        return;
+      }
+      if (portal === "admin" && data.role !== "admin") {
+        setErr("This account does not have administrator access.");
+        return;
+      }
+      window.location.assign(data.role === "admin" && portal === "admin" ? "/admin" : next);
+    } catch {
+      setErr("Unable to reach the sign-in service. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
   }
+
   return (
     <div className="card" style={{ maxWidth: 440, margin: "0 auto" }}>
       {portal === "customer" && <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
@@ -32,7 +56,7 @@ export default function AuthForm({ portal, next, social = { google: false, faceb
         <label className="field">Password<input name="password" type="password" required minLength={mode === "signup" ? 8 : 1} autoComplete={mode === "signup" ? "new-password" : "current-password"} /></label>
         {mode === "signup" && <span className="muted" style={{ fontSize: 12 }}>At least 8 characters.</span>}
         {mode === "login" && <a href="/forgot-password" style={{ fontSize: 13, justifySelf: "end", marginTop: -4 }}>Forgot password?</a>}
-        {err && <p className="err" role="alert">{err}</p>}
+        {err && <p className="err" role="alert" aria-live="polite">{err}</p>}
         <button className="btn btn-primary" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? (portal === "admin" ? "Log in to Admin" : "Log in") : "Create account"}</button>
       </form>
     </div>

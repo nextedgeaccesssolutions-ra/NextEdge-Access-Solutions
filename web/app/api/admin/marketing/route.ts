@@ -5,15 +5,20 @@ import { publishPost } from "@/lib/publish";
 import { googleReady, tiktokReady } from "@/lib/social-video";
 import { configStatus, loadConfig, saveConfig } from "@/lib/config";
 import { loadInbox, sendReply } from "@/lib/inbox";
+import { inboxMetaKey } from "@/lib/inbox-meta";
 import { loadInsights } from "@/lib/insights";
+import { fetchPublicFeed, validatePublicFeedUrl } from "@/lib/safe-feed";
+import { stripFeedMarkup } from "@/lib/feed-text";
 import { autoSettings, sendMail, type AutoSettings } from "@/lib/notify";
 import { notifyApproval } from "@/lib/notify";
 import { bad, ok } from "@/lib/http";
-import { getSetting, setSetting } from "@/lib/settings";
+import { rateLimitRequest } from "@/lib/rate-limit";
+import { getSetting, getStringSetting, setSetting } from "@/lib/settings";
 import {
   getMkUser, can, TRANSITIONS, STATUSES, PLATFORMS, ROLES, logActivity, generate, platformStatus,
   DEFAULT_BRAND, cleanUrl, inWs, brandKey, memberLimit, type Brand, type MkStatus, type MkRole, type MkUser,
 } from "@/lib/marketing";
+import { DEFAULT_STORE_PROMO, type StorePromoSettings } from "@/lib/store-marketing";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -45,9 +50,18 @@ async function loadState(u: MkUser) {
     feeds: feeds.map((f) => ({ id: f.id, name: f.name, url: f.url })),
     team: team.map((t) => ({ id: t.id, name: t.name, email: t.email, role: t.marketing_role })),
     brand: { ...DEFAULT_BRAND, ...brand },
+    studioLogo: await getStringSetting(u.ws == null ? "mk_studio_logo" : `mk_studio_logo_ws${u.ws}`, ""),
     platforms: platformStatus(),
     accounts: (await sql`select id, platform, name, status, last_error, expires_at, updated_at from mk_social_accounts where ${inWs(u.ws)} order by platform, name`.catch(() => [])).map((a) => ({ id: a.id, platform: a.platform, name: a.name, status: a.status, error: a.last_error ?? "", expires_at: a.expires_at ? new Date(a.expires_at).toISOString() : null })),
     results: (await sql`select post_id, platform, ok, remote_id, error, created_at from mk_post_results where post_id in (select id from mk_posts where ${inWs(u.ws)}) order by id desc limit 500`.catch(() => [])).map((r) => ({ post_id: r.post_id, platform: r.platform, ok: r.ok, remote_id: r.remote_id ?? "", error: r.error ?? "", at: new Date(r.created_at).toISOString() })),
+    recovery: (await sql`select q.id, q.post_id, q.account_id, q.platform, q.state, q.error_class, q.error_message, q.attempts, q.resolution_note, q.updated_at, p.title, a.name as account_name
+      from mk_post_recovery_queue q join mk_posts p on p.id = q.post_id join mk_social_accounts a on a.id = q.account_id
+      where ${u.ws == null ? sql`p.ws is null` : sql`p.ws = ${u.ws}`} and q.state not in ('resolved','closed') order by q.updated_at desc limit 100`.catch(() => [])).map((r) => ({
+        id: Number(r.id), post_id: r.post_id, account_id: r.account_id, platform: r.platform, state: r.state,
+        error_class: r.error_class, error_message: r.error_message, attempts: r.attempts,
+        resolution_note: r.resolution_note ?? "", updated_at: new Date(r.updated_at).toISOString(),
+        title: r.title ?? "", account_name: r.account_name ?? ""
+      })),
     connectReady: { facebook: metaReady(), linkedin: linkedinReady(), linkedinPages: !!(process.env.LINKEDIN_PAGES_CLIENT_ID && process.env.LINKEDIN_PAGES_CLIENT_SECRET), google: googleReady(), tiktok: tiktokReady() },
     automation: await autoSettings(),
     reach7: await getSetting<{ fetchedAt?: string; pages?: { reached: number | null; views: number | null }[] }>(u.ws == null ? "mk_insights_7" : `mk_insights_7_ws${u.ws}`, {}).then((r) => (r.pages?.length ? { fetchedAt: r.fetchedAt, reached: r.pages.reduce((a, p) => a + (p.reached ?? 0), 0), views: r.pages.reduce((a, p) => a + (p.views ?? 0), 0) } : null)),
@@ -55,7 +69,8 @@ async function loadState(u: MkUser) {
     waReady: !u.tenant && !!(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID),
     emailLog: (await sql`select recipient, subject, kind, ok, error, created_at from mk_email_log where ${!u.tenant} order by id desc limit 40`.catch(() => [])).map((e) => ({ to: e.recipient, subject: e.subject, kind: e.kind, ok: e.ok, error: e.error ?? "", at: new Date(e.created_at).toISOString() })),
     media: (await sql`select id, url, title, width, height, created_at from mk_media where ${inWs(u.ws)} order by id desc limit 200`.catch(() => [])).map((m) => ({ id: m.id, url: m.url, title: m.title, width: m.width, height: m.height, at: new Date(m.created_at).toISOString() })),
-    scheduler: { url: u.role === "admin" && !u.tenant ? `${process.env.SITE_URL?.replace(/\/$/, "") || "https://www.nextedge-access-solutions.com"}/api/cron/publish` : "", hasCronSecret: !!process.env.CRON_SECRET, last: await getSetting<{ at?: string; published?: number; failed?: number }>("mk_cron_last", {}) },
+    scheduler: { url: u.role === "admin" && !u.tenant ? `${process.env.SITE_URL?.replace(/\/$/, "") || "https://www.nextedge-access-solutions.com"}/api/cron/publish` : "", hasCronSecret: !!process.env.CRON_SECRET, last: await getSetting<{ at?: string; published?: number; failed?: number; store?: { created?: number; skipped?: string; error?: string; catalogCount?: number } }>("mk_cron_last", {}) },
+    storeAutomation: u.role === "admin" && !u.tenant ? await getSetting<StorePromoSettings>("mk_store_promo", DEFAULT_STORE_PROMO) : null,
     tenant: u.tenant,
     dailyLimit: u.tenant ? memberLimit() : null,
     publishedToday: u.tenant ? (await sql`select count(distinct r.post_id)::int n from mk_post_results r join mk_posts p on p.id = r.post_id where p.ws = ${u.ws} and r.ok and r.created_at >= (date_trunc('day', now() at time zone 'Asia/Manila') at time zone 'Asia/Manila')`)[0].n : null,
@@ -79,12 +94,17 @@ function parseDate(v: unknown): Date | null | "bad" {
 }
 
 export async function POST(req: Request) {
+  const limited = rateLimitRequest(req, "marketing-actions", 60, 60_000);
+  if (limited) return limited;
   const u = await getMkUser();
   if (!u) return bad("Admin access required.", 403);
   // Same-origin check (CSRF defence on top of the SameSite session cookie).
   const origin = req.headers.get("origin");
   if (origin && new URL(origin).host !== new URL(req.url).host && new URL(origin).host !== req.headers.get("host")) return bad("Bad origin.", 403);
-  const b = await req.json().catch(() => ({}));
+  const rawBody = await req.json().catch(() => ({}));
+  const b: Record<string, any> = rawBody && typeof rawBody === "object" && !Array.isArray(rawBody)
+    ? rawBody as Record<string, any>
+    : {};
   const need = (r: MkRole) => can(u, r);
   const log = (action: string, detail = "", postId: number | null = null) => logActivity(u.id, action, detail, postId, u.ws);
   const staffOnly = () => bad("This part is for the NEAS team only.", 403);
@@ -93,7 +113,14 @@ export async function POST(req: Request) {
   switch (b.action) {
     case "savePost": {
       if (!need("editor")) return deny();
-      const platforms = (Array.isArray(b.platforms) ? b.platforms : []).filter((p: string) => (PLATFORMS as readonly string[]).includes(p));
+      const allowedPlatforms: readonly string[] = PLATFORMS;
+      const rawPlatforms: unknown[] = Array.isArray(b.platforms) ? b.platforms : [];
+      const platforms: string[] = [];
+      for (const platform of rawPlatforms) {
+        if (typeof platform === "string" && allowedPlatforms.includes(platform)) {
+          platforms.push(platform);
+        }
+      }
       const when = parseDate(b.scheduled_at); if (when === "bad") return bad("Invalid date.");
       const media = b.media_url ? cleanUrl(b.media_url) ?? (String(b.media_url).startsWith("/api/img/") ? String(b.media_url) : null) : null;
       if (b.media_url && !media) return bad("Media link must start with https://");
@@ -180,9 +207,15 @@ export async function POST(req: Request) {
     }
     case "saveFeed": {
       if (!need("manager")) return deny();
-      const url = cleanUrl(b.url), name = txt(b.name, 80).trim();
-      if (!url || !name) return bad("Enter a name and a feed link starting with https://");
-      await sql`insert into mk_feeds (name, url, ws) values (${name}, ${url}, ${u.ws})`;
+      const rawUrl = cleanUrl(b.url), name = txt(b.name, 80).trim();
+      if (!rawUrl || !name) return bad("Enter a name and a public HTTPS feed link.");
+      let target: Awaited<ReturnType<typeof validatePublicFeedUrl>>;
+      try {
+        target = await validatePublicFeedUrl(rawUrl);
+      } catch {
+        return bad("Only public HTTPS feed URLs are allowed. Private, local and IP-literal addresses are blocked.");
+      }
+      await sql`insert into mk_feeds (name, url, ws) values (${name}, ${target.url.toString()}, ${u.ws})`;
       return ok();
     }
     case "deleteFeed": {
@@ -194,19 +227,26 @@ export async function POST(req: Request) {
       const f = (await sql`select url from mk_feeds where id=${Number(b.id)} and ${inWs(u.ws)}`)[0];
       if (!f) return bad("Feed not found.", 404);
       try {
-        const r = await fetch(f.url, { headers: { "user-agent": "NEAS-FeedReader/1.0" }, signal: AbortSignal.timeout(8000) });
-        if (!r.ok) return bad(`The feed answered ${r.status}.`);
-        const xml = (await r.text()).slice(0, 2_000_000);
-        const strip = (s: string) => s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+        const xml = await fetchPublicFeed(f.url);
         const items = [...xml.matchAll(/<(item|entry)\b[\s\S]*?<\/\1>/g)].slice(0, 25).map((m) => {
           const x = m[0];
-          const title = strip(x.match(/<title[^>]*>([\s\S]*?)<\/title>/)?.[1] ?? "");
-          const link = x.match(/<link[^>]*href="([^"]+)"/)?.[1] ?? strip(x.match(/<link[^>]*>([\s\S]*?)<\/link>/)?.[1] ?? "");
-          const summary = strip(x.match(/<(description|summary|content)[^>]*>([\s\S]*?)<\/\1>/)?.[2] ?? "").slice(0, 400);
+          const title = stripFeedMarkup(x.match(/<title[^>]*>([\s\S]*?)<\/title>/)?.[1] ?? "");
+          const link = x.match(/<link[^>]*href="([^"]+)"/)?.[1] ?? stripFeedMarkup(x.match(/<link[^>]*>([\s\S]*?)<\/link>/)?.[1] ?? "");
+          const summary = stripFeedMarkup(x.match(/<(description|summary|content)[^>]*>([\s\S]*?)<\/\1>/)?.[2] ?? "").slice(0, 400);
           return { title, link: /^https?:\/\//.test(link) ? link : "", summary };
         }).filter((i) => i.title);
         return ok({ items });
-      } catch (e) { return bad("Couldn't read that feed: " + (e as Error).message); }
+      } catch {
+        return bad("Could not read this feed. Only public HTTPS feeds up to 2 MB are supported.");
+      }
+    }
+    case "saveStudioLogo": {
+      if (!need("admin")) return deny();
+      const url = String(b.url ?? "");
+      if (url && !/^\/api\/img\/[a-f0-9]{16}$/.test(url)) return bad("Upload a valid logo image first.");
+      await setSetting(u.ws == null ? "mk_studio_logo" : `mk_studio_logo_ws${u.ws}`, url);
+      await log(url ? "updated Creative Studio logo" : "restored default Creative Studio logo");
+      return ok();
     }
     case "saveMedia": {
       if (!need("editor")) return deny();
@@ -240,13 +280,38 @@ export async function POST(req: Request) {
     }
     case "inboxMeta": {
       if (!need("editor")) return deny();
-      const key = txt(b.key, 200);
-      if (!/^[mcw]:[\w.-]+$/.test(key)) return bad("Invalid conversation.");
+      const rawKey = txt(b.key, 200);
+      if (!/^[mcw]:[\w.-]+$/.test(rawKey)) return bad("Invalid conversation.");
+      const key = inboxMetaKey(u.ws, rawKey);
       const status = ["open", "done"].includes(b.status) ? b.status : "open";
       const assigned = b.assignedTo ? Number(b.assignedTo) : null;
+      if (assigned !== null && (!Number.isSafeInteger(assigned) || assigned < 1)) return bad("Invalid assignee.");
+      if (u.tenant && assigned !== null && assigned !== u.id) return bad("You can assign this conversation only to your workspace owner.");
       await sql`insert into mk_inbox_meta (thread_key, status, assigned_to, note, updated_by) values (${key}, ${status}, ${assigned}, ${txt(b.note, 2000) || null}, ${u.id})
         on conflict (thread_key) do update set status = excluded.status, assigned_to = excluded.assigned_to, note = excluded.note, updated_by = excluded.updated_by, updated_at = now()`;
       return ok();
+    }
+    case "saveStoreAutomation": {
+      if (u.tenant || !need("admin")) return deny();
+      const x = b.storeAutomation ?? {};
+      const allowedPlatforms: readonly string[] = ["facebook", "instagram", "linkedin", "google_business"];
+      const rawPlatforms: unknown[] = Array.isArray(x.platforms) ? x.platforms : [];
+      const platforms: string[] = [];
+      for (const platform of rawPlatforms) {
+        if (typeof platform === "string" && allowedPlatforms.includes(platform) && !platforms.includes(platform)) {
+          platforms.push(platform);
+        }
+      }
+      if (!!x.enabled && process.env.VERCEL_ENV !== "production") return bad("Store autopilot can be enabled only after the Production release. Staging cannot activate real social publishing.", 403);
+      if (!!x.enabled && !platforms.length) return bad("Select at least one supported social platform before enabling store autopilot.");
+      const value: StorePromoSettings = {
+        enabled: !!x.enabled,
+        dailyCount: Math.max(1, Math.min(5, Math.floor(Number(x.dailyCount) || 5))),
+        platforms,
+      };
+      await setSetting("mk_store_promo", value);
+      await log("updated store product autopilot", `${value.enabled ? "enabled" : "disabled"} · ${value.dailyCount} products/day · ${value.platforms.join(", ")} · 8:00 PM Asia/Manila`);
+      return ok({ storeAutomation: value });
     }
     case "saveAutomation": {
       if (!need("admin")) return deny();
@@ -271,7 +336,22 @@ export async function POST(req: Request) {
       if (a) await log("disconnected account", `${a.platform}: ${a.name}`);
       return ok();
     }
+    case "recoveryAuthorizeRetry": {
+      if (u.tenant || !need("admin")) return deny();
+      const postId = Number(b.postId), accountId = Number(b.accountId);
+      const note = txt(b.note, 500).trim();
+      if (!Number.isSafeInteger(postId) || postId < 1 || !Number.isSafeInteger(accountId) || accountId < 1) return bad("Invalid recovery item.");
+      if (note.length < 12) return bad("Record how you verified the post is not already live and what issue was fixed (at least 12 characters).");
+      const item = (await sql`update mk_post_recovery_queue q set state='retry_ready', resolution_note=${note}, updated_at=now()
+        where q.post_id=${postId} and q.account_id=${accountId} and q.state in ('retryable','needs_review')
+          and exists (select 1 from mk_posts p where p.id=q.post_id and ${u.ws == null ? sql`p.ws is null` : sql`p.ws = ${u.ws}`})
+        returning q.platform`)[0];
+      if (!item) return bad("Recovery item not found or it is not eligible for manual authorization.", 404);
+      await log("authorized verified publishing retry", `${item.platform} · ${note}`, postId);
+      return ok({ authorized: true });
+    }
     case "publishNow": {
+      if (process.env.VERCEL_ENV !== "production") return bad("Real social publishing is disabled in staging and Preview deployments. Test the composer here; enable live publishing only after Production release.", 403);
       if (!need("manager")) return deny();
       const r = await publishPost(Number(b.id), u.id, originOf(req));
       return "error" in r ? bad(r.error) : ok(r);

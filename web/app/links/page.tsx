@@ -2,7 +2,7 @@ import { sql } from "@/lib/db";
 import { getSetting, DEFAULT_SOCIAL, DEFAULT_BUSINESS, type Social, type Business } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "NextEdge Access Solutions — Links", description: "IRATA rope access & height safety in the Philippines. Online Store, services and contact." };
+export const metadata = { title: "NextEdge Access Solutions — Links", description: "IRATA rope access & height safety in the Philippines. Online Store, services and contact.", alternates: { canonical: "/links" } };
 
 export default async function Links() {
   const [links, social, biz] = await Promise.all([
@@ -18,7 +18,8 @@ export default async function Links() {
       <p style={{ margin: 0, color: "#94A3B8" }}>IRATA Rope Access · Height Safety · PPE</p>
       <div style={{ display: "grid", gap: 10, width: "100%", marginTop: 12 }}>
         {links.map((l) => <a key={l.id} href={`/links/go/${l.id}`} style={{ display: "block", border: "1px solid #CA9332", borderRadius: 999, padding: "14px 18px", color: "#fff", textDecoration: "none", fontWeight: 700, background: "rgba(202,147,50,.1)" }}>{l.label}</a>)}
-        <a href="https://wa.me/639957708144" target="_blank" rel="noopener noreferrer" style={{ display: "block", borderRadius: 999, padding: "14px 18px", color: "#fff", textDecoration: "none", fontWeight: 700, background: "#16a34a" }}>WhatsApp +63 995 770 8144</a>
+        <a href="https://api.whatsapp.com/send?phone=639914265886&text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services." target="_blank" rel="noopener noreferrer" style={{ display: "block", borderRadius: 999, padding: "14px 18px", color: "#fff", textDecoration: "none", fontWeight: 700, background: "#16a34a" }}>WhatsApp Sales · +63 991 426 5886</a>
+        <a href="https://api.whatsapp.com/send?phone=639957708144&text=Hello%2C%20I%20am%20interested%20in%20NEAS%20services." target="_blank" rel="noopener noreferrer" style={{ display: "block", borderRadius: 999, padding: "14px 18px", color: "#fff", textDecoration: "none", fontWeight: 700, background: "#128C7E" }}>WhatsApp Support · +63 995 770 8144</a>
       </div>
       {socials.length > 0 && <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center", marginTop: 10 }}>{socials.map(([k, v]) => <a key={k} href={v} target="_blank" rel="noopener" style={{ color: "#EBC07E", fontSize: 13, textTransform: "capitalize" }}>{k.replace(/([A-Z])/g, " $1")}</a>)}</div>}
       <a href="/" style={{ color: "#94A3B8", fontSize: 12, marginTop: 16 }}>www.nextedge-access-solutions.com</a>

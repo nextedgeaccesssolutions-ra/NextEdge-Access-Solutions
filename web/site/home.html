@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.sp-img{all:unset;cursor:pointer;display:block;aspect-ratio:4/3;background:#fff;border-radius:10px;overflow:hidden;margin-bottom:4px}.sp-img img{width:100%;height:100%;object-fit:contain}.sm-img{display:block;max-width:100%;max-height:260px;margin:0 auto 10px;object-fit:contain}.sm-pricerow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.sm-share{border:0;background:#f97316;color:#fff;font-weight:700;border-radius:999px;padding:7px 14px;cursor:pointer}.sm-sharebox{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.sm-sharebox a,.sm-sharebox button{border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;color:#0f172a;text-decoration:none;cursor:pointer}
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#07131d;color:#e8edf5}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.sp-img{all:unset;cursor:pointer;display:block;aspect-ratio:4/3;background:#fff;border-radius:10px;overflow:hidden;margin-bottom:4px}.sp-img img{width:100%;height:100%;object-fit:contain}.sm-img{display:block;max-width:100%;max-height:260px;margin:0 auto 10px;object-fit:contain}.sm-pricerow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.sm-share{border:0;background:#f97316;color:#fff;font-weight:700;border-radius:999px;padding:7px 14px;cursor:pointer}.sm-sharebox{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.sm-sharebox a,.sm-sharebox button{border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;color:#0f172a;text-decoration:none;cursor:pointer}
 </style><link rel="stylesheet" href="/mobile.css"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -147,6 +147,11 @@ section{padding-block:80px}
 .modal-title{font-size:24px;font-weight:800;color:#fff;margin-bottom:12px}
 .modal-desc{font-size:14px;color:var(--fg2);line-height:1.7;margin-bottom:20px}
 .modal-features{display:flex;flex-direction:column;gap:8px}
+.modal-featrow{display:flex;gap:28px;align-items:flex-start}
+.modal-featrow .modal-features{flex:1 1 auto;min-width:0}
+.modal-shareside{flex:0 0 260px;display:flex;flex-direction:column;gap:8px}
+.modal-shareside .sm-sharebox{margin:0}
+@media(max-width:760px){.modal-featrow{flex-direction:column;gap:16px}.modal-shareside{flex:1 1 auto;width:100%}}
 .modal-feature{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--fg)}
 .modal-feature::before{content:'✓';color:var(--accent);font-weight:700;flex-shrink:0}
 .modal-close{position:absolute;top:16px;right:16px;width:32px;height:32px;background:rgba(0,0,0,0.5);border:1px solid var(--border);border-radius:50%;color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -348,7 +353,7 @@ body{background:var(--bg);color:var(--fg)}
 .hero{align-items:flex-end!important}
 .hero>.container{width:100%;max-width:none!important;padding-inline:clamp(16px,4vw,56px)!important}
 .hero-content{margin:0 0 150px 0!important}
-@media(max-width:768px){.hero{flex-direction:column;align-items:stretch!important;justify-content:flex-end}.hero-content{margin:90px 0 24px!important}.hero-stats{position:relative!important}.hero-stats-inner{flex-direction:row!important;flex-wrap:wrap}.hero-stat{flex:1 1 50%!important;padding:14px 10px!important}}
+@media(max-width:768px){.hero{flex-direction:column;align-items:stretch!important;justify-content:flex-end}.hero-content{margin:90px 0 24px!important}.hero-stats{position:relative!important;margin-top:auto!important}.hero-stats-inner{flex-direction:row!important;flex-wrap:wrap}.hero-stat{flex:1 1 50%!important;padding:14px 10px!important}}
 </style>
 <style id="quote-pop">
 @keyframes quotePop{0%,86%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(249,115,22,0)}
@@ -541,32 +546,34 @@ body{background:var(--bg);color:var(--fg)}
 <header class="site-header">
   <div class="container">
     <nav class="nav-inner">
-      <a class="nav-logo" href="#hero">
+      <a class="nav-logo" href="/home">
         <img src="/img/83c162b165ae.png" alt="NEAS Logo">
-        <div class="nav-logo-text">NEXTEDGE<span>Access Solutions · OPC</span></div>
+        <div class="nav-logo-text">NEXTEDGE<span>Access Solutions. NEAS OPC</span></div>
       </a>
       <ul class="nav-links">
-        <li><a href="#about">About</a></li>
-        <li><a href="#services">Services</a></li>
+        <li><a href="/about">About</a></li>
+        <li><a href="/services">Services</a></li>
         
-        <li><a href="#store">Online Store</a></li>
-        <li><a href="#partners">Partners</a></li>
-        <li><a href="#contact">Contact</a></li>
+        <li><a href="/store">Online Store</a></li>
+        <li><a href="/partners">Partners</a></li>
+        <li><a href="/our-clients">Our Clients</a></li>
+        <li><a href="/contact">Contact</a></li>
         <li class="acct-li"><button type="button" class="acct-btn" id="acct-login">Log in</button></li>
         <li class="acct-li"><button type="button" class="acct-btn acct-signup" id="acct-signup">Sign up</button></li>
       </ul>
-      <a href="#contact" class="nav-cta">Get a Quote</a>
+      <a href="/contact" class="nav-cta">Get a Quote</a>
       <button type="button" class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu"><span></span><span></span><span></span></button>
     </nav>
     <div class="mobile-menu" id="mobile-menu" hidden>
-      <a href="#store" class="mm-store">🛒 Online Store</a>
-      <a href="#about">About</a>
-      <a href="#services">Services</a>
-      <a href="#partners">Partners</a>
-      <a href="#contact">Contact</a>
+      <a href="/store" class="mm-store">🛒 Online Store</a>
+      <a href="/about">About</a>
+      <a href="/services">Services</a>
+      <a href="/partners">Partners</a>
+      <a href="/our-clients">Our Clients</a>
+      <a href="/contact">Contact</a>
       <a href="#" class="mm-acct" data-acct="acct-login">Log in</a>
       <a href="#" class="mm-acct" data-acct="acct-signup">Sign up</a>
-      <a href="#contact" class="mm-cta">Get a Quote</a>
+      <a href="/contact" class="mm-cta">Get a Quote</a>
     </div>
   </div>
 </header>
@@ -580,8 +587,8 @@ body{background:var(--bg);color:var(--fg)}
       <h1 class="hero-title">Height is not a limit.<br><em>It is our expertise.</em></h1>
       <p class="hero-sub">NextEdge Access Solutions. delivers safe, efficient, and cost-effective rope access services for industrial, commercial, wind energy, and telecom projects across Asia.</p>
       <div class="hero-actions">
-        <a href="#services" class="btn btn-primary">Our Services</a>
-        <a href="#contact" class="btn btn-outline">Request a Quote</a>
+        <a href="/services" class="btn btn-primary">Our Services</a>
+        <a href="/contact" class="btn btn-outline">Request a Quote</a>
       </div>
     </div>
   </div>
@@ -723,6 +730,37 @@ body{background:var(--bg);color:var(--fg)}
       <div class="partner-card reveal"><img src="/img/2fe2e35babde.png" alt="COUSIN" style="width:auto;max-width:150px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">COUSIN</div><div class="partner-type">Rope Partner</div></div>
     </div>
   </div>
+
+</section>
+
+<section class="clients-preview" id="our-clients" style="background:var(--bg2);padding-block:76px">
+  <div class="container">
+    <div class="reveal" style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
+      <div>
+        <div class="section-eyebrow">Partnerships · Performance · Trust</div>
+        <h2 class="section-title">Our Trusted Clients</h2>
+        <p class="section-lead">We value the organizations and industry partners who place their trust in NEAS for specialist access and technical services.</p>
+      </div>
+      <a class="btn btn-primary" href="/our-clients">View All Clients&nbsp; →</a>
+    </div>
+    <div class="partners-grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-top:36px">
+      <a class="partner-card reveal" href="/our-clients" style="display:block;text-decoration:none">
+        <span class="partner-abbr">TE</span>
+        <div class="partner-name">Triconti ECC</div>
+        <div class="partner-type">Wind Energy</div>
+      </a>
+      <a class="partner-card reveal" href="/our-clients" style="display:block;text-decoration:none">
+        <span class="partner-abbr">AW</span>
+        <div class="partner-name">Atimonan Windkraft</div>
+        <div class="partner-type">Wind Energy</div>
+      </a>
+      <a class="partner-card reveal" href="/our-clients" style="display:block;text-decoration:none">
+        <span class="partner-abbr">PG</span>
+        <div class="partner-name">Philsurv Geodetic Engineer</div>
+        <div class="partner-type">Geodetic Surveying &amp; Engineering</div>
+      </a>
+    </div>
+  </div>
 </section>
 
 <section class="testimonials" id="testimonials" style="background:var(--bg);padding-block:80px">
@@ -801,8 +839,8 @@ body{background:var(--bg);color:var(--fg)}
     </div>
     <div class="contact-grid">
       <div class="contact-details reveal">
-        <div class="contact-item"><div class="contact-icon">📞</div><div><div class="contact-lbl">Phone / WhatsApp / Viber</div><div class="contact-val"><div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639914265886" target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639957708144" target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div></div></div></div>
-        <div class="contact-item"><div class="contact-icon">✉️</div><div><div class="contact-lbl">Email</div><div class="contact-val">info@nextedge-access-solutions.com<br>sales@nextedge-access-solutions.com</div></div></div>
+        <div class="contact-item"><div class="contact-icon">📞</div><div><div class="contact-lbl">Phone / WhatsApp / Viber</div><div class="contact-val"><div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://api.whatsapp.com/send?phone=639914265886" target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://api.whatsapp.com/send?phone=639957708144" target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div></div></div></div>
+        <div class="contact-item"><div class="contact-icon">✉️</div><div><div class="contact-lbl">Email</div><div class="contact-val">info.nextedgeaccesssolutions@gmail.com<br>sales@nextedge-access-solutions.com</div></div></div>
         <div class="contact-item"><div class="contact-icon">🌐</div><div><div class="contact-lbl">Website</div><div class="contact-val">www.nextedge-access-solutions.com</div></div></div>
         <div class="contact-item"><div class="contact-icon">📍</div><div><div class="contact-lbl">Address</div><div class="contact-val">B 15 Lot 6, Marilao Grand Villas<br>Barangay Loma de Gato, Marilao, Bulacan 3019<br>Philippines</div></div></div>
         <div class="contact-item"><div class="contact-icon">👤</div><div><div class="contact-lbl">Contact Person</div><div class="contact-val">Junrey Granaderos<br>Business Dev. · Sales &amp; Marketing Manager</div></div></div>
@@ -810,16 +848,16 @@ body{background:var(--bg);color:var(--fg)}
       <div class="contact-form reveal">
         <form id="contact-form" onsubmit="submitForm(event)">
           <div class="form-row">
-            <div class="form-field"><label>Full Name</label><input type="text" placeholder="Juan dela Cruz" required></div>
-            <div class="form-field"><label>Company</label><input type="text" placeholder="Your Company"></div>
+            <div class="form-field"><label for="contact-name">Full Name</label><input type="text" name="name" id="contact-name" autocomplete="name" placeholder="Juan dela Cruz" required></div>
+            <div class="form-field"><label for="contact-company">Company</label><input type="text" name="company" id="contact-company" autocomplete="organization" placeholder="Your Company"></div>
           </div>
           <div class="form-row">
-            <div class="form-field"><label>Email</label><input type="email" placeholder="you@company.com" required></div>
-            <div class="form-field"><label>Phone</label><input type="tel" placeholder="+63 9XX XXX XXXX"></div>
+            <div class="form-field"><label for="contact-email">Email</label><input type="email" name="email" id="contact-email" autocomplete="email" placeholder="you@company.com" required></div>
+            <div class="form-field"><label for="contact-phone">Phone</label><input type="tel" name="phone" id="contact-phone" autocomplete="tel" placeholder="+63 9XX XXX XXXX"></div>
           </div>
           <div class="form-field">
-            <label>Service Required</label>
-            <select>
+            <label for="contact-service">Service Required</label>
+            <select name="service" id="contact-service">
               <option value="">Select a service…</option>
               <option>Rope Access &amp; Facade Works</option>
               <option>NDT &amp; Industrial Inspection</option>
@@ -830,8 +868,10 @@ body{background:var(--bg);color:var(--fg)}
               <option>Other</option>
             </select>
           </div>
-          <div class="form-field"><label>Message</label><textarea placeholder="Describe your project or inquiry…" required></textarea></div>
+          <div class="form-field"><label for="contact-message">Message</label><textarea name="message" id="contact-message" placeholder="Describe your project or inquiry…" required></textarea></div>
+          <div class="contact-honeypot" aria-hidden="true" style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden"><label for="contact-website">Leave this field empty</label><input type="text" id="contact-website" name="website" tabindex="-1" autocomplete="off"></div>
           <button type="submit" class="form-submit">Send Inquiry</button>
+          <p id="contact-status" class="contact-status" style="min-height:1.5em;margin-top:10px;font-size:13px" role="status" aria-live="polite"></p>
         </form>
       </div>
     </div>
@@ -849,21 +889,21 @@ body{background:var(--bg);color:var(--fg)}
       <div class="footer-brand">
         <img src="/img/83c162b165ae.png" alt="NEAS">
         <div style="font-size:13px;font-weight:700;color:#fff;margin-top:8px">NEXTEDGE ACCESS SOLUTIONS</div>
-        <p>IRATA-certified rope access specialists serving Asia since 2025. Safe · Reliable · Professional.</p>
+        <p>IRATA-certified rope access specialists with 20+ years of combined international experience, serving Asia since 2025. Safe · Reliable · Professional.</p>
       </div>
       <div class="footer-links">
-        <div class="footer-col"><h4>Services</h4><ul><li><a href="#services">Rope Access &amp; Facade</a></li><li><a href="#services">NDT Inspection</a></li><li><a href="#services">Blasting &amp; Painting</a></li><li><a href="#services">Wind &amp; Met Mast</a></li><li><a href="#services">Telecom Tower</a></li><li><a href="#services">Training &amp; PPE</a></li><li><a href="#services">Wind Turbine</a></li></ul></div>
-        <div class="footer-col"><h4>Company</h4><ul><li><a href="#about">About Us</a></li><li><a href="#partners">Partners</a></li><li><a href="#team">Team</a></li><li><a href="#contact">Contact</a></li></ul></div>
+        <div class="footer-col"><h4>Services</h4><ul><li><a href="/services">Rope Access &amp; Facade</a></li><li><a href="/services">NDT Inspection</a></li><li><a href="/services">Blasting &amp; Painting</a></li><li><a href="/services">Wind &amp; Met Mast</a></li><li><a href="/services">Telecom Tower</a></li><li><a href="/services">Training &amp; PPE</a></li><li><a href="/services">Wind Turbine</a></li></ul></div>
+        <div class="footer-col"><h4>Company</h4><ul><li><a href="/about">About Us</a></li><li><a href="/partners">Partners</a></li><li><a href="#team">Team</a></li><li><a href="/contact">Contact</a></li></ul></div>
       </div>
       <div class="footer-emergency">
         <p>🚨 24/7 Emergency</p>
-        <div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639914265886" target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://wa.me/639957708144" target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div>
+        <div class="em-list"><div class="em-row"><span class="em-num">+63 991 426 5886</span><a class="em-btn em-call" href="tel:+639914265886" aria-label="Call +63 991 426 5886">📞 Call</a><a class="em-btn em-wa" href="https://api.whatsapp.com/send?phone=639914265886" target="_blank" rel="noopener" aria-label="WhatsApp +63 991 426 5886">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639914265886" aria-label="Viber +63 991 426 5886">Viber</a></div><div class="em-row"><span class="em-num">+63 995 770 8144</span><a class="em-btn em-call" href="tel:+639957708144" aria-label="Call +63 995 770 8144">📞 Call</a><a class="em-btn em-wa" href="https://api.whatsapp.com/send?phone=639957708144" target="_blank" rel="noopener" aria-label="WhatsApp +63 995 770 8144">WhatsApp</a><a class="em-btn em-vb" href="viber://chat?number=%2B639957708144" aria-label="Viber +63 995 770 8144">Viber</a></div></div>
         <div style="font-size:11px;color:var(--fg3);margin-top:6px">Tap to call or message — available 24/7</div>
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2026 NextEdge Access Solutions (NEAS) OPC. All rights reserved. · <a href="/privacy-policy">Privacy Policy</a> · <a href="#admin-login" id="admin-login-link" class="admin-login-link">Admin log in</a></span>
-      <span>info@nextedge-access-solutions.com</span>
+      <span>© 2026 NextEdge Access Solutions (NEAS) OPC. All rights reserved. · <a href="/privacy-policy">Privacy Policy</a> · <a href="/cookie-policy">Cookie Policy</a> · <a href="/cookie-preferences">Cookie Preferences</a> · <a href="#admin-login" id="admin-login-link" class="admin-login-link">Admin log in</a></span>
+      <span>info.nextedgeaccesssolutions@gmail.com</span>
     </div>
   </div>
 </footer>
@@ -871,7 +911,7 @@ body{background:var(--bg);color:var(--fg)}
 
 <!-- SIDE PANEL -->
 <div class="side-panel">
-  <a class="side-hotline" href="#contact" title="Emergency Hotline">Emergency Hotline</a>
+  <a class="side-hotline" href="/contact" title="Emergency Hotline">Emergency Hotline</a>
   <div class="side-socials">
     <a class="side-social" href="https://www.facebook.com/NextEdgeAccessSolutionss" target="_blank" rel="noopener" title="Facebook">
       <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
@@ -895,13 +935,19 @@ body{background:var(--bg);color:var(--fg)}
       <div class="modal-tag" id="modal-tag"></div>
       <div class="modal-title" id="modal-title"></div>
       <div class="modal-desc" id="modal-desc"></div>
-      <div class="modal-features" id="modal-features"></div>
+      <div class="modal-featrow">
+        <div class="modal-features" id="modal-features"></div>
+        <div class="modal-shareside">
+          <button type="button" class="sm-share" id="svc-share" aria-expanded="false">⤴ Share</button>
+          <div id="svc-sharebox" class="sm-sharebox" hidden></div>
+        </div>
+      </div>
       <div class="modal-cta">
         <button type="button" class="modal-quote" onclick="quoteFromModal()">Request a Quote</button>
         <div class="modal-contact">
           <a href="tel:+639914265886">📞 +63 991 426 5886</a>
           <a href="tel:+639957708144">📞 +63 995 770 8144</a>
-          <a href="mailto:info@nextedge-access-solutions.com">✉️ info@nextedge-access-solutions.com</a>
+          <a href="mailto:info.nextedgeaccesssolutions@gmail.com">✉️ info.nextedgeaccesssolutions@gmail.com</a>
           <a href="mailto:sales@nextedge-access-solutions.com">✉️ sales@nextedge-access-solutions.com</a>
           <span>💬 WhatsApp · Viber · Call — 24/7 emergency line</span>
         </div>
@@ -958,8 +1004,26 @@ function openModal(id){
   const card=document.querySelector(`[onclick="openModal('${id}')"] .service-photo`);
   const bg=card?card.style.backgroundImage:'';
   document.getElementById('modal-hero').style.backgroundImage=bg||'linear-gradient(135deg,#0d1117,#1c2333)';
+  currentSvc=id;
+  var _sb=document.getElementById('svc-sharebox'),_st=document.getElementById('svc-share');
+  if(_sb){_sb.hidden=true;_sb.innerHTML='';}
+  if(_st){_st.setAttribute('aria-expanded','false');}
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow='hidden';
+}
+let currentSvc=null;
+function svcShareUrl(id){return location.origin+location.pathname+'?service='+encodeURIComponent(id);}
+function shareSvc(){
+  const s=SERVICES[currentSvc];if(!s)return;
+  const u=svcShareUrl(currentSvc),t=s.title+' | NextEdge Access Solutions',e=encodeURIComponent;
+  if(navigator.share&&matchMedia('(pointer:coarse)').matches){navigator.share({title:t,text:t,url:u}).catch(function(){});return;}
+  const b=document.getElementById('svc-sharebox'),btn=document.getElementById('svc-share');
+  b.hidden=!b.hidden;btn.setAttribute('aria-expanded',String(!b.hidden));
+  if(b.hidden){b.innerHTML='';return;}
+  const L=[['Facebook','https://www.facebook.com/sharer/sharer.php?u='+e(u)],['Messenger','fb-messenger://share/?link='+e(u)],['WhatsApp','https://api.whatsapp.com/send?text='+e(t+' '+u)],['Viber','viber://forward?text='+e(t+' '+u)],['X','https://twitter.com/intent/tweet?text='+e(t)+'&url='+e(u)],['LinkedIn','https://www.linkedin.com/sharing/share-offsite/?url='+e(u)],['Email','mailto:?subject='+e(t)+'&body='+e(t+'\n'+u)]];
+  b.innerHTML=L.map(function(x){return '<a href="'+x[1]+'" target="_blank" rel="noopener">'+x[0]+'</a>';}).join('')+'<button type="button" id="svc-copylink">Copy link</button>';
+  const c=document.getElementById('svc-copylink');
+  c.onclick=function(){(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){c.textContent='Copied ✓';clearTimeout(c._t);c._t=setTimeout(function(){c.textContent='Copy link';},2000);},function(){prompt('Copy link:',u);});};
 }
 function closeModal(e){
   if(e&&e.target!==document.getElementById('modal')&&!e.target.classList.contains('modal-close'))return;
@@ -967,12 +1031,45 @@ function closeModal(e){
   document.body.style.overflow='';
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal({target:document.getElementById('modal')});});
-function submitForm(e){
+(function(){
+  var b=document.getElementById('svc-share');
+  if(b)b.addEventListener('click',shareSvc);
+  try{var q=new URLSearchParams(location.search).get('service');if(q&&SERVICES[q])openModal(q);}catch(err){}
+})();
+async function submitForm(e){
   e.preventDefault();
-  const btn=e.target.querySelector('.form-submit');
-  btn.textContent='✓ Inquiry Sent! We\'ll be in touch shortly.';
-  btn.style.background='#16a34a';
+  const form=e.currentTarget;
+  const btn=form.querySelector('.form-submit');
+  const status=document.getElementById('contact-status');
+  if(!btn||!status)return;
   btn.disabled=true;
+  btn.textContent='Sending...';
+  status.textContent='';
+  status.className='contact-status';
+  status.style.color='';
+  try{
+    const payload=Object.fromEntries(new FormData(form).entries());
+    const response=await fetch('/api/contact',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.error||data.message||'Your enquiry could not be sent. Please try again.');
+    form.reset();
+    status.textContent=data.message||'Thank you. Your enquiry has been sent to NEAS.';
+    status.classList.add('success');
+    status.style.color='#16a34a';
+    btn.textContent='✓ Inquiry Sent';
+    btn.style.background='#16a34a';
+  }catch(error){
+    status.textContent=error instanceof Error?error.message:'Network error. Please try again or contact NEAS by phone.';
+    status.classList.add('error');
+    status.style.color='#b91c1c';
+    btn.disabled=false;
+    btn.textContent='Send Inquiry';
+    btn.style.background='';
+  }
 }
 </script>
 
@@ -1041,11 +1138,13 @@ var CATALOG=[{"id": "p001", "cat": "Helmets", "code": "6X945", "name": "Work She
 var BANK={name:'NextEdge Access Solutions. NEAS OPC',acct:'0000078251151',swift:'SETCPHMMXXX',bank:'Security Bank Corporation'};
 var ORDER_EMAIL='sales@nextedge-access-solutions.com';
 var markup=DEFAULT_MARKUP, overrides={}, admin=false, db=null, cat='All', q='', cart={}, qty={}, wish={};
+try{var savedCart=JSON.parse(localStorage.getItem('neasCart')||'{}');cart=savedCart&&typeof savedCart==='object'&&!Array.isArray(savedCart)?savedCart:{}}catch(e){cart={}}
 try{wish=JSON.parse(localStorage.getItem('neasWish')||'{}')}catch(e){}
 var $=function(id){return document.getElementById(id)};
+function saveCart(){try{localStorage.setItem('neasCart',JSON.stringify(cart))}catch(e){}}
 var peso=function(n){return '₱'+Math.round(n).toLocaleString('en-PH')};
 var esc=function(s){var d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML};
-function price(p){if(p.live!=null)return p.live;var o=overrides[p.id];return (o!=null&&o!=='')?Number(o):Math.ceil(p.dealer*(1+markup/100)/5)*5;}
+function price(p){if(!p)return 0;if(p.live!=null)return p.live;var o=overrides[p.id];return (o!=null&&o!=='')?Number(o):Math.ceil(p.dealer*(1+markup/100)/5)*5;}
 function byId(id){return CATALOG.find(function(x){return x.id===id})}
 var cats=['All','♥ Wishlist'].concat(CATALOG.map(function(p){return p.cat}).filter(function(c,i,a){return a.indexOf(c)===i}));
 function renderCats(){$('store-cats').innerHTML='';cats.forEach(function(c){var b=document.createElement('button');b.type='button';b.textContent=c;if(c===cat)b.className='on';b.onclick=function(){cat=c;renderCats();render()};$('store-cats').appendChild(b)})}
@@ -1068,12 +1167,15 @@ function render(){
     d.querySelector('.q-plus').onclick=function(){qty[p.id]=n+1;render()};
     d.querySelector('.sp-cart').onclick=function(){addToCart(p.id,n);qty[p.id]=1;render()};
     d.querySelector('.sp-buy').onclick=function(){cart={};cart[p.id]=n;qty[p.id]=1;renderCart();render();openCheckout()};
-    if(admin)d.querySelector('.sp-price').onclick=function(){editPrice(p)};
+    
     g.appendChild(d);
   });
 }
-function totals(){var n=0,t=0;Object.keys(cart).forEach(function(id){n+=cart[id];t+=cart[id]*price(byId(id))});return {n:n,t:t}}
-function renderCart(){var x=totals();$('store-quote').hidden=!x.n;$('sq-count').textContent=x.n;$('sq-total').textContent=peso(x.t);}
+/* A cart saved on /store holds database ids this page's built-in catalogue only learns
+   about once loadLive() returns. Unresolved ids are skipped here - never counted, never
+   dropped from the cart - because throwing on one killed the whole store script. */
+function totals(){var n=0,t=0;Object.keys(cart).forEach(function(id){var p=byId(id);if(!p)return;n+=cart[id];t+=cart[id]*price(p)});return {n:n,t:t}}
+function renderCart(){var x=totals();$('store-quote').hidden=!x.n;$('sq-count').textContent=x.n;$('sq-total').textContent=peso(x.t);saveCart();}
 $('sq-clear').onclick=function(){cart={};renderCart();render()};
 $('sq-send').onclick=function(){openCheckout()};
 $('store-q').oninput=function(e){q=e.target.value.trim().toLowerCase();render()};
@@ -1093,68 +1195,20 @@ function openSpec(p){
   bankHtml()+'<div class="sp-btns"><button type="button" class="sp-buy" id="sm-buy">BUY NOW</button><button type="button" class="sp-cart" id="sm-add">ADD TO CART</button></div>');
   wireCopy();if($('sm-share'))$('sm-share').onclick=function(){shareP(p)};$('sm-buy').onclick=function(){cart={};cart[p.id]=1;renderCart();render();openCheckout()};$('sm-add').onclick=function(){addToCart(p.id,1);closeModal()};
 }
-function openCheckout(){
-  var x=totals();if(!x.n)return;
-  var ref='NEAS-'+new Date().toISOString().slice(2,10).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
-  var rows=Object.keys(cart).map(function(id){var p=byId(id);return '<tr><td>'+esc(p.name)+(p.code?'<small>'+esc(p.code)+'</small>':'')+'</td><td>'+cart[id]+'</td><td>'+peso(cart[id]*price(p))+'</td></tr>'}).join('');
-  openModal('<button type="button" class="sm-close" aria-label="Close">×</button><h3>Checkout</h3><div class="sm-ref">Order reference: <b>'+ref+'</b></div>'+
-   '<table class="sm-order"><tr><th>Item</th><th>Qty</th><th>Amount</th></tr>'+rows+'<tr class="sm-tot"><td>Total</td><td>'+x.n+'</td><td>'+peso(x.t)+'</td></tr></table>'+
-   bankHtml()+'<ol class="sm-steps"><li>Transfer the total to the account above. Use <b>'+ref+'</b> as the reference.</li><li>Fill in your details and send the order.</li><li>Email or Viber your deposit slip; we confirm stock and delivery.</li></ol>'+
-   '<form id="sm-form" class="sm-form"><input name="name" placeholder="Full name / Company" required><input name="phone" placeholder="Mobile number" required><input name="email" type="email" placeholder="Email"><textarea name="addr" placeholder="Delivery address" rows="2" required></textarea><label class="sm-slip"><span>📎 Upload payment slip <small>(photo or PDF of your deposit/transfer receipt)</small></span><input type="file" name="slip" accept="image/*,application/pdf"></label><div class="sm-slip-prev" id="sm-slip-prev"></div>'+
-   '<button type="submit" class="sp-buy">SEND ORDER</button></form><p class="sm-fine">Prices subject to stock confirmation. Payment is verified manually by NEAS before release.</p>');
-  wireCopy();
-  var slipIn=MB.querySelector('input[name=slip]');slipIn.onchange=function(){var fl=slipIn.files[0],pv=$('sm-slip-prev');pv.innerHTML='';if(!fl)return;if(fl.size>10*1024*1024){pv.textContent='File is over 10 MB — please choose a smaller photo.';slipIn.value='';return}if(/^image\//.test(fl.type)){var im=document.createElement('img');im.src=URL.createObjectURL(fl);pv.appendChild(im)}var t=document.createElement('span');t.textContent='✓ '+fl.name;pv.appendChild(t)};
-  $('sm-form').onsubmit=function(e){e.preventDefault();var f=e.target;var slip=slipIn.files[0];
-    var lines=Object.keys(cart).map(function(id){var p=byId(id);return '- '+cart[id]+' x '+p.name+(p.code?' ('+p.code+')':'')+' = '+peso(cart[id]*price(p))});
-    var body='Order reference: '+ref+'\n\n'+lines.join('\n')+'\nTOTAL: '+peso(x.t)+'\n\nPayment: Bank transfer to '+BANK.bank+' '+BANK.acct+'\n\nName: '+f.name.value+'\nMobile: '+f.phone.value+'\nEmail: '+f.email.value+'\nDelivery address: '+f.addr.value;
-    body+='\nPayment slip: '+(slip?'attached ('+slip.name+')':'to follow');
-    var done=function(how){MB.querySelector('.sm-form').outerHTML='<div class="sm-done">✓ Order '+how+'. Reference <b>'+ref+'</b>.'+(slip&&how!=='shared'?'<br><b>Please attach your payment slip ('+esc(slip.name)+') to that email before sending</b> — browsers cannot attach files automatically.':'')+'<br>You can also send the slip by Viber to +63 991 426 5886 or email '+ORDER_EMAIL+'.</div>'};
-    if(slip&&navigator.canShare&&navigator.canShare({files:[slip]})){navigator.share({files:[slip],title:'Online order '+ref,text:'To: '+ORDER_EMAIL+'\n\n'+body}).then(function(){done('shared')},function(){location.href='mailto:'+ORDER_EMAIL+'?subject='+encodeURIComponent('Online order '+ref)+'&body='+encodeURIComponent(body);done('opened in your email app')});return}
-    location.href='mailto:'+ORDER_EMAIL+'?subject='+encodeURIComponent('Online order '+ref)+'&body='+encodeURIComponent(body);done('opened in your email app');
-  };
-}
-function setStatus(t){$('store-admin-status').textContent=t}
-function editPrice(p){
-  var cur=overrides[p.id]!=null?overrides[p.id]:'';
-  var v=prompt('Price for '+p.name+' (₱). Leave blank to use dealer + '+markup+'% markup.',cur);
-  if(v===null)return;v=v.replace(/[₱,\s]/g,'');
-  if(v!==''&&isNaN(Number(v))){setStatus('Not a number');return}
-  setStatus('Saving…');
-  db.doc('prices/'+p.id).set({price:v===''?null:Number(v)}).then(function(){setStatus('Saved ✓')},function(e){setStatus('Not saved: '+(e&&e.code||'error'))});
-}
-renderCats();render();
+function openCheckout(){var x=totals();if(!x.n)return;saveCart();location.href='/store';}
+renderCats();render();renderCart();
 function shareP(p){var u=location.origin+'/store/p/'+encodeURIComponent(p.id),t=p.name+' — '+peso(price(p))+' | NEAS Online Store',e=encodeURIComponent;
   if(navigator.share&&matchMedia('(pointer:coarse)').matches){navigator.share({title:t,text:t,url:u}).catch(function(){});return}
-  var L=[['Facebook','https://www.facebook.com/sharer/sharer.php?u='+e(u)],['Messenger','fb-messenger://share/?link='+e(u)],['WhatsApp','https://wa.me/?text='+e(t+' '+u)],['Viber','viber://forward?text='+e(t+' '+u)],['X','https://twitter.com/intent/tweet?text='+e(t)+'&url='+e(u)],['LinkedIn','https://www.linkedin.com/sharing/share-offsite/?url='+e(u)],['Email','mailto:?subject='+e(t)+'&body='+e(t+'\n'+u)]];
+  var L=[['Facebook','https://www.facebook.com/sharer/sharer.php?u='+e(u)],['Messenger','fb-messenger://share/?link='+e(u)],['WhatsApp','https://api.whatsapp.com/send?text='+e(t+' '+u)],['Viber','viber://forward?text='+e(t+' '+u)],['X','https://twitter.com/intent/tweet?text='+e(t)+'&url='+e(u)],['LinkedIn','https://www.linkedin.com/sharing/share-offsite/?url='+e(u)],['Email','mailto:?subject='+e(t)+'&body='+e(t+'\n'+u)]];
   var b=$('sm-sharebox');b.hidden=!b.hidden;b.innerHTML=L.map(function(x){return '<a href="'+x[1]+'" target="_blank" rel="noopener">'+x[0]+'</a>'}).join('')+'<button type="button" id="sm-copylink">Copy link</button><a href="'+u+'" target="_blank">Product page ↗</a>';
   $('sm-copylink').onclick=function(){(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){$('sm-copylink').textContent='Copied ✓'},function(){prompt('Copy link:',u)})};}
 function loadLive(){fetch('/api/products',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(d){var a=d&&(d.products||d.data||d);if(!Array.isArray(a)||!a.length)return;
   var seen={},keep=[];a.slice().sort(function(x,y){return (y.id[0]==='s')-(x.id[0]==='s')||(!!y.image)-(!!x.image)}).forEach(function(x){var k=(x.name+'|'+(x.code||'')).toLowerCase().replace(/\s+/g,' ');if(!seen[k]){seen[k]=1;keep.push(x)}});a=a.filter(function(x){return keep.indexOf(x)>-1});CATALOG.length=0;a.forEach(function(x){CATALOG.push({id:x.id,cat:x.category||'Other',code:x.code||'',name:x.name,dealer:0,live:Number(x.price),image:x.image||'',desc:x.description||'',features:x.features||'',specs:/^(https?:\/\/|\/)/i.test(x.specs_url||'')?x.specs_url:''})});
-  cats=['All','♥ Wishlist'].concat(CATALOG.map(function(p){return p.cat}).filter(function(c,i,a){return a.indexOf(c)===i}));cart={};renderCats();render();renderCart();}).catch(function(){})}
+  cats=['All','♥ Wishlist'].concat(CATALOG.map(function(p){return p.cat}).filter(function(c,i,a){return a.indexOf(c)===i}));var validCart={};CATALOG.forEach(function(p){var n=Math.floor(Number(cart[p.id]));if(n>0)validCart[p.id]=Math.min(n,99)});cart=validCart;renderCats();render();renderCart();}).catch(function(){})}
 loadLive();
-if(window.claude&&claude.use){
-  claude.use('db').then(function(d){ if(!d)return; db=d;
-    db.doc('store/settings').onSnapshot(function(s){var m=s.exists&&s.data().markup;if(typeof m==='number'){markup=m;$('store-markup').value=m}render();renderCart()});
-    db.collection('prices').onSnapshot(function(s){overrides={};s.docs.forEach(function(x){var v=x.data().price;if(v!=null)overrides[x.id]=v});render();renderCart()});
-    claude.use('user').then(function(u){ if(!u)return; u.canEdit().then(function(ok){ if(!ok)return; admin=true;$('store-admin').hidden=false;$('store-markup').value=markup;render();
-      $('store-markup').onchange=function(e){var m=Number(e.target.value);if(isNaN(m)||m<0)return;setStatus('Saving…');db.doc('store/settings').set({markup:m}).then(function(){setStatus('Saved ✓')},function(e){setStatus('Not saved: '+(e&&e.code||'error'))})};
-      $('store-pricelist').onclick=openPriceList;
-    })});
-  });
-}
-function openPriceList(){
-  var rows=CATALOG.map(function(p){var o=overrides[p.id];return '<tr data-id="'+p.id+'"><td>'+esc(p.name)+'<small>'+esc(p.code||'')+' · '+esc(p.cat)+'</small></td><td>'+peso(p.dealer)+'</td><td><input type="number" min="0" step="5" value="'+(o!=null&&o!==''?o:'')+'" placeholder="'+Math.ceil(p.dealer*(1+markup/100)/5)*5+'"></td></tr>'}).join('');
-  openModal('<button type="button" class="sm-close" aria-label="Close">×</button><h3>Admin · Price List</h3><p class="sm-fine">Selling price per item. Leave blank to use dealer + '+markup+'% markup (shown in grey). Only admins see this.</p><input type="search" id="pl-q" class="pl-q" placeholder="Filter…"><div class="pl-wrap"><table class="sm-order pl"><tr><th>Item</th><th>Dealer</th><th>Selling ₱</th></tr>'+rows+'</table></div><div class="pl-foot"><span id="pl-status"></span><button type="button" class="sp-buy" id="pl-save">SAVE CHANGES</button></div>');
-  $('pl-q').oninput=function(e){var v=e.target.value.toLowerCase();[].forEach.call(MB.querySelectorAll('.pl tr[data-id]'),function(r){r.style.display=r.textContent.toLowerCase().indexOf(v)>-1?'':'none'})};
-  $('pl-save').onclick=function(){var ch=[];[].forEach.call(MB.querySelectorAll('.pl tr[data-id]'),function(r){var id=r.dataset.id,v=r.querySelector('input').value.trim(),cur=overrides[id]!=null?String(overrides[id]):'';if(v!==cur)ch.push([id,v===''?null:Number(v)])});
-    if(!ch.length){$('pl-status').textContent='No changes';return}var i=0;$('pl-status').textContent='Saving 0/'+ch.length+'…';
-    (function next(){if(i>=ch.length){$('pl-status').textContent='Saved '+ch.length+' price(s) ✓';return}var c=ch[i++];db.doc('prices/'+c[0]).set({price:c[1]}).then(function(){$('pl-status').textContent='Saving '+i+'/'+ch.length+'…';next()},function(e){$('pl-status').textContent='Stopped at '+i+': '+(e&&e.code||'error')})})();};
-}
-/* show store only from menu */
-var ST=$('store');function showStore(){ST.classList.add('open');}
-[].forEach.call(document.querySelectorAll('a[href="#store"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();showStore();ST.scrollIntoView({behavior:'smooth'})})});
-if(location.hash==='#store'){showStore();setTimeout(function(){ST.scrollIntoView()},300)}
-window.addEventListener('hashchange',function(){if(location.hash==='#store')showStore()});
+/* Product pricing is managed in the authenticated NEAS Admin Portal. */
+/* Store browsing is served by the dedicated /store route. */
+var ST=$('store');
 $('store-close').onclick=function(){ST.classList.remove('open');window.scrollTo({top:0,behavior:'smooth'})};
 })();
 </script>
@@ -1175,7 +1229,7 @@ var bar=document.getElementById('store-admin'),ov=document.getElementById('admin
 if(!bar||!ov)return;
 document.getElementById('ap-slot').appendChild(bar);
 function isAdmin(){return !bar.hidden}
-var gate=document.createElement('div');gate.className='ap-gate';gate.hidden=true;gate.innerHTML='<b>Admins only.</b> This area is for NEAS staff. Sign in to claude.ai with the NEAS admin account to manage prices.';
+var gate=document.createElement('div');gate.className='ap-gate';gate.hidden=true;gate.innerHTML='<b>Admins only.</b> Manage catalogue and prices in the secure <a href="/admin">NEAS Admin Portal</a>.';
 document.getElementById('ap-slot').before(gate);
 function open(e){if(e)e.preventDefault();var a=isAdmin();bar.parentNode.hidden=!a;gate.hidden=a;document.getElementById('ap-title').textContent=a?'Store prices':'Admin log in';ov.hidden=false;document.body.style.overflow='hidden';}
 function close(){ov.hidden=true;document.body.style.overflow='';}
@@ -1206,7 +1260,7 @@ function render(){
     body.innerHTML='<div class="acct-info"><b>'+esc(profile.name)+'</b>'+(profile.company?'<br>'+esc(profile.company):'')+'<br>'+esc(profile.phone||'')+'<br>'+esc(profile.address||'')+'</div>'+
     '<p style="font-size:13px;color:#64748b">You\'re logged in. Your details fill in automatically at checkout.</p><div style="display:flex;gap:8px"><button type="button" class="acct-go" id="acct-edit" style="flex:1">Edit details</button><button type="button" class="acct-go" id="acct-shop" style="flex:1;background:#0f766e">Go to Online Store</button></div>';
     document.getElementById('acct-edit').onclick=function(){mode='edit';render()};
-    document.getElementById('acct-shop').onclick=function(){close();var a=document.querySelector('a[href="#store"]');if(a)a.click()};return}
+    document.getElementById('acct-shop').onclick=function(){close();window.location.href='/store'};return}
   var isNew=!(profile&&profile.name);
   title.textContent=mode==='edit'?'Edit my details':(isNew?(mode==='signup'?'Sign up':'Log in'):'Log in');
   var tabs=isNew&&mode!=='edit'?'<div class="acct-tabs"><button type="button" data-m="login" class="'+(mode==='login'?'on':'')+'">Log in</button><button type="button" data-m="signup" class="'+(mode==='signup'?'on':'')+'">Sign up</button></div>':'';

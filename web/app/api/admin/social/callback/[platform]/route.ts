@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getMkUser, can, logActivity } from "@/lib/marketing";
 import { originOf } from "@/lib/reset";
-import { completeConnect, SOCIAL_PLATFORMS, type ConnectPlatform } from "@/lib/social";
+import { completeConnect, linkedinScopeErrorMessage, SOCIAL_PLATFORMS, type ConnectPlatform } from "@/lib/social";
 
 export async function GET(req: Request, { params }: { params: Promise<{ platform: string }> }) {
   const { platform } = await params;
@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ platform
   let saved: { state?: string; p?: string; pages?: boolean } = {};
   try { saved = JSON.parse(jar.get("mk_oauth")?.value ?? "{}"); } catch {}
   jar.delete("mk_oauth");
-  if (url.searchParams.get("error")) return back(/scope/i.test(url.searchParams.get("error") ?? "") ? "LinkedIn hasn't approved Company Page access yet. In your LinkedIn developer portal, create a second app with only the Community Management API product and request access; once approved, add LINKEDIN_PAGES_CLIENT_ID and LINKEDIN_PAGES_CLIENT_SECRET in Vercel. Your profile connection still works." : "Connection was cancelled.");
+  if (url.searchParams.get("error")) return back(/scope/i.test(url.searchParams.get("error") ?? "") ? linkedinScopeErrorMessage() : "Connection was cancelled.");
   const code = url.searchParams.get("code");
   if (!(SOCIAL_PLATFORMS as readonly string[]).includes(platform) || !code || !saved.state || saved.state !== url.searchParams.get("state") || saved.p !== platform)
     return back("The connection expired. Please try again.");

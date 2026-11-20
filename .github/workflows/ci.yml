@@ -1,0 +1,71 @@
+name: NEAS CI
+
+on:
+  pull_request:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neas-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Tests, types and Next.js build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Verify package.json/package-lock.json synchronization
+        run: npm run test:lockfile
+        working-directory: web
+
+      - name: Install Next.js application dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Test bounded Gmail recipient validation
+        run: npm run test:aiw-email-validation
+        working-directory: web
+
+      - name: Test Gmail opt-out enforcement
+        run: npm run test:aiw-contact-policy
+        working-directory: web
+
+      - name: Test AI Workforce authority enforcement
+        run: npm run test:aiw-authority
+        working-directory: web
+
+      - name: Test AI Gateway OIDC budget enforcement
+        run: npm run test:ai-gateway
+        working-directory: web
+
+      - name: Test AI Workforce Gateway readiness reporting
+        run: npm run test:aiw-readiness
+        working-directory: web
+
+      - name: Test AI Workforce specialist skill registry
+        run: npm run test:aiw-skills
+        working-directory: web
+
+      - name: Verify clean public route contract
+        run: npm run test:clean-routes
+        working-directory: web
+
+      # Use build:app, not build: the latter may run database migrations.
+      - name: Build Next.js application without database access
+        run: npm run build:app
+        working-directory: web

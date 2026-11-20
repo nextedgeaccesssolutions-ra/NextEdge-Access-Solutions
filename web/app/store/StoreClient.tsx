@@ -15,7 +15,7 @@ function BankBox({ bank }: { bank: Bank }) {
     <tr><th>SWIFT Code</th><td>{bank.swift}</td></tr><tr><th>Bank</th><td>{bank.bank}</td></tr></tbody></table></div>;
 }
 
-export default function StoreClient({ products, user, bank }: { products: P[]; user: { name: string; phone: string | null; email: string } | null; bank: Bank }) {
+export default function StoreClient({ products, user, bank, linkable = false }: { products: P[]; user: { name: string; phone: string | null; email: string } | null; bank: Bank; linkable?: boolean }) {
   const [cat, setCat] = useState("All"); const [q, setQ] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({}); const [qty, setQty] = useState<Record<string, number>>({});
   const [wish, setWish] = useState<Record<string, 1>>({});
@@ -33,23 +33,40 @@ export default function StoreClient({ products, user, bank }: { products: P[]; u
   const list = products.filter((p) => (cat === "All" || (cat === "♥ Wishlist" ? wish[p.id] : p.category === cat)) && (!q || (p.name + " " + p.code).toLowerCase().includes(q.toLowerCase())));
   const lines = Object.entries(cart).filter(([id]) => byId.has(id)).map(([id, n]) => ({ p: byId.get(id)!, n }));
   const count = lines.reduce((s, l) => s + l.n, 0), total = lines.reduce((s, l) => s + l.n * l.p.price, 0);
-  const add = (id: string, n: number) => setCart((c) => ({ ...c, [id]: (c[id] || 0) + n }));
-  const setLine = (id: string, n: number) => setCart((c) => { const x = { ...c }; if (n <= 0) delete x[id]; else x[id] = n; return x; });
+  const add = (id: string, n: number) => setCart((c) => ({ ...c, [id]: Math.min(999, (c[id] || 0) + n) }));
+  const setLine = (id: string, n: number) => setCart((c) => { const x = { ...c }; if (n <= 0) delete x[id]; else x[id] = Math.min(999, n); return x; });
   const checkout = (persist?: Record<string, number>) => { if (!user) { try { localStorage.setItem("neasCart", JSON.stringify(persist ?? cart)); } catch {} location.href = "/login?next=/store"; return; } setErr(""); setModal({ kind: "checkout" }); };
 
   async function placeOrder(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setErr(""); setBusy(true);
-    const form = new FormData(e.currentTarget);
-    form.append("items", JSON.stringify(lines.map((l) => ({ id: l.p.id, quantity: l.n }))));
-    const res = await fetch("/api/orders", { method: "POST", body: form });
-    const data = await res.json().catch(() => ({})); setBusy(false);
-    if (res.status === 401) { location.href = "/login?next=/store"; return; }
-    if (!res.ok) { setErr(data.error || "Order could not be placed."); return; }
-    setCart({}); setModal({ kind: "done", ref: data.order.reference, total: Number(data.order.total) });
+    try {
+      const form = new FormData(e.currentTarget);
+      const slip = form.get("paymentSlip");
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+      if (!(slip instanceof File) || !slip.size) {
+        setErr("Upload your payment slip before sending the order.");
+        return;
+      }
+      if (slip.size > 4 * 1024 * 1024 || !allowedTypes.includes(slip.type)) {
+        setErr("Payment slip must be a JPEG, PNG, WebP or PDF no larger than 4 MB.");
+        return;
+      }
+      form.append("items", JSON.stringify(lines.map((l) => ({ id: l.p.id, quantity: l.n }))));
+      const res = await fetch("/api/orders", { method: "POST", body: form });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) { location.href = "/login?next=/store"; return; }
+      if (!res.ok) { setErr(data.error || data.message || "Order could not be placed."); return; }
+      setCart({});
+      setModal({ kind: "done", ref: data.order.reference, total: Number(data.order.total) });
+    } catch {
+      setErr("Network error. Your order was not submitted. Please check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return <>
-    <div className="sbar">
+    <div id="store-products" className="sbar">
       <input className="input" type="search" placeholder="Search item or code…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search products" />
       <div className="cats">{cats.map((c) => <button key={c} type="button" className={c === cat ? "on" : ""} onClick={() => setCat(c)}>{c}</button>)}</div>
     </div>
@@ -58,10 +75,10 @@ export default function StoreClient({ products, user, bank }: { products: P[]; u
       {list.map((p) => { const n = qty[p.id] || 1; return <article key={p.id} className="sp">
         <div className="sp-top"><span className="eyebrow" style={{ fontSize: 10 }}>{p.category}</span><button type="button" className={"wish" + (wish[p.id] ? " on" : "")} aria-label="Wishlist" aria-pressed={!!wish[p.id]} onClick={() => setWish((w) => { const x = { ...w }; if (x[p.id]) delete x[p.id]; else x[p.id] = 1; return x; })}>♥</button></div>
         <button type="button" className="sp-img" onClick={() => setModal({ kind: "spec", p })} aria-label={"View " + p.name}>{p.image ? <img src={p.image} alt={p.name} loading="lazy" /> : <span>🛡️</span>}</button>
-        <button type="button" className="sp-name" onClick={() => setModal({ kind: "spec", p })}>{p.name}</button>
+        {linkable ? <a href={`/store/p/${encodeURIComponent(p.id)}`} className="sp-name" onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); setModal({ kind: "spec", p }); }}>{p.name}</a> : <button type="button" className="sp-name" onClick={() => setModal({ kind: "spec", p })}>{p.name}</button>}
         <div className="sp-code">{p.code && "Code: " + p.code}</div>
         <div className="sp-price">{peso(p.price)}</div>
-        <div className="qty"><button type="button" className="minus" aria-label="Less" onClick={() => setQty((x) => ({ ...x, [p.id]: Math.max(1, n - 1) }))}>−</button><span>{n}</span><button type="button" className="plus" aria-label="More" onClick={() => setQty((x) => ({ ...x, [p.id]: n + 1 }))}>+</button>{cart[p.id] ? <em>{cart[p.id]} in cart</em> : null}</div>
+        <div className="qty"><button type="button" className="minus" aria-label="Less" onClick={() => setQty((x) => ({ ...x, [p.id]: Math.max(1, n - 1) }))}>−</button><span>{n}</span><button type="button" className="plus" aria-label="More" onClick={() => setQty((x) => ({ ...x, [p.id]: Math.min(999, n + 1) }))}>+</button>{cart[p.id] ? <em>{cart[p.id]} in cart</em> : null}</div>
         <div className="btns"><button type="button" className="buy" onClick={() => { setCart({ [p.id]: n }); setQty((x) => ({ ...x, [p.id]: 1 })); checkout({ [p.id]: n }); }}>BUY NOW</button><button type="button" className="add" onClick={() => { add(p.id, n); setQty((x) => ({ ...x, [p.id]: 1 })); }}>ADD TO CART</button></div>
       </article>; })}
     </div>
@@ -80,7 +97,7 @@ export default function StoreClient({ products, user, bank }: { products: P[]; u
       {modal.kind === "checkout" && <>
         <h2>Checkout</h2>
         <table className="t"><thead><tr><th>Item</th><th>Qty</th><th style={{ textAlign: "right" }}>Amount</th></tr></thead><tbody>
-          {lines.map((l) => <tr key={l.p.id}><td>{l.p.name}<small className="sp-code" style={{ display: "block" }}>{l.p.code}</small></td><td><input className="input" style={{ width: 64, padding: 6 }} type="number" min={0} value={l.n} onChange={(e) => setLine(l.p.id, Math.floor(Number(e.target.value) || 0))} aria-label={"Quantity of " + l.p.name} /></td><td style={{ textAlign: "right" }}>{peso(l.n * l.p.price)}</td></tr>)}
+          {lines.map((l) => <tr key={l.p.id}><td>{l.p.name}<small className="sp-code" style={{ display: "block" }}>{l.p.code}</small></td><td><input className="input" style={{ width: 64, padding: 6 }} type="number" min={0} max={999} value={l.n} onChange={(e) => setLine(l.p.id, Math.floor(Number(e.target.value) || 0))} aria-label={"Quantity of " + l.p.name} /></td><td style={{ textAlign: "right" }}>{peso(l.n * l.p.price)}</td></tr>)}
           <tr><td><b>Total</b></td><td><b>{count}</b></td><td style={{ textAlign: "right" }}><b>{peso(total)}</b></td></tr></tbody></table>
         <BankBox bank={bank} />
         <form onSubmit={placeOrder} style={{ display: "grid", gap: 10, marginTop: 14 }}>
@@ -89,7 +106,7 @@ export default function StoreClient({ products, user, bank }: { products: P[]; u
           <label className="field">Mobile number<input name="deliveryPhone" required defaultValue={user?.phone ?? ""} maxLength={40} /></label>
           <label className="field">Email<input name="deliveryEmail" type="email" required defaultValue={user?.email ?? ""} maxLength={320} /></label>
           <label className="field">Delivery address<textarea name="deliveryAddress" required rows={2} maxLength={600} /></label>
-          <label className="field">Upload payment slip <span className="muted">(photo or PDF, max 5 MB)</span><input name="paymentSlip" type="file" accept="image/*,.pdf,application/pdf" required /></label>
+          <label className="field">Upload payment slip <span className="muted">(JPEG, PNG, WebP or PDF, max 4 MB)</span><input name="paymentSlip" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf" required /></label>
           <label className="field">Notes (optional)<input name="notes" maxLength={1000} /></label>
           {err && <p className="err" role="alert">{err}</p>}
           <button className="btn btn-primary" disabled={busy || !count}>{busy ? "Placing order…" : "Place order · " + peso(total)}</button>

@@ -1,0 +1,87 @@
+---
+name: neas-ai-workforce
+description: Build, operate, audit, and extend the NEAS AI Workforce for lead generation, sales, marketing, proposals, technical delivery, and business governance. Use when changing the AI Workforce admin portal, specialist agents, authority controls, AI model routing, Gmail integration, or lead-to-project workflows.
+---
+
+# NEAS AI Workforce — Advanced Operating Skill
+
+## Mission
+Operate the NEAS AI Workforce as a coordinated business system for NextEdge Access Solutions (NEAS) OPC. Convert qualified enquiries into reviewed proposals and projects while preserving technical integrity, client trust, privacy, and human accountability.
+
+## Repository map
+- Admin UI: `web/app/admin/ai-workforce/`
+- Workforce API: `web/app/api/admin/ai-workforce/route.ts`
+- AI Gateway adapter and diagnostics: `web/lib/ai-gateway.ts`, `web/scripts/test-ai-gateway.mjs`
+- Skill registry: `web/lib/aiw-skills.ts`; Gateway reliability skill: `.github/skills/ai-gateway-reliability/SKILL.md`
+- Five-minute production availability and database monitor: `.github/workflows/neas-ai-workforce-health.yml`
+- Public service and database health check: `web/app/api/health/route.ts`
+- Gmail API and encrypted account services: `web/app/api/admin/gmail/`, `web/lib/aiw-gmail-service.ts`, `web/lib/aiw-gmail.ts`
+- Authority policy: `web/lib/aiw-authority.ts`
+- Product context and model generation: `web/lib/marketing.ts`
+- Gmail verification and release requirements: `web/AI-WORKFORCE-GMAIL-OAUTH.md`
+
+## Operating principles
+1. Evidence first: distinguish verified facts, supplied context, assumptions, and items marked [TO VERIFY].
+2. One orchestrator, specialist ownership: decompose objectives into bounded workstreams, assign one owner per deliverable, and consolidate only after independent review.
+3. Least privilege: each specialist must be enabled and authorized by the saved server-side authority matrix before running.
+4. Draft by default: generated outreach, proposals, marketing content, technical packs, and commercial recommendations are drafts for human review.
+5. Approval before external effect: no autonomous email send, public posting, ad spend, quotation, contract, purchase, payment, mobilization, engineering certification, or HSE sign-off.
+6. No invented claims: never fabricate clients, projects, credentials, certifications, pricing, performance, regulatory approvals, or completed actions.
+7. Privacy: minimize personal data, respect opt-outs, and never expose secrets or message bodies in audit logs.
+8. Technical competence: rope access, wind, offshore/onshore, power, met mast, telecom, and HSEQ outputs are advisory until reviewed by a competent and authorized person.
+
+## Specialist skill lanes
+- **JARVIS Orchestrator:** objective decomposition, dependencies, workload ownership, decision gates, escalation and executive reporting.
+- **Sales & CRM:** qualification, buying process, stakeholder mapping, opportunity stages, next actions and forecast confidence.
+- **Marketing Growth / SEO / Creative:** audience positioning, search intent, campaign planning, content briefs, channel adaptation and measurable lead KPIs.
+- **Outreach / Relationship / Customer Experience:** respectful, relevant contact plans, approved drafts, response handling, opt-out and relationship continuity.
+- **Proposal / Tender / Contracts / Finance:** bid/no-bid screening, scope gaps, BOQ and margin checks, payment risk, exclusions, contract and approval checklists.
+- **Rope Access / Renewables / Offshore / Power / Engineering:** scope breakdown, access strategy inputs, inspection plans, method-statement outlines, technical dependencies and competent-person review.
+- **HSEQ / Quality / Integrity / Audit:** risk identification, evidence checks, document completeness, nonconformance tracking and independent review.
+- **Project Delivery / Branch Coordination:** milestones, resource requirements, mobilization readiness, handoffs and delivery risk.
+- **Code / Automation / Model Router / Knowledge:** integration design, test strategy, tool permissions, model cost/quality controls and controlled knowledge maintenance.
+- **AI Gateway Reliability:** separate browser/API/network/OIDC/model/response failures, preserve project billing and token privacy, and verify inference with side-effect-free probes.
+
+## Workflow
+1. Confirm objective, target customer or internal stakeholder, service line, evidence available, deadline, owner and desired deliverable.
+2. JARVIS breaks the objective into workstreams and dependencies.
+3. Specialists produce bounded deliverables using only available evidence.
+4. Independent QA / Integrity reviews factual claims, privacy, scope, safety and commercial risk.
+5. Human owner reviews and approves the final deliverable.
+6. Record the decision, responsible person, evidence and next action in the system.
+7. Verify the resulting CRM stage, draft, audit record or deployment rather than assuming success.
+
+## Live-system controls
+- Check model-provider/Gateway readiness before claiming generation is live. Secret values must never be read, printed, or committed.
+- Check the AI Workforce database/API and persisted authority settings before claiming tasks can run.
+- Check each mailbox's independent Google OAuth grant before claiming that account is connected.
+- Google restricted-scope approval and any required security assessment are external gates; code deployment does not equal Google verification.
+- Gmail send requires the documented application and database gates plus completed acceptance tests and explicit owner authorization. Keep disabled until all conditions are met.
+- The repository's GitHub Actions production monitor runs every five minutes. It checks the public login page, database connectivity through a minimal `SELECT 1`, and the unauthenticated admin API guard. It opens one GitHub issue for a sustained outage. It does not run AI inference, consume Gateway credits, or modify production code.
+- A healthy public service endpoint is not proof that the admin database or live model inference is healthy. Verify those separately.
+
+## Required validation
+- Regression tests for role-to-authority mapping, disabled roles, observe-only roles, and missing saved permissions.
+- Next.js build, relevant GitHub Actions checks, CodeQL and Vercel preview verification.
+- End-to-end smoke tests for admin authentication, database-backed workforce load, AI generation, task persistence and audit records.
+- Verify draft-only behavior and prove that all external side effects remain approval-gated.
+
+## Delivery
+Use a focused feature branch, a verified dated recovery tag on current `main`, a PR with exact test evidence, and a preview deployment before production release. Never claim that Google approved scopes, a mailbox connected, an email was sent, or a deployment is live without direct confirmation.
+
+## NEAS AI Gateway production configuration
+- Specialist work orders use Vercel AI Gateway through the production project's short-lived Vercel OIDC token.
+- The configured default model in `web/lib/ai-gateway.ts` is `openai/gpt-4o-mini`. Verify the model against the live Gateway catalog before changing it. Do not rely on this skill document as the runtime source of truth; inspect the deployed commit and project usage before reporting model or billing status.
+- The NEAS project budget is US$10 per calendar month (UTC reset), enforced at the Vercel AI Gateway project scope.
+- Do not set `AI_GATEWAY_API_KEY` in this workload: static API-key requests are not counted against the project OIDC budget.
+- Do not use provider BYOK credentials or direct-provider fallbacks for specialist tasks; those routes bypass the project budget. Missing OIDC, authentication failure, quota exhaustion, or Gateway errors must fail closed with a clear message.
+- Gateway budgets are soft caps: a request already in progress when the limit is crossed can complete; subsequent requests are rejected.
+- Test one live specialist work order only after the Preview deployment has passed checks. Verify the Gateway request, model, usage/cost, persisted `needs_review` task, and audit entry. Do not auto-approve or perform external actions.
+
+## Gateway inference diagnostics and response handling
+- Distinguish three states in the admin UI: OIDC authentication available, live inference verified by an authenticated test request, and inference failed. Never label OIDC token presence alone as a live/ready model.
+- The Gateway adapter must normalise text from OpenAI-compatible chat completions, multipart message content, Responses API output text/content, and Gemini candidate parts. Trim whitespace and reject empty output.
+- If a 2xx response contains no recognised text, report a safe diagnostic with the finish reason and request ID when available. Never log or expose the prompt, response body, bearer token, or other secrets.
+- The admin-only Gateway health check must make a bounded, low-token request and validate its exact sentinel response. It must not create a work order, modify business data, send a message, publish content, or trigger an external action.
+- A specialist work order is saved only after non-empty generated text is returned and always enters `needs_review`. Failed or malformed Gateway responses must fail closed and must not create an empty task.
+- Regression tests must cover the supported response envelopes, multipart extraction, empty-content diagnostics, OIDC header forwarding, budget exhaustion and authentication failures.

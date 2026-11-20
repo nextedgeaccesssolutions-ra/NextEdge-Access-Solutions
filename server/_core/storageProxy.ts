@@ -2,8 +2,11 @@ import type { Express } from "express";
 import { ENV } from "./env";
 
 export function registerStorageProxy(app: Express) {
-  app.get("/manus-storage/*", async (req, res) => {
-    const key = (req.params as Record<string, string>)[0];
+  app.get("/manus-storage/*key", async (req, res) => {
+    // Express 5 (path-to-regexp 8) requires a named wildcard and hands back
+    // the matched path as an array of segments.
+    const segments = (req.params as Record<string, string[] | string>).key;
+    const key = Array.isArray(segments) ? segments.join("/") : (segments ?? "");
     if (!key) {
       res.status(400).send("Missing storage key");
       return;

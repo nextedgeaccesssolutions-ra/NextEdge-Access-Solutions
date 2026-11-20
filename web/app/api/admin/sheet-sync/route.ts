@@ -1,34 +1,60 @@
 import { requireAdmin } from "@/lib/admin";
-import { applyRows, csvUrl, rowsFromCsv } from "@/lib/sheet";
+import { applyRows, fingerprintCsv, rowsFromCsv } from "@/lib/sheet";
+import { DEF, MAX_CSV_BYTES, readSheet, type SheetCfg } from "@/lib/sheet-source";
 import { getSetting, setSetting } from "@/lib/settings";
 import { bad, ok } from "@/lib/http";
 
-type SheetCfg = { url: string; priceSource: "markup" | "sheet"; hideMissing: boolean; lastSync: string; lastResult: string };
-const DEF: SheetCfg = { url: "", priceSource: "markup", hideMissing: true, lastSync: "", lastResult: "" };
-
 export async function POST(req: Request) {
   if (!(await requireAdmin())) return bad("Admin access required.", 403);
-  const b = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => ({})) as Record<string, unknown>;
   const cfg = await getSetting<SheetCfg>("sheet", DEF);
-  if (typeof b.url === "string") cfg.url = b.url.trim().slice(0, 500);
-  if (b.priceSource === "markup" || b.priceSource === "sheet") cfg.priceSource = b.priceSource;
-  if (typeof b.hideMissing === "boolean") cfg.hideMissing = b.hideMissing;
-  if (b.action === "save") { await setSetting("sheet", cfg); return ok(cfg); }
-  let text: string;
-  if (typeof b.csv === "string" && b.csv.trim()) text = b.csv.slice(0, 2_000_000);
-  else {
-    if (!cfg.url) return bad("Add your Google Sheet link first.");
-    let url: string; try { url = csvUrl(cfg.url); } catch (e) { return bad((e as Error).message); }
-    const r = await fetch(url, { redirect: "follow", cache: "no-store" });
-    const ct = r.headers.get("content-type") ?? "";
-    if (!r.ok || ct.includes("text/html")) return bad("Google didn't share the sheet. In Google Sheets: Share → General access → 'Anyone with the link' → Viewer, then try again.");
-    text = await r.text();
+  if (typeof body.url === "string") cfg.url = body.url.trim().slice(0, 500);
+  if (body.priceSource === "markup" || body.priceSource === "sheet") cfg.priceSource = body.priceSource;
+  if (typeof body.hideMissing === "boolean") cfg.hideMissing = body.hideMissing;
+  if (typeof body.autoSync === "boolean") cfg.autoSync = body.autoSync;
+
+  if (body.action === "save") {
+    await setSetting("sheet", cfg);
+    return ok(cfg);
   }
-  let rows; try { rows = rowsFromCsv(text); } catch (e) { return bad((e as Error).message); }
-  if (b.action === "preview") return ok({ preview: rows.slice(0, 15), total: rows.length });
-  const res = await applyRows(rows, cfg.hideMissing);
-  cfg.lastSync = new Date().toISOString();
-  cfg.lastResult = `${res.total} products: ${res.added} new, ${res.updated} updated, ${res.hidden} hidden`;
-  await setSetting("sheet", cfg);
-  return ok({ ...res, cfg });
+  if (body.action !== "preview" && body.action !== "sync") return bad("Choose Preview or Update store.");
+  cfg.lastAttempt = new Date().toISOString();
+
+  try {
+    let csv: string;
+    if (typeof body.csv === "string" && body.csv.trim()) {
+      csv = body.csv;
+      if (new TextEncoder().encode(csv).byteLength > MAX_CSV_BYTES) return bad("Pasted CSV exceeds the 2 MB import limit.");
+    } else {
+      if (!cfg.url) return bad("Add your Google Sheet link first.");
+      csv = await readSheet(cfg.url);
+    }
+
+    const sourceHash = fingerprintCsv(csv);
+    const rows = rowsFromCsv(csv);
+    if (body.action === "preview") {
+      cfg.connectionStatus = "connected";
+      cfg.lastError = "";
+      await setSetting("sheet", cfg);
+      return ok({ preview: rows.slice(0, 15), total: rows.length, sourceHash, checkedAt: cfg.lastAttempt });
+    }
+
+    if (typeof body.sourceHash !== "string" || body.sourceHash !== sourceHash) {
+      return bad("The spreadsheet changed after your preview. Run Preview again and review the updated products before synchronizing.", 409);
+    }
+
+    const result = await applyRows(rows, cfg.hideMissing);
+    cfg.lastSync = new Date().toISOString();
+    cfg.lastResult = result.total + " products: " + result.added + " new, " + result.updated + " updated, " + result.hidden + " hidden";
+    cfg.lastError = "";
+    cfg.connectionStatus = "connected";
+    await setSetting("sheet", cfg);
+    return ok({ ...result, cfg });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unexpected Google Sheets synchronization error.";
+    cfg.lastError = message;
+    cfg.connectionStatus = "error";
+    await setSetting("sheet", cfg);
+    return bad(message, 400);
+  }
 }

@@ -1,10 +1,19 @@
 import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
 import { createSession } from "@/lib/auth";
+import { hasStrongSessionSecret } from "@/lib/session-key";
 import { bad, ok, str } from "@/lib/http";
+import { rateLimitRequest } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
-  const b = await req.json().catch(() => ({}));
+  const limited = rateLimitRequest(req, "auth-signup", 5, 60 * 60_000);
+  if (limited) return limited;
+  if (!hasStrongSessionSecret()) {
+    return bad("Account registration is temporarily unavailable. Please try again shortly.", 503);
+  }
+
+  const rawBody = await req.json().catch(() => ({}));
+  const b: Record<string, unknown> = rawBody && typeof rawBody === "object" && !Array.isArray(rawBody) ? rawBody as Record<string, unknown> : {};
   const email = str(b.email, 320)?.toLowerCase();
   const name = str(b.name, 160);
   const phone = str(b.phone, 40);

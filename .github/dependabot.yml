@@ -1,7 +1,33 @@
 version: 2
 updates:
+  # web/ is the Next.js app behind the live neas-website deployment.
+  # It uses npm (web/package-lock.json), not pnpm.
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      production-security-fixes:
+        applies-to: security-updates
+        dependency-type: production
+        update-types:
+          - "patch"
+          - "minor"
+          - "major"
+      development-security-fixes:
+        applies-to: security-updates
+        dependency-type: development
+        update-types:
+          - "patch"
+          - "minor"
+          - "major"
+
+  # Root is the neas-content-platform Vite app, which is not deployed.
+  # open-pull-requests-limit: 0 disables routine version-update PRs here
+  # while still allowing Dependabot to raise security updates.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
