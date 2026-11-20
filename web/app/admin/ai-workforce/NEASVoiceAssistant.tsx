@@ -220,8 +220,8 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
         credentials: "same-origin",
         cache: "no-store",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "voiceChat", persona, message: prompt, history: history.slice(-8) }),
-        signal: AbortSignal.timeout(55_000),
+        body: JSON.stringify({ action: "voiceChat", persona, message: prompt, history: history.slice(-4) }),
+        signal: AbortSignal.timeout(35_000),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "NEAS AI could not answer this request.");
