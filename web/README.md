@@ -1,31 +1,17 @@
 # NEAS website + Online Store (Vercel)
 
-Standalone Next.js app: the public NEAS homepage (`public/home.html`), Online Store with cart and
-bank-transfer checkout, customer accounts, and an admin control panel. Independent of the Manus app
-in the repository root — nothing here changes it.
+Standalone Next.js app for the NEAS homepage, online store, customer accounts and admin panel.
 
-| URL | Who | What |
-| --- | --- | --- |
-| `/` | everyone | Homepage |
-| `/store` | everyone | Catalog, cart, Buy Now, wishlist, product specs; checkout needs a customer login |
-| `/login` | customers | Log in or create an account |
-| `/account` | customers | Own orders and status, bank details |
-| `/admin/login` | staff | Admin-only login (customer accounts are refused) |
-| `/admin` | admins | Orders (change status), markup %, per-item prices, hide items, customer list |
+## Rybbit analytics integration
 
-## Go live
+The Admin panel includes a server-side Rybbit analytics proxy. The browser calls only `/api/admin/rybbit`; the route verifies the existing NEAS admin session and calls Rybbit with a server-side Bearer token. The API key is never returned to the browser.
 
-1. **Vercel → Add New → Project**, import `nextedgeaccesssolutions-ra/NextEdge-Access-Solutions`,
-   branch `vercel-rebuild`, **Root Directory `web`**. Framework: Next.js (auto).
-2. **Storage → Create Database → Neon (Postgres)**, connect it to the project. This sets `DATABASE_URL`.
-3. **Settings → Environment Variables**: `SESSION_SECRET` (random, 32+ chars), `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
-4. **Redeploy.** The build creates the tables, loads the 99-item KH Trading catalog (once), and creates the admin.
-5. **Settings → Domains**: add `nextedge-access-solutions.com` and `www.nextedge-access-solutions.com`.
-6. **Namecheap → Advanced DNS** (web records only — leave MX/email/TXT records untouched):
-   `A @ → 76.76.21.21`, `CNAME www → cname.vercel-dns.com`.
+Set these Vercel environment variables for Production (and Preview only if required):
 
-## Notes
-- Default markup is 20% on dealer price, rounded up to the nearest ₱5; change it in `/admin`.
-- Payment is manual bank transfer (Security Bank). Mark orders **Paid** in `/admin` after checking the deposit.
-- Dealer prices are never sent to the browser for non-admins.
-- Local dev: `cp .env.example .env.local`, fill it, `npm install`, `npm run migrate`, `npm run dev`.
+- `RYBBIT_BASE_URL`: `https://analytics.nextedge-access-solutions.com`
+- `RYBBIT_SITE_ID`: Site ID from the Rybbit site dashboard/API Playground.
+- `RYBBIT_API_KEY`: Organization API key with only `analytics:read` scope. Create under Rybbit Settings → Organization → Organization API Keys.
+
+Mark the key as Sensitive in Vercel and redeploy. Then open NEAS Admin → Analytics → Connect to Rybbit. It loads the last 30 days of overview metrics.
+
+Never prefix the key with `NEXT_PUBLIC_`, commit it to Git, or place it in client-side code. Rybbit API documentation: https://rybbit.com/docs/api/getting-started and https://rybbit.com/docs/api/overview/overview.
