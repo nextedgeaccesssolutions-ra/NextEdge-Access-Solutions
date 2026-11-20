@@ -34,9 +34,8 @@ const personas = [
   { id: "ai-tech", name: "AI Technology & Automation", title: "Technology Specialist", focus: "Focus on NEAS software, AI agents, model routing, secure integrations, automation, data architecture, monitoring, deployment and technical troubleshooting." },
 ] as const;
 
-export default function NEASVoiceAssistant() {
+export default function NEASVoiceAssistant({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [persona, setPersona] = useState<string>("ceo");
-  const [panelOpen, setPanelOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [history, setHistory] = useState<Turn[]>([]);
   const [reply, setReply] = useState("Good day. NEAS AI Orchestration Core is ready. Speak your instruction and I will coordinate the right specialist.");
@@ -48,7 +47,6 @@ export default function NEASVoiceAssistant() {
   const recognition = useRef<RecognitionInstance | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
-  const startListeningRef = useRef<() => void>(() => undefined);
 
   const active = personas.find((item) => item.id === persona) ?? personas[0];
 
@@ -174,27 +172,17 @@ export default function NEASVoiceAssistant() {
     }
   };
 
-  startListeningRef.current = startListening;
-
   useEffect(() => {
-    const activateVoice = () => {
-      setPanelOpen(true);
-      startListeningRef.current();
-    };
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setPanelOpen(false);
+      if (event.key === "Escape" && open) {
+        onClose();
         recognition.current?.stop();
         stopAudio();
       }
     };
-    window.addEventListener("neas-ai-talk", activateVoice);
     window.addEventListener("keydown", handleEscape);
-    return () => {
-      window.removeEventListener("neas-ai-talk", activateVoice);
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, []);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [open, onClose]);
 
   const selectPersona = (value: string) => {
     setPersona(value);
@@ -206,10 +194,10 @@ export default function NEASVoiceAssistant() {
     stopAudio();
   };
 
-  if (!panelOpen) return null;
+  if (!open) return null;
 
   const closeVoicePanel = () => {
-    setPanelOpen(false);
+    onClose();
     recognition.current?.stop();
     stopAudio();
   };
@@ -220,11 +208,11 @@ export default function NEASVoiceAssistant() {
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) closeVoicePanel();
       }}
-      style={{ position: "fixed", inset: 0, zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, background: "rgba(0,0,0,.78)", backdropFilter: "blur(8px)" }}
+      style={{ position: "fixed", inset: 0, zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: "max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom))", background: "rgba(0,0,0,.78)", backdropFilter: "blur(8px)" }}
     >
-    <section id="neas-ai-voice-console" role="dialog" aria-modal="true" aria-label="NEAS AI Orchestration Core voice interface" style={{ position: "relative", width: "min(860px, 100%)", maxHeight: "92vh", overflowY: "auto", padding: 20, border: "1px solid #ca933266", borderRadius: 18, background: "radial-gradient(circle at 85% 0%,#3a2a1644,transparent 35%),linear-gradient(135deg,#071d29,#101b25 68%,#211b11)", color: "#e7edf4", boxShadow: "0 18px 55px #0009" }}>
+    <section id="neas-ai-voice-console" role="dialog" aria-modal="true" aria-label="NEAS AI Orchestration Core voice interface" style={{ position: "relative", width: "min(860px, 100%)", maxHeight: "min(92dvh, 900px)", overflowY: "auto", padding: "clamp(14px, 3vw, 20px)", border: "1px solid #ca933266", borderRadius: 18, background: "radial-gradient(circle at 85% 0%,#3a2a1644,transparent 35%),linear-gradient(135deg,#071d29,#101b25 68%,#211b11)", color: "#e7edf4", boxShadow: "0 18px 55px #0009" }}>
       <button type="button" onClick={closeVoicePanel} aria-label="Close NEAS AI voice session" style={{ position: "absolute", top: 12, right: 12, zIndex: 2, width: 34, height: 34, borderRadius: 99, border: "1px solid #ca933288", background: "#07111c", color: "#f2d6a2", fontSize: 20, cursor: "pointer" }}>×</button>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,2fr)", gap: 12, marginTop: 34 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 12, marginTop: 34 }}>
         <div style={{ border: "1px solid #385166", borderRadius: 12, padding: 12, background: "#07111c" }}>
           <label htmlFor="neas-agent-persona" style={{ display: "block", color: "#ebc07e", fontSize: 10, letterSpacing: ".12em", marginBottom: 7 }}>SELECT YOUR AI AGENT</label>
           <select id="neas-agent-persona" value={persona} onChange={(event) => selectPersona(event.target.value)} style={{ width: "100%", borderRadius: 9, border: "1px solid #806536", padding: "11px 10px", background: "#132330", color: "#fff", fontWeight: 700 }}>
