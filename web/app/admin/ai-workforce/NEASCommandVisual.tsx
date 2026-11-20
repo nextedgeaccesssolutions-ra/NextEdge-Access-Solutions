@@ -16,7 +16,7 @@ const departments = [
 const integrations = [
   ["Gmail","✉","/admin/ai-workforce/email"],["GitHub","⌘","https://github.com/nextedgeaccesssolutions-ra/NextEdge-Access-Solutions"],["Vercel","▲","https://vercel.com/nextedgeaccesssolutions-neas/next-edge-access-solutions"],["Supabase","◈","https://supabase.com/dashboard"],["AI Gateway","✧","#ai-gateway"],["Website","◎","https://www.nextedge-access-solutions.com"],
 ];
-export default function NEASCommandVisual({ onOpenConsole }: { onOpenConsole: () => void }){
+export default function NEASCommandVisual(){
  const [active,setActive]=useState(0);
  const [showAll,setShowAll]=useState(false);
  const total=departments.reduce((n,d)=>n+d.roles.length,0);
@@ -44,7 +44,7 @@ export default function NEASCommandVisual({ onOpenConsole }: { onOpenConsole: ()
   </div>
   <div className="nc-main">
    <div className="nc-depts">{departments.slice(0,5).map((d,i)=><button key={d.code} className={"nc-dept "+(active===i?"active":"")} onClick={()=>{setActive(i);setShowAll(true)}}><span>10 ROLES</span><strong>{d.name}</strong><small>{d.code} · Department workspace</small></button>)}</div>
-   <div className="nc-orb" aria-label="NEAS AI executive orchestration hub"><div className="nc-ring"/><div className="nc-arc"/><button type="button" className="nc-core" aria-label="Start NEAS AI voice conversation" title="Tap to speak with NEAS AI" onClick={onOpenConsole}><i>✧</i><b>NEAS AI</b><small>ORCHESTRATION CORE</small><strong>CEO · CAIO · SPECIALISTS</strong></button></div>
+   <div className="nc-orb" aria-label="NEAS AI executive orchestration hub"><div className="nc-ring"/><div className="nc-arc"/><div className="nc-core" role="img" aria-label="NEAS AI orchestration core" title="NEAS AI orchestration core"><i>✧</i><b>NEAS AI</b><small>ORCHESTRATION CORE</small><strong>CEO · CAIO · SPECIALISTS</strong></div></div>
    <div className="nc-depts">{departments.slice(5).map((d,i)=><button key={d.code} className={"nc-dept "+(active===i+5?"active":"")} onClick={()=>{setActive(i+5);setShowAll(true)}}><span>10 ROLES</span><strong>{d.name}</strong><small>{d.code} · Department workspace</small></button>)}</div>
   </div>
   {showAll&&<div className="nc-detail"><div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center",marginBottom:9}}><h3>{departments[active].name} · 10 specialist definitions</h3><button className="nc-links" style={{background:"transparent",border:0,color:"#e8c77e",cursor:"pointer"}} onClick={()=>setShowAll(false)}>Close ×</button></div><div className="nc-rolelist">{departments[active].roles.map((r,i)=><span className="nc-role" key={r}>{String(i+1).padStart(2,"0")} · {r}</span>)}</div></div>}
