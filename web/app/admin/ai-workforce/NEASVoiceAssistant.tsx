@@ -172,6 +172,16 @@ export default function NEASVoiceAssistant({ open, onClose }: { open: boolean; o
     }
   };
 
+  // Opening the voice console is the user's explicit gesture. Start speech recognition
+  // immediately after it opens; the browser may still require microphone permission.
+  useEffect(() => {
+    if (!open) return;
+    const timer = window.setTimeout(() => {
+      if (!listening && !busy) startListening();
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape" && open) {
