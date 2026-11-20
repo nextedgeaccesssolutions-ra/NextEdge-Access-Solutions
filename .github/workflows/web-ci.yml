@@ -47,6 +47,10 @@ jobs:
         run: npm run test:aiw-email-validation
         working-directory: web
 
+      - name: Test Gmail provider error explanations
+        run: npm run test:aiw-gmail-errors
+        working-directory: web
+
       - name: Test Gmail opt-out enforcement
         run: npm run test:aiw-contact-policy
         working-directory: web

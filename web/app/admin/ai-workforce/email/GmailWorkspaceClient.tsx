@@ -104,7 +104,7 @@ export default function GmailWorkspaceClient() {
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}><h3 style={{fontSize:15,margin:0}}>Recent security audit</h3><button type="button" onClick={loadAudit} style={{...styles.button,padding:"7px 10px",fontSize:11}}>Refresh</button></div>
       <div style={{display:"grid",gap:8,marginTop:12}}>
         {visibleAudit.map(event=><div key={event.id} style={{display:"flex",justifyContent:"space-between",gap:12,borderBottom:"1px solid #294153",paddingBottom:8}}>
-          <div><b style={{fontSize:12}}>{event.action.replace(/_/g," ")}</b><p style={{...styles.muted,margin:"3px 0"}}>{event.account_key || "System"} · {event.detail}</p></div>
+          <div><b style={{fontSize:12}}>{event.action.replace(/_/g," ")}</b><p style={{...styles.muted,margin:"3px 0"}}>{event.account_key || "System"} · {event.detail}{event.provider_code?<span style={{fontFamily:"monospace",color:"#c9b48a"}}> · Google: {event.provider_code}</span>:null}</p></div>
           <span style={{fontSize:10,color:event.outcome==="success"?"#9ad0b2":event.outcome==="blocked"?"#ebc07e":"#f0a2a2",whiteSpace:"nowrap"}}>{event.outcome}</span>
         </div>)}
         {audit.length===0&&<p style={styles.muted}>No audit events recorded yet.</p>}

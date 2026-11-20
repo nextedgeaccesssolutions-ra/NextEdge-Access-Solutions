@@ -15,7 +15,8 @@
     "test:aiw-skills": "node --experimental-strip-types --test scripts/test-aiw-skills.mjs",
     "test:ai-gateway": "node --experimental-strip-types --test scripts/test-ai-gateway.mjs",
     "test:aiw-contact-policy": "node --experimental-strip-types --test scripts/test-aiw-contact-policy.mjs",
-    "test:aiw-readiness": "node --experimental-strip-types --test scripts/test-aiw-readiness.mjs"
+    "test:aiw-readiness": "node --experimental-strip-types --test scripts/test-aiw-readiness.mjs",
+    "test:aiw-gmail-errors": "node --experimental-strip-types --test scripts/test-aiw-gmail-errors.mjs"
   },
   "dependencies": {
     "@vercel/speed-insights": "^2.1.0",
