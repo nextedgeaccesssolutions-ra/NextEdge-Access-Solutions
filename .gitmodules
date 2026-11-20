@@ -1,0 +1,3 @@
+[submodule "vendor/omniroute"]
+	path = vendor/omniroute
+	url = https://github.com/nextedgeaccesssolutions-ra/omniroute
