@@ -1,18 +1,12 @@
 "use client";
 
-import { useCallback, useState } from "react";
 import NEASCommandVisual from "./NEASCommandVisual";
-import NEASVoiceAssistant from "./NEASVoiceAssistant";
 
+/**
+ * The executive command-center visual remains available on the admin page.
+ * The legacy modal voice console is intentionally not mounted; this prevents
+ * the removed SELECT YOUR AI AGENT / LIVE SESSION overlay from reappearing.
+ */
 export default function NEASOrchestrationCore() {
-  const [consoleOpen, setConsoleOpen] = useState(false);
-  const openConsole = useCallback(() => setConsoleOpen(true), []);
-  const closeConsole = useCallback(() => setConsoleOpen(false), []);
-
-  return (
-    <>
-      <NEASCommandVisual onOpenConsole={openConsole} />
-      <NEASVoiceAssistant open={consoleOpen} onClose={closeConsole} />
-    </>
-  );
+  return <NEASCommandVisual onOpenConsole={() => undefined} />;
 }
