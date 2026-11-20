@@ -128,7 +128,7 @@ export async function generateAIGatewayText(
     fetchImpl?: typeof fetch;
   } = {},
 ): Promise<AIGatewayResult> {
-  const configuredProvider = options.provider ?? (process.env.NEAS_AI_PROVIDER?.trim() || "vercel");
+  const configuredProvider = options.provider ?? (process.env.NEAS_AI_PROVIDER?.trim() || (process.env.OPENROUTER_API_KEY?.trim() ? "openrouter" : "vercel"));
   if (!["openrouter", "gemini", "groq", "xai", "vercel"].includes(configuredProvider)) {
     return { error: "NEAS_AI_PROVIDER must be set to openrouter, gemini, groq, xai or vercel. No inference request was sent." };
   }

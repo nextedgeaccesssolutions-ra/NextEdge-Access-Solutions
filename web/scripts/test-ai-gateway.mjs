@@ -250,9 +250,11 @@ test("routes xAI Grok through its separate paid API endpoint only when explicitl
   assert.equal(JSON.parse(request.init.body).model, "grok-4.7");
 });
 
-test("treats an empty provider setting as the budgeted Vercel Gateway default", async () => {
+test("treats an empty provider setting without an OpenRouter key as the budgeted Vercel Gateway default", async () => {
   const previous = process.env.NEAS_AI_PROVIDER;
+  const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
   process.env.NEAS_AI_PROVIDER = "";
+  process.env.OPENROUTER_API_KEY = "";
   try {
     const result = await generateAIGatewayText({ system: "s", user: "u" }, {
       token: "test-project-oidc-token",
@@ -265,6 +267,31 @@ test("treats an empty provider setting as the budgeted Vercel Gateway default", 
   } finally {
     if (previous === undefined) delete process.env.NEAS_AI_PROVIDER;
     else process.env.NEAS_AI_PROVIDER = previous;
+    if (previousOpenRouterKey === undefined) delete process.env.OPENROUTER_API_KEY;
+    else process.env.OPENROUTER_API_KEY = previousOpenRouterKey;
+  }
+});
+
+test("automatically selects OpenRouter free routing when a server-side key exists and no provider is pinned", async () => {
+  const previous = process.env.NEAS_AI_PROVIDER;
+  const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
+  process.env.NEAS_AI_PROVIDER = "";
+  process.env.OPENROUTER_API_KEY = "test-openrouter-key";
+  try {
+    const result = await generateAIGatewayText({ system: "NEAS", user: "Hello" }, {
+      fetchImpl: async (url, init) => {
+        assert.equal(url, "https://openrouter.ai/api/v1/chat/completions");
+        assert.equal(init.headers.authorization, "Bearer test-openrouter-key");
+        assert.equal(JSON.parse(init.body).model, "openrouter/free");
+        return new Response(JSON.stringify({ choices: [{ message: { content: "Free-first NEAS response" } }] }), { status: 200 });
+      },
+    });
+    assert.deepEqual(result, { text: "Free-first NEAS response", model: "openrouter:openrouter/free" });
+  } finally {
+    if (previous === undefined) delete process.env.NEAS_AI_PROVIDER;
+    else process.env.NEAS_AI_PROVIDER = previous;
+    if (previousOpenRouterKey === undefined) delete process.env.OPENROUTER_API_KEY;
+    else process.env.OPENROUTER_API_KEY = previousOpenRouterKey;
   }
 });
 
