@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimitRequest } from "@/lib/rate-limit";
+import { parseProviderDetail, providerErrorMessage, type VoiceProvider } from "@/lib/voice-tts-errors";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -18,28 +19,10 @@ function unavailable(message: string, status = 503) {
   return NextResponse.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } });
 }
 
-async function providerError(response: Response, provider: string) {
+async function providerError(response: Response, provider: VoiceProvider) {
   const raw = await response.text().catch(() => "");
-  let detail = "";
-  try {
-    const parsed = JSON.parse(raw);
-    detail = String(parsed?.detail?.message || parsed?.error?.message || parsed?.message || parsed?.detail?.code || "");
-  } catch {
-    detail = raw.slice(0, 240);
-  }
-  if (provider === "ElevenLabs") {
-    if (response.status === 401) return new Error("ElevenLabs rejected the API key (401). Create a new key with Text to Speech permission and replace ELEVENLABS_API_KEY in Vercel Production.");
-    if (response.status === 402) return new Error("ElevenLabs account has insufficient credits (402). Add credits or wait for the quota reset.");
-    if (response.status === 403) return new Error("ElevenLabs denied this request (403). Check API key permissions, voice access and plan eligibility.");
-    if (response.status === 429) return new Error("ElevenLabs rate or concurrency limit reached (429). Wait before retrying.");
-  } else {
-    if (response.status === 401 || response.status === 403) return new Error("OpenRouter authentication or permission failed. Verify OPENROUTER_API_KEY and provider access.");
-    // 402 and 429 have different causes and different fixes; collapsing them into one
-    // message makes a rate limit look like an empty balance and costs diagnosis time.
-    if (response.status === 402) return new Error(`OpenRouter balance cannot cover this request (402). Add credits at openrouter.ai.${detail ? " " + detail : ""}`);
-    if (response.status === 429) return new Error(`OpenRouter rate limit reached (429) on model ${OPENROUTER_TTS_MODEL}. Free ":free" models are capped account-wide at 20 requests per minute and 50 per day until $10 of credits has been purchased, after which the daily cap is 1000. Add credits, or set OPENROUTER_TTS_MODEL to a paid variant.${detail ? " " + detail : ""}`);
-  }
-  return new Error(`${provider} returned HTTP ${response.status}.${detail ? " " + detail : ""}`);
+  const detail = parseProviderDetail(raw);
+  return new Error(providerErrorMessage(provider, response.status, detail, OPENROUTER_TTS_MODEL));
 }
 
 async function elevenLabsSpeech(text: string) {
