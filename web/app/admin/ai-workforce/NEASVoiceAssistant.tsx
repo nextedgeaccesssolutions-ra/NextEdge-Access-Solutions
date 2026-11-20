@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 type RecognitionEvent = { results: ArrayLike<ArrayLike<{ transcript: string }>> };
 type RecognitionInstance = {
@@ -34,7 +34,10 @@ const personas = [
   { id: "ai-tech", name: "AI Technology & Automation", title: "Technology Specialist", focus: "Focus on NEAS software, AI agents, model routing, secure integrations, automation, data architecture, monitoring, deployment and technical troubleshooting." },
 ] as const;
 
-export default function NEASVoiceAssistant({ open, onClose }: { open: boolean; onClose: () => void }) {
+export type NEASVoiceAssistantHandle = { startListening: () => void };
+
+const NEASVoiceAssistant = forwardRef<NEASVoiceAssistantHandle, { open: boolean; onClose: () => void }>(
+function NEASVoiceAssistant({ open, onClose }, ref) {
   const [persona, setPersona] = useState<string>("ceo");
   const [message, setMessage] = useState("");
   const [history, setHistory] = useState<Turn[]>([]);
@@ -172,15 +175,9 @@ export default function NEASVoiceAssistant({ open, onClose }: { open: boolean; o
     }
   };
 
-  // Opening the voice console is the user's explicit gesture. Start speech recognition
-  // immediately after it opens; the browser may still require microphone permission.
-  useEffect(() => {
-    if (!open) return;
-    const timer = window.setTimeout(() => {
-      if (!listening && !busy) startListening();
-    }, 150);
-    return () => window.clearTimeout(timer);
-  }, [open]);
+  // Expose microphone start so the central NEAS AI tap can invoke it
+  // synchronously inside the user's click gesture (before opening the panel).
+  useImperativeHandle(ref, () => ({ startListening }), [startListening]);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -267,4 +264,8 @@ export default function NEASVoiceAssistant({ open, onClose }: { open: boolean; o
     </section>
     </div>
   );
-}
+});
+
+NEASVoiceAssistant.displayName = "NEASVoiceAssistant";
+
+export default NEASVoiceAssistant;
