@@ -6,8 +6,11 @@ type RecognitionResult = ArrayLike<{ transcript: string }> & { isFinal: boolean 
 type RecognitionEvent = { resultIndex?: number; results: ArrayLike<RecognitionResult> };
 type RecognitionInstance = {
   lang: string;
+  continuous: boolean;
   interimResults: boolean;
   maxAlternatives: number;
+  onspeechstart: (() => void) | null;
+  onspeechend: (() => void) | null;
   onresult: ((event: RecognitionEvent) => void) | null;
   onstart: (() => void) | null;
   onerror: ((event: { error: string }) => void) | null;
@@ -275,6 +278,7 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
     try {
       const instance = new Recognition();
       instance.lang = "en-PH";
+      instance.continuous = true;
       instance.interimResults = true;
       instance.maxAlternatives = 1;
       let capturedSpeech = false;
@@ -293,7 +297,13 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
         instance.stop();
         void sendMessage(transcript);
       };
-      instance.onstart = () => onStatusChange?.("listening", "Microphone on · speak naturally. NEAS AI will respond automatically when you finish.");
+      instance.onstart = () => onStatusChange?.("listening", "Voice detection active · speak naturally. NEAS AI will detect your speech and respond automatically.");
+      instance.onspeechstart = () => onStatusChange?.("listening", "I hear you · listening to your request…");
+      instance.onspeechend = () => {
+        if (!capturedSpeech || turnSubmitted) return;
+        if (silenceTimer.current !== null) window.clearTimeout(silenceTimer.current);
+        silenceTimer.current = window.setTimeout(submitRecognizedTurn, 1100);
+      };
       instance.onresult = (event) => {
         let finalChunk = "";
         let interimChunk = "";
@@ -315,9 +325,9 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
           capturedSpeech = true;
         }
         if (!capturedSpeech) return;
-        onStatusChange?.("listening", "Finishing your sentence…");
+        onStatusChange?.("listening", "Voice detected · waiting briefly for you to finish…");
         if (silenceTimer.current !== null) window.clearTimeout(silenceTimer.current);
-        silenceTimer.current = window.setTimeout(submitRecognizedTurn, 900);
+        silenceTimer.current = window.setTimeout(submitRecognizedTurn, 1200);
       };
       instance.onerror = (event) => {
         recognitionFailed = true;
