@@ -48,7 +48,7 @@ jobs:
         working-directory: web
 
       - name: Test Gmail provider error explanations
-        run: npm run test:aiw-gmail-errors
+        run: node --experimental-strip-types --test scripts/test-aiw-gmail-errors.mjs
         working-directory: web
 
       - name: Test Gmail opt-out enforcement
