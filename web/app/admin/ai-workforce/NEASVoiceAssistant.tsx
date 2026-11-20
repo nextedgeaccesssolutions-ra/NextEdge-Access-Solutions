@@ -142,6 +142,7 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
       instance.interimResults = false;
       instance.maxAlternatives = 1;
       let capturedSpeech = false;
+      let recognitionFailed = false;
       instance.onstart = () => onStatusChange?.("listening");
       instance.onresult = (event) => {
         const transcript = event.results?.[0]?.[0]?.transcript || "";
@@ -152,17 +153,21 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
         }
       };
       instance.onerror = (event) => {
+        recognitionFailed = true;
         const detail = event.error === "not-allowed" || event.error === "service-not-allowed"
           ? "Microphone permission is blocked. Select the lock icon beside the website address, set Microphone to Allow, then reload."
           : event.error === "audio-capture"
             ? "No microphone was detected. Connect or select a microphone in Chrome settings."
             : event.error === "network"
               ? "Browser speech recognition network service is unavailable. Check your internet connection."
-              : "Browser speech recognition error: " + event.error;
+              : event.error === "no-speech"
+                ? "No speech was detected. Tap the NEAS AI core and speak again."
+                : "Browser speech recognition error: " + event.error;
         reportError(detail);
       };
       instance.onend = () => {
-        if (!capturedSpeech && conversationActive.current) onStatusChange?.("idle");
+        // Do not let the browser end event erase an actionable recognition error.
+        if (!capturedSpeech && !recognitionFailed && conversationActive.current) onStatusChange?.("idle");
       };
       recognition.current = instance;
       instance.start();
