@@ -44,6 +44,7 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
     recognition.current?.stop();
     audioRef.current?.pause();
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
   }, []);
 
   const stopAudio = () => {
@@ -51,6 +52,36 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
     audioRef.current = null;
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
     audioUrlRef.current = null;
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+  };
+
+  /** Free last-resort voice, used only once the hosted natural voice has failed.
+   *  The hosted voice is still preferred and tried first on every reply; when its
+   *  quota is gone the real alternative is silence, so the device's built-in
+   *  voice keeps the conversation audible at no cost. Returns false when the
+   *  browser has no speech synthesis, leaving the caller to surface the error. */
+  const speakWithDeviceVoice = (value: string): boolean => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
+    const spoken = value.trim().slice(0, 1000);
+    if (!spoken) return false;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(spoken);
+      utterance.onend = () => {
+        if (conversationActive.current) startListening();
+        else onStatusChange?.("idle");
+      };
+      utterance.onerror = () => {
+        conversationActive.current = false;
+        recognition.current?.stop();
+        reportError("AI replied in text, but no voice output is available on this device.");
+      };
+      onStatusChange?.("speaking", "Speaking with this device's built-in voice because the hosted natural voice is unavailable.");
+      window.speechSynthesis.speak(utterance);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const speak = async (value: string) => {
@@ -88,17 +119,20 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
           URL.revokeObjectURL(audioUrl);
           audioUrlRef.current = null;
           audioRef.current = null;
+          if (speakWithDeviceVoice(value)) return;
           conversationActive.current = false;
           recognition.current?.stop();
-          reportError("AI replied in text, but natural voice playback failed. Check the voice provider and try again.");
+          reportError("AI replied in text, but natural voice playback failed and this device has no built-in voice.");
         }
       };
       onStatusChange?.("speaking");
       await audio.play();
     } catch (cause) {
+      if (speakWithDeviceVoice(value)) return;
+      const detail = cause instanceof Error ? cause.message : "Natural AI voice generation failed.";
       conversationActive.current = false;
       recognition.current?.stop();
-      reportError(cause instanceof Error ? cause.message : "AI replied in text, but natural voice generation failed. Check the voice provider and try again.");
+      reportError(`${detail} This device has no built-in voice either, so the reply is text only.`);
     }
   };
 

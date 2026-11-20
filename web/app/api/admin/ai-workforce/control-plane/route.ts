@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { cronToken } from "@/lib/cron-token";
-import { generateAIGatewayText } from "@/lib/ai-gateway";
+import { generateAIGatewayText, mapRegistryProvider, clearRegistryRouteCache } from "@/lib/ai-gateway";
 import { aiwSupabase as supabase, aiwAudit, type AiwRow } from "@/lib/aiw-supabase";
 
 export const dynamic = "force-dynamic";
@@ -190,6 +190,7 @@ export async function POST(req: Request) {
           method: "PATCH", headers: { Prefer: "return=minimal" },
           body: JSON.stringify({ enabled: false }),
         });
+        clearRegistryRouteCache();
         await audit(user.id, "model_route.disable", "aiw_model_route", id, "success", { routeName, provider: route.provider });
         return response({ ok: true, id, enabled: false, verified: false, message: `${routeName} is disabled. No inference will be routed to it.` });
       }
@@ -197,9 +198,23 @@ export async function POST(req: Request) {
       // credentials, data handling and a live health check are verified. So
       // enabling runs the probe first and only writes on an exact-match reply;
       // a route is never marked live on the strength of an assertion.
+      // Routes now drive provider selection, so the check must exercise THIS
+      // route's provider and model. A registry row naming a provider with no
+      // implementation can never be enabled, rather than passing on the
+      // strength of whatever path happened to be live.
+      const routeProvider = mapRegistryProvider(route.provider);
+      const routeModel = String(route.model ?? "").trim();
+      if (!routeProvider) {
+        await audit(user.id, "model_route.enable", "aiw_model_route", id, "denied", { routeName, provider: route.provider, reason: "provider_not_implemented" });
+        return response({ error: `${routeName} names provider "${String(route.provider)}", which this runtime has no implementation for. Enabling it would route inference nowhere.`, verified: false }, 409);
+      }
+      if (!routeModel) {
+        await audit(user.id, "model_route.enable", "aiw_model_route", id, "denied", { routeName, reason: "model_missing" });
+        return response({ error: `${routeName} has no model set, so there is nothing to route to.`, verified: false }, 409);
+      }
       const probe = await generateAIGatewayText(
         { system: "You are the NEAS model-route health check. Follow the user instruction exactly.", user: "Reply with exactly: NEAS_ROUTE_OK" },
-        { request: req },
+        { request: req, provider: routeProvider, model: routeModel },
       );
       if ("error" in probe) {
         await audit(user.id, "model_route.enable", "aiw_model_route", id, "denied", { routeName, provider: route.provider, reason: String(probe.error).slice(0, 400) });
@@ -214,6 +229,7 @@ export async function POST(req: Request) {
         body: JSON.stringify({ enabled: true }),
       }) as Row[];
       if (!updated.length) return response({ error: "The health check passed but the registry update returned no record. The route is unchanged." }, 502);
+      clearRegistryRouteCache();
       await audit(user.id, "model_route.enable", "aiw_model_route", id, "success", { routeName, provider: route.provider, verifiedModel: probe.model, dataClassification: route.data_classification });
       return response({ ok: true, id, enabled: true, verified: true, model: probe.model, message: `${routeName} verified live via ${probe.model} and enabled.` });
     }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_AI_GATEWAY_MODEL, extractGatewayText, generateAIGatewayText, openRouterFailoverReason, usesProjectAIGateway } from "../lib/ai-gateway.ts";
+import { DEFAULT_AI_GATEWAY_MODEL, clearRegistryRouteCache, extractGatewayText, generateAIGatewayText, mapRegistryProvider, openRouterFailoverReason, selectRegistryRoute, usesProjectAIGateway } from "../lib/ai-gateway.ts";
 
 test("uses the live catalog-selected GPT-4o Mini model by default", () => {
   assert.equal(DEFAULT_AI_GATEWAY_MODEL, "openai/gpt-4o-mini");
@@ -376,4 +376,124 @@ test("classifies which OpenRouter failures may switch providers", () => {
   // A timeout must not burn a second attempt inside the function budget.
   assert.equal(openRouterFailoverReason("Could not reach the configured openrouter API or the request timed out. No alternate provider was used."), null);
   assert.equal(openRouterFailoverReason("openrouter returned no usable answer text. No response was saved."), null);
+});
+
+test("maps registry provider names onto runtimes that exist", () => {
+  assert.equal(mapRegistryProvider("vercel-ai-gateway"), "vercel");
+  assert.equal(mapRegistryProvider("VERCEL-AI-GATEWAY"), "vercel");
+  assert.equal(mapRegistryProvider("openrouter"), "openrouter");
+  assert.equal(mapRegistryProvider("google"), "gemini");
+  assert.equal(mapRegistryProvider("grok"), "xai");
+  // No implementation exists for these, so they must never be selected or enabled.
+  assert.equal(mapRegistryProvider("omniroute"), null);
+  assert.equal(mapRegistryProvider("ollama"), null);
+  assert.equal(mapRegistryProvider(""), null);
+  assert.equal(mapRegistryProvider(undefined), null);
+  // Must not inherit anything from Object.prototype.
+  assert.equal(mapRegistryProvider("constructor"), null);
+  assert.equal(mapRegistryProvider("toString"), null);
+});
+
+test("route selection resolves to null when the registry cannot be read", async () => {
+  clearRegistryRouteCache();
+  // No Supabase key is configured under test, so the lookup throws internally.
+  // Routing must never fail because of that: it falls back to env configuration.
+  assert.equal(await selectRegistryRoute(), null);
+  clearRegistryRouteCache();
+});
+
+test("an unreadable registry still leaves the Vercel Gateway default in charge", async () => {
+  clearRegistryRouteCache();
+  const previousProvider = process.env.NEAS_AI_PROVIDER;
+  const previousOpenRouter = process.env.OPENROUTER_API_KEY;
+  delete process.env.NEAS_AI_PROVIDER;
+  delete process.env.OPENROUTER_API_KEY;
+  try {
+    let sentModel;
+    const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+      token: "oidc",
+      fetchImpl: async (url, init) => {
+        sentModel = JSON.parse(init.body).model;
+        return new Response(JSON.stringify({ choices: [{ message: { content: "ok" } }] }), { status: 200 });
+      },
+    });
+    assert.deepEqual(result, { text: "ok", model: DEFAULT_AI_GATEWAY_MODEL });
+    assert.equal(sentModel, DEFAULT_AI_GATEWAY_MODEL);
+  } finally {
+    if (previousProvider === undefined) delete process.env.NEAS_AI_PROVIDER;
+    else process.env.NEAS_AI_PROVIDER = previousProvider;
+    if (previousOpenRouter === undefined) delete process.env.OPENROUTER_API_KEY;
+    else process.env.OPENROUTER_API_KEY = previousOpenRouter;
+    clearRegistryRouteCache();
+  }
+});
+
+test("an explicit provider and model bypass the registry entirely", async () => {
+  let sent;
+  const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+    provider: "groq",
+    providerApiKey: "test-groq-key",
+    model: "ignored-for-direct-providers",
+    fetchImpl: async (url, init) => {
+      sent = { url, body: JSON.parse(init.body) };
+      return new Response(JSON.stringify({ choices: [{ message: { content: "direct" } }] }), { status: 200 });
+    },
+  });
+  assert.deepEqual(result, { text: "direct", model: "groq:openai/gpt-oss-120b" });
+  assert.equal(sent.url, "https://api.groq.com/openai/v1/chat/completions");
+});
+
+test("an enabled registry route decides the provider and model", async () => {
+  clearRegistryRouteCache();
+  const previousKey = process.env.SUPABASE_SECRET_KEY;
+  const previousProvider = process.env.NEAS_AI_PROVIDER;
+  process.env.SUPABASE_SECRET_KEY = "test-supabase-key";
+  // Env says OpenRouter; the registry must win and route to the Vercel Gateway.
+  process.env.NEAS_AI_PROVIDER = "openrouter";
+  const urls = [];
+  try {
+    let sentModel;
+    const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+      token: "oidc",
+      fetchImpl: async (url, init) => {
+        urls.push(String(url));
+        if (String(url).includes("/rest/v1/aiw_model_routes")) {
+          return new Response(JSON.stringify([
+            { route_name: "neas-vercel-ai-gateway", provider: "vercel-ai-gateway", model: "openai/gpt-4o-mini", priority: 1 },
+          ]), { status: 200 });
+        }
+        sentModel = JSON.parse(init.body).model;
+        return new Response(JSON.stringify({ choices: [{ message: { content: "routed" } }] }), { status: 200 });
+      },
+    });
+    assert.deepEqual(result, { text: "routed", model: "openai/gpt-4o-mini" });
+    assert.equal(sentModel, "openai/gpt-4o-mini");
+    assert.equal(urls.some((u) => u.includes("aiw_model_routes")), true);
+    assert.equal(urls.some((u) => u.includes("ai-gateway.vercel.sh")), true);
+    // The env provider was openrouter; the registry overrode it.
+    assert.equal(urls.some((u) => u.includes("openrouter.ai")), false);
+  } finally {
+    if (previousKey === undefined) delete process.env.SUPABASE_SECRET_KEY;
+    else process.env.SUPABASE_SECRET_KEY = previousKey;
+    if (previousProvider === undefined) delete process.env.NEAS_AI_PROVIDER;
+    else process.env.NEAS_AI_PROVIDER = previousProvider;
+    clearRegistryRouteCache();
+  }
+});
+
+test("a registry holding only unimplemented providers leaves env in charge", async () => {
+  clearRegistryRouteCache();
+  const previousKey = process.env.SUPABASE_SECRET_KEY;
+  process.env.SUPABASE_SECRET_KEY = "test-supabase-key";
+  try {
+    const selection = await selectRegistryRoute(Date.now(), async () => new Response(JSON.stringify([
+      { route_name: "neas-omniroute", provider: "omniroute", model: "provider/model", priority: 1 },
+      { route_name: "neas-ollama-local", provider: "ollama", model: "local-model", priority: 2 },
+    ]), { status: 200 }));
+    assert.equal(selection, null);
+  } finally {
+    if (previousKey === undefined) delete process.env.SUPABASE_SECRET_KEY;
+    else process.env.SUPABASE_SECRET_KEY = previousKey;
+    clearRegistryRouteCache();
+  }
 });
