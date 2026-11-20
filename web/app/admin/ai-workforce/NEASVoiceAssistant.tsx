@@ -254,7 +254,7 @@ export default function NEASVoiceAssistant({ open, onClose }: { open: boolean; o
           {error ? <p role="alert" style={{ color: "#ffb3a9", fontSize: 12, margin: "9px 0 0" }}>{error}</p> : null}
         </div>
       </div>
-      <p style={{ color: "#71869a", fontSize: 10, margin: "13px 0 0" }}>The microphone is requested only when you press Start talking. Opening or closing this console never activates the microphone. Browser speech recognition provides microphone input. Replies use the configured natural AI voice provider; robotic browser speech is deliberately disabled. AI reasoning runs through the configured NEAS server-side provider. Specialist agents advise and prepare work; external actions, spending, deployment and safety-critical approvals remain subject to NEAS authorization.</p>
+      <p style={{ color: "#71869a", fontSize: 10, margin: "13px 0 0" }}>Replies use the configured natural AI voice provider; robotic browser speech is deliberately disabled. AI reasoning runs through the configured NEAS server-side provider. Specialist agents advise and prepare work; external actions, spending, deployment and safety-critical approvals remain subject to NEAS authorization.</p>
     </section>
     </div>
   );
