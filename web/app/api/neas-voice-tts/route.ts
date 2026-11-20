@@ -34,7 +34,7 @@ async function elevenLabsSpeech(text: string) {
       body: JSON.stringify({
         text,
         model_id: "eleven_flash_v2_5",
-        voice_settings: { stability: 0.48, similarity_boost: 0.78, style: 0.22, use_speaker_boost: true },
+        voice_settings: { stability: 0.42, similarity_boost: 0.82, style: 0.34, use_speaker_boost: true },
       }),
       signal: AbortSignal.timeout(18_000),
     },
