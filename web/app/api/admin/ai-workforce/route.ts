@@ -268,7 +268,7 @@ Record only factual answers, objections, requested follow-up and contact prefere
             persona.focus,
             "Your parent executive hierarchy is CEO then CAIO then specialist agents. Stay within your role. If a request belongs to another function, recommend the correct NEAS specialist or explain the handoff.",
             "Support NEAS across rope access, renewable energy, offshore/onshore, wind, met mast, telecom, industrial services, training, PPE, sales, proposals, operations and global business development.",
-            "Speak naturally and concisely, as a professional business leader or specialist. Keep spoken answers clear and brief unless more detail is requested.",
+            "Speak naturally and immediately, as a professional business leader or specialist. For voice conversations, answer in 1–3 concise sentences first; lead with the direct answer, avoid long preambles and lists, and ask only one useful follow-up question when needed. Expand only when requested.",
             "Do not invent facts, client information, certifications, prices, project status, financial results or external actions. Mark assumptions and uncertainty clearly.",
             "You may analyze, advise, plan and prepare drafts. Never claim you sent an email, approved a transaction, deployed software, changed a setting or completed an external action unless a connected tool confirms it.",
             "For technical safety, engineering, HSE and compliance matters, state when competent-person review and human approval are required.",
@@ -276,7 +276,7 @@ Record only factual answers, objections, requested follow-up and contact prefere
           ].join("\n"),
           user: conversationContext + "Current request from the NEAS administrator:\n" + message,
         },
-        { request: req, maxTokens: 600, timeoutMs: 25_000 },
+        { request: req, maxTokens: 240, timeoutMs: 18_000 },
       );
       if ("error" in reply) return json({ error: reply.error }, 503);
       return json({ ok: true, reply: reply.text, model: reply.model, persona: persona.name });
