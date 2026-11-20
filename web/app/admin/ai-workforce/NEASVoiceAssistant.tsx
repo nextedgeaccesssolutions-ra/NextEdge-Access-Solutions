@@ -85,15 +85,17 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
           URL.revokeObjectURL(audioUrl);
           audioUrlRef.current = null;
           audioRef.current = null;
-          reportError("Natural voice playback failed.");
-          if (conversationActive.current) startListening();
+          conversationActive.current = false;
+          recognition.current?.stop();
+          reportError("Natural voice playback failed. The microphone has stopped so this error remains visible.");
         }
       };
       onStatusChange?.("speaking");
       await audio.play();
     } catch (cause) {
-      reportError(cause instanceof Error ? cause.message : "Natural AI voice generation failed. Your written response remains available.");
-      if (conversationActive.current) startListening();
+      conversationActive.current = false;
+      recognition.current?.stop();
+      reportError(cause instanceof Error ? cause.message : "Natural AI voice generation failed. Your written response remains available. The microphone has stopped so this error remains visible.");
     }
   };
 
@@ -120,8 +122,9 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
       setHistory([...nextHistory, { role: "assistant" as const, content: answer }].slice(-16));
       await speak(answer);
     } catch (cause) {
-      reportError(cause instanceof Error ? cause.message : "The voice assistant request failed.");
-      if (conversationActive.current) startListening();
+      conversationActive.current = false;
+      recognition.current?.stop();
+      reportError(cause instanceof Error ? cause.message : "The voice assistant request failed. The microphone has stopped so this error remains visible.");
     } finally {
       setBusy(false);
     }
