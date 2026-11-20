@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
+import { cronToken } from "@/lib/cron-token";
+import { generateAIGatewayText } from "@/lib/ai-gateway";
+import { aiwSupabase as supabase, aiwAudit, type AiwRow } from "@/lib/aiw-supabase";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const SUPABASE_URL = process.env.SUPABASE_URL || "https://smlxekhbaefbvdbfxpew.supabase.co";
-const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-
-type Row = Record<string, unknown>;
+type Row = AiwRow;
 const response = (data: unknown, status = 200) => NextResponse.json(data, { status });
 
 async function requireAdmin() {
@@ -15,29 +15,8 @@ async function requireAdmin() {
   return user?.role === "admin" ? user : null;
 }
 
-async function supabase(path: string, init: RequestInit = {}) {
-  if (!SUPABASE_KEY) throw new Error("SUPABASE_SECRET_KEY is not configured in the Vercel server environment. Add the Supabase project secret key to Production and Preview; never expose it as NEXT_PUBLIC.");
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    cache: "no-store",
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-      ...(init.headers || {}),
-    },
-  });
-  const raw = await res.text();
-  if (!res.ok) throw new Error(`Supabase request failed (${res.status}): ${raw.slice(0, 300)}`);
-  return raw ? JSON.parse(raw) : null;
-}
-
 async function audit(actorId: number, action: string, resourceType: string, resourceId: string | null, outcome: "success" | "denied" | "failure" | "pending", details: Row = {}) {
-  await supabase("aiw_audit_events", {
-    method: "POST",
-    headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({ actor_type: "human", actor_id: String(actorId), action, resource_type: resourceType, resource_id: resourceId, outcome, details }),
-  });
+  await aiwAudit("human", String(actorId), action, resourceType, resourceId, outcome, details);
 }
 
 export async function GET() {
@@ -196,6 +175,85 @@ export async function POST(req: Request) {
       });
       await audit(user.id, quorumReached ? `approval.${decision}` : "approval.first", "aiw_approval", id, quorumReached ? "success" : "pending", { taskId: pending[0].task_id, category: pending[0].category, quorum: `${nextApprovers.length}/${required}` });
       return response({ ok: true, id, decision, quorum: `${nextApprovers.length}/${required}`, quorumReached });
+    }
+    if (action === "setModelRoute") {
+      const id = String(body.id || "");
+      const enabled = body.enabled === true;
+      if (!id) return response({ error: "A model route ID is required." }, 400);
+      const found = await supabase(`aiw_model_routes?id=eq.${encodeURIComponent(id)}&select=id,route_name,provider,model,enabled,data_classification&limit=1`) as Row[];
+      if (!found.length) return response({ error: "Model route not found." }, 404);
+      const route = found[0];
+      const routeName = String(route.route_name || id);
+      // Turning a provider off only ever reduces capability, so it needs no proof.
+      if (!enabled) {
+        await supabase(`aiw_model_routes?id=eq.${encodeURIComponent(id)}`, {
+          method: "PATCH", headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ enabled: false }),
+        });
+        await audit(user.id, "model_route.disable", "aiw_model_route", id, "success", { routeName, provider: route.provider });
+        return response({ ok: true, id, enabled: false, verified: false, message: `${routeName} is disabled. No inference will be routed to it.` });
+      }
+      // The registry's own policy is that a provider stays disabled until
+      // credentials, data handling and a live health check are verified. So
+      // enabling runs the probe first and only writes on an exact-match reply;
+      // a route is never marked live on the strength of an assertion.
+      const probe = await generateAIGatewayText(
+        { system: "You are the NEAS model-route health check. Follow the user instruction exactly.", user: "Reply with exactly: NEAS_ROUTE_OK" },
+        { request: req },
+      );
+      if ("error" in probe) {
+        await audit(user.id, "model_route.enable", "aiw_model_route", id, "denied", { routeName, provider: route.provider, reason: String(probe.error).slice(0, 400) });
+        return response({ error: `Live health check failed, so ${routeName} stays disabled: ${probe.error}`, verified: false }, 503);
+      }
+      if (probe.text.trim() !== "NEAS_ROUTE_OK") {
+        await audit(user.id, "model_route.enable", "aiw_model_route", id, "denied", { routeName, provider: route.provider, reason: "health_check_validation_failed" });
+        return response({ error: `${routeName} returned inference text but failed the exact-match health validation, so it stays disabled.`, verified: false }, 503);
+      }
+      const updated = await supabase(`aiw_model_routes?id=eq.${encodeURIComponent(id)}&select=id,route_name,enabled`, {
+        method: "PATCH", headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ enabled: true }),
+      }) as Row[];
+      if (!updated.length) return response({ error: "The health check passed but the registry update returned no record. The route is unchanged." }, 502);
+      await audit(user.id, "model_route.enable", "aiw_model_route", id, "success", { routeName, provider: route.provider, verifiedModel: probe.model, dataClassification: route.data_classification });
+      return response({ ok: true, id, enabled: true, verified: true, model: probe.model, message: `${routeName} verified live via ${probe.model} and enabled.` });
+    }
+    if (action === "setSchedule") {
+      const id = String(body.id || "");
+      const enabled = body.enabled === true;
+      if (!id) return response({ error: "A schedule ID is required." }, 400);
+      const found = await supabase(`aiw_schedules?id=eq.${encodeURIComponent(id)}&select=id,name,cadence,enabled,agent_id&limit=1`) as Row[];
+      if (!found.length) return response({ error: "Schedule not found." }, 404);
+      const schedule = found[0];
+      const scheduleName = String(schedule.name || id);
+      if (!enabled) {
+        await supabase(`aiw_schedules?id=eq.${encodeURIComponent(id)}`, {
+          method: "PATCH", headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ enabled: false }),
+        });
+        await audit(user.id, "schedule.disable", "aiw_schedule", id, "success", { scheduleName });
+        return response({ ok: true, id, enabled: false, message: `${scheduleName} is paused. The scheduler will skip it.` });
+      }
+      // Refuse to show a schedule as active unless something can actually run it.
+      // Without the cron token the scheduler route cannot authenticate, so an
+      // enabled row would read as live while never executing.
+      if (!cronToken()) {
+        await audit(user.id, "schedule.enable", "aiw_schedule", id, "denied", { scheduleName, reason: "scheduler_not_configured" });
+        return response({ error: `The scheduler runtime is not configured, so enabling ${scheduleName} would display it as active while nothing runs. Add the cron token to the Vercel environment and deploy /api/cron/aiw-scheduler first.` }, 503);
+      }
+      const agentId = String(schedule.agent_id || "").toLowerCase();
+      if (!agentId) return response({ error: `${scheduleName} has no owning agent, so the scheduler would have nothing to assign. Assign an agent before enabling it.` }, 409);
+      const agents = await supabase(`aiw_agents?agent_id=eq.${encodeURIComponent(agentId)}&select=agent_id,name,enabled,execution_mode&limit=1`) as Row[];
+      if (!agents.length || agents[0].enabled !== true || agents[0].execution_mode === "disabled") {
+        await audit(user.id, "schedule.enable", "aiw_schedule", id, "denied", { scheduleName, reason: "agent_unavailable", agentId });
+        return response({ error: `The owning agent (${agentId}) is disabled, so ${scheduleName} would never produce work. Enable the agent first.` }, 409);
+      }
+      const updated = await supabase(`aiw_schedules?id=eq.${encodeURIComponent(id)}&select=id,name,enabled`, {
+        method: "PATCH", headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ enabled: true }),
+      }) as Row[];
+      if (!updated.length) return response({ error: "The schedule update returned no record. It is unchanged." }, 502);
+      await audit(user.id, "schedule.enable", "aiw_schedule", id, "success", { scheduleName, agentId, cadence: schedule.cadence ?? null });
+      return response({ ok: true, id, enabled: true, message: `${scheduleName} is active. The scheduler will queue work for ${String(agents[0].name)} on its next run.` });
     }
     return response({ error: "Unsupported action." }, 400);
   } catch (error) {
