@@ -34,6 +34,52 @@ test("fails closed when the OIDC token is missing", async () => {
   if ("error" in result) assert.match(result.error, /OIDC token is missing/i);
 });
 
+test("retries one short Vercel Gateway 429 and returns the recovered answer", async () => {
+  let calls = 0;
+  const result = await generateAIGatewayText({ system: "NEAS", user: "Hello" }, {
+    token: "oidc",
+    fetchImpl: async () => {
+      calls++;
+      if (calls === 1) return new Response(JSON.stringify({ error: { message: "rate limited" } }), {
+        status: 429, headers: { "retry-after": "0" },
+      });
+      return new Response(JSON.stringify({ choices: [{ message: { content: "Recovered after retry" } }] }), { status: 200 });
+    },
+  });
+  assert.deepEqual(result, { text: "Recovered after retry", model: DEFAULT_AI_GATEWAY_MODEL });
+  assert.equal(calls, 2);
+});
+
+test("keeps a persistent Vercel Gateway 429 visible after one bounded retry", async () => {
+  let calls = 0;
+  const result = await generateAIGatewayText({ system: "NEAS", user: "Hello" }, {
+    token: "oidc",
+    fetchImpl: async () => {
+      calls++;
+      return new Response(JSON.stringify({ error: { message: "rate limited" } }), {
+        status: 429, headers: { "retry-after": "0" },
+      });
+    },
+  });
+  assert.equal("error" in result, true);
+  if ("error" in result) assert.match(result.error, /rate limit reached/i);
+  assert.equal(calls, 2);
+});
+
+test("supports a shorter output budget for live voice turns", async () => {
+  let request;
+  const result = await generateAIGatewayText({ system: "NEAS", user: "Hello" }, {
+    token: "oidc",
+    maxTokens: 1200,
+    fetchImpl: async (_url, init) => {
+      request = JSON.parse(init.body);
+      return new Response(JSON.stringify({ choices: [{ message: { content: "Short voice answer" } }] }), { status: 200 });
+    },
+  });
+  assert.deepEqual(result, { text: "Short voice answer", model: DEFAULT_AI_GATEWAY_MODEL });
+  assert.equal(request.max_tokens, 1200);
+});
+
 test("does not fallback when the monthly Gateway budget is exhausted", async () => {
   const result = await generateAIGatewayText({ system: "s", user: "u" }, {
     token: "oidc",
