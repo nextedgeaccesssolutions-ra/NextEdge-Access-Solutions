@@ -302,7 +302,7 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
       instance.onspeechend = () => {
         if (!capturedSpeech || turnSubmitted) return;
         if (silenceTimer.current !== null) window.clearTimeout(silenceTimer.current);
-        silenceTimer.current = window.setTimeout(submitRecognizedTurn, 1100);
+        silenceTimer.current = window.setTimeout(submitRecognizedTurn, 650);
       };
       instance.onresult = (event) => {
         let finalChunk = "";
@@ -327,18 +327,18 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
         if (!capturedSpeech) return;
         onStatusChange?.("listening", "Voice detected · waiting briefly for you to finish…");
         if (silenceTimer.current !== null) window.clearTimeout(silenceTimer.current);
-        silenceTimer.current = window.setTimeout(submitRecognizedTurn, 1200);
+        silenceTimer.current = window.setTimeout(submitRecognizedTurn, 650);
       };
       instance.onerror = (event) => {
         recognitionFailed = true;
         if (event.error === "no-speech") {
           onStatusChange?.("listening", "I didn't catch that. Microphone remains active—please speak when ready.");
-          if (conversationActive.current) scheduleListeningRestart(450);
+          if (conversationActive.current) scheduleListeningRestart(250);
           return;
         }
         if (event.error === "network") {
           onStatusChange?.("listening", "Reconnecting speech recognition… please keep the page open.");
-          if (conversationActive.current) scheduleListeningRestart(1200);
+          if (conversationActive.current) scheduleListeningRestart(700);
           return;
         }
         const detail = event.error === "not-allowed" || event.error === "service-not-allowed"
