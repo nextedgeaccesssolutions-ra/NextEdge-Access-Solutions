@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
   if (!OPENROUTER_API_KEY) {
     return NextResponse.json(
-      { error: "NEAS natural voice is not configured. Add OPENROUTER_API_KEY to the Vercel project for Production and Preview." },
+      { error: "NEAS natural voice is currently unavailable. Please contact your system administrator." },
       { status: 503, headers: { "Cache-Control": "no-store" } },
     );
   }
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     const status = response.status;
     // Do not expose upstream response bodies or account diagnostics to the browser.
     if (status === 401 || status === 403) {
-      return NextResponse.json({ error: "OpenRouter rejected the server-side API key. Verify OPENROUTER_API_KEY in Vercel." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ error: "Natural voice authentication failed. Please contact your system administrator." }, { status: 503, headers: { "Cache-Control": "no-store" } });
     }
     if (status === 402 || status === 429) {
       return NextResponse.json(
