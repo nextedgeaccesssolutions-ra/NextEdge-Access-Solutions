@@ -4,91 +4,90 @@ import { rateLimitRequest } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY?.trim();
+const ELEVENLABS_VOICE_ID = process.env.NEAS_ELEVENLABS_VOICE_ID?.trim() || "nF0O6s45DRguoQfSSA3a";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY?.trim();
-const TTS_MODEL = "fish-audio/s2.1-pro-free:free";
+const OPENROUTER_TTS_MODEL = "fish-audio/s2.1-pro-free:free";
 const MAX_TEXT_LENGTH = 1000;
+
+function unavailable(message: string, status = 503) {
+  return NextResponse.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } });
+}
+
+async function elevenLabsSpeech(text: string) {
+  const response = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(ELEVENLABS_VOICE_ID)}?output_format=mp3_44100_128`,
+    {
+      method: "POST",
+      headers: { "xi-api-key": ELEVENLABS_API_KEY!, "content-type": "application/json", accept: "audio/mpeg" },
+      body: JSON.stringify({
+        text,
+        model_id: "eleven_flash_v2_5",
+        voice_settings: { stability: 0.48, similarity_boost: 0.78, style: 0.22, use_speaker_boost: true },
+      }),
+      signal: AbortSignal.timeout(25_000),
+    },
+  );
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) throw new Error("ElevenLabs authentication failed. Verify ELEVENLABS_API_KEY in Vercel Production environment.");
+    if (response.status === 402 || response.status === 429) throw new Error("ElevenLabs voice credits or rate limit are unavailable. Check the ElevenLabs workspace quota and billing.");
+    throw new Error(`ElevenLabs speech service returned HTTP ${response.status}. Written AI replies remain available.`);
+  }
+  const audio = await response.arrayBuffer();
+  if (!audio.byteLength) throw new Error("ElevenLabs returned an empty audio response.");
+  return audio;
+}
+
+async function openRouterSpeech(text: string) {
+  if (!OPENROUTER_API_KEY) throw new Error("No natural-voice provider key is configured. Add ELEVENLABS_API_KEY or OPENROUTER_API_KEY in Vercel.");
+  const input = "[Warm, confident, natural conversational professional voice. Clear English pronunciation, moderate pace, expressive intonation and natural pauses.] " + text;
+  const response = await fetch("https://openrouter.ai/api/v1/audio/speech", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${OPENROUTER_API_KEY}`,
+      "content-type": "application/json",
+      accept: "audio/mpeg",
+      "http-referer": process.env.SITE_URL || "https://www.nextedge-access-solutions.com",
+      "x-title": "NEAS AI Orchestration Core",
+    },
+    body: JSON.stringify({ model: OPENROUTER_TTS_MODEL, input, response_format: "mp3" }),
+    signal: AbortSignal.timeout(25_000),
+  });
+  if (!response.ok) {
+    if (response.status === 402 || response.status === 429) throw new Error("Natural voice provider quota is unavailable. Check provider credits or retry after the quota resets.");
+    if (response.status === 401 || response.status === 403) throw new Error("Natural voice provider authentication failed. Verify the server-side API key.");
+    throw new Error(`Natural voice provider returned HTTP ${response.status}.`);
+  }
+  const audio = await response.arrayBuffer();
+  if (!audio.byteLength) throw new Error("Natural voice provider returned empty audio.");
+  return audio;
+}
 
 export async function POST(req: NextRequest) {
   const limited = rateLimitRequest(req, "neas-natural-tts", 20, 60_000);
   if (limited) return limited;
-
-  if (!OPENROUTER_API_KEY) {
-    return NextResponse.json(
-      { error: "NEAS natural voice is currently unavailable. Please contact your system administrator." },
-      { status: 503, headers: { "Cache-Control": "no-store" } },
-    );
-  }
-
   let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
-  }
+  try { body = await req.json(); }
+  catch { return unavailable("Invalid request body.", 400); }
 
   const text = typeof body.text === "string" ? body.text.trim() : "";
-  if (!text) return NextResponse.json({ error: "No text provided." }, { status: 400 });
-  if (text.length > MAX_TEXT_LENGTH) return NextResponse.json({ error: "Text is too long." }, { status: 413 });
+  if (!text) return unavailable("No text provided.", 400);
+  if (text.length > MAX_TEXT_LENGTH) return unavailable("Text is too long.", 413);
 
-  // Fish Audio S2.1 accepts natural-language delivery cues in square brackets.
-  const input = "[Warm, confident, natural conversational professional voice. Clear English pronunciation, moderate pace, expressive intonation and natural pauses.] " + text;
-
-  let response: Response;
   try {
-    response = await fetch("https://openrouter.ai/api/v1/audio/speech", {
-      method: "POST",
+    // Prefer the configured ElevenLabs account rather than the exhausted free Fish Audio allowance.
+    const audio = ELEVENLABS_API_KEY ? await elevenLabsSpeech(text) : await openRouterSpeech(text);
+    return new NextResponse(audio, {
+      status: 200,
       headers: {
-        authorization: `Bearer ${OPENROUTER_API_KEY}`,
-        "content-type": "application/json",
-        accept: "audio/mpeg",
-        "http-referer": process.env.SITE_URL || "https://www.nextedge-access-solutions.com",
-        "x-title": "NEAS AI Orchestration Core",
+        "Content-Type": "audio/mpeg",
+        "Cache-Control": "no-store",
+        "X-NEAS-Voice-Model": ELEVENLABS_API_KEY ? "elevenlabs/eleven_flash_v2_5" : OPENROUTER_TTS_MODEL,
       },
-      body: JSON.stringify({ model: TTS_MODEL, input, response_format: "mp3" }),
-      signal: AbortSignal.timeout(25_000),
     });
-  } catch (error) {
-    const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
-    return NextResponse.json(
-      { error: timedOut ? "Natural voice generation timed out. Please try again." : "Natural voice provider is temporarily unreachable. Your written AI response remains available." },
-      { status: timedOut ? 504 : 502, headers: { "Cache-Control": "no-store" } },
-    );
+  } catch (cause) {
+    const message = cause instanceof Error ? cause.message : "Natural voice generation failed. Written AI replies remain available.";
+    const timedOut = cause instanceof Error && (cause.name === "TimeoutError" || cause.name === "AbortError");
+    return unavailable(timedOut ? "Natural voice generation timed out. Please try again." : message, timedOut ? 504 : 503);
   }
-
-  if (!response.ok) {
-    const status = response.status;
-    // Do not expose upstream response bodies or account diagnostics to the browser.
-    if (status === 401 || status === 403) {
-      return NextResponse.json({ error: "Natural voice authentication failed. Please contact your system administrator." }, { status: 503, headers: { "Cache-Control": "no-store" } });
-    }
-    if (status === 402 || status === 429) {
-      return NextResponse.json(
-        { error: "The free natural-voice quota is temporarily unavailable. Please retry later; no robotic browser voice will be substituted." },
-        { status: 503, headers: { "Retry-After": "60", "Cache-Control": "no-store" } },
-      );
-    }
-    return NextResponse.json(
-      { error: "The natural voice provider returned an error. Your written AI response remains available." },
-      { status: 503, headers: { "Cache-Control": "no-store" } },
-    );
-  }
-
-  const audio = await response.arrayBuffer().catch(() => null);
-  if (!audio || audio.byteLength === 0) {
-    return NextResponse.json({ error: "The natural voice provider returned empty audio." }, { status: 502, headers: { "Cache-Control": "no-store" } });
-  }
-
-  const contentType = response.headers.get("content-type")?.split(";")[0] || "audio/mpeg";
-  if (!contentType.startsWith("audio/") && contentType !== "application/octet-stream") {
-    return NextResponse.json({ error: "The natural voice provider returned an unsupported audio format." }, { status: 502, headers: { "Cache-Control": "no-store" } });
-  }
-
-  return new NextResponse(audio, {
-    status: 200,
-    headers: {
-      "Content-Type": contentType,
-      "Cache-Control": "no-store",
-      "X-NEAS-Voice-Model": TTS_MODEL,
-    },
-  });
 }
