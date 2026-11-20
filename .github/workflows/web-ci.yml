@@ -71,6 +71,10 @@ jobs:
         run: npm run test:aiw-skills
         working-directory: web
 
+      - name: Test natural-voice TTS provider error mapping
+        run: npm run test:voice-tts-errors
+        working-directory: web
+
       - name: Verify clean public route contract
         run: npm run test:clean-routes
         working-directory: web
