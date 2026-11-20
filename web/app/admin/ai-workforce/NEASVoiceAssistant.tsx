@@ -224,8 +224,7 @@ export default function NEASVoiceAssistant() {
     >
     <section id="neas-ai-voice-console" role="dialog" aria-modal="true" aria-label="NEAS AI Orchestration Core voice interface" style={{ position: "relative", width: "min(860px, 100%)", maxHeight: "92vh", overflowY: "auto", padding: 20, border: "1px solid #ca933266", borderRadius: 18, background: "radial-gradient(circle at 85% 0%,#3a2a1644,transparent 35%),linear-gradient(135deg,#071d29,#101b25 68%,#211b11)", color: "#e7edf4", boxShadow: "0 18px 55px #0009" }}>
       <button type="button" onClick={closeVoicePanel} aria-label="Close NEAS AI voice session" style={{ position: "absolute", top: 12, right: 12, zIndex: 2, width: 34, height: 34, borderRadius: 99, border: "1px solid #ca933288", background: "#07111c", color: "#f2d6a2", fontSize: 20, cursor: "pointer" }}>×</button>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div><div style={{ color: "#ebc07e", fontSize: 10, letterSpacing: ".2em", fontWeight: 800 }}>NEAS AI ORCHESTRATION CORE</div><h2 style={{ fontSize: 22, margin: "5px 0", color: "#f1d5a0" }}>CEO · CAIO · SPECIALISTS</h2><p style={{ color: "#a7b7c4", fontSize: 12, margin: 0 }}>One secure voice interface for the NEAS executive and specialist workforce</p></div>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <span style={{ border: "1px solid #4b967455", color: "#9ce0ba", borderRadius: 99, padding: "6px 11px", fontSize: 10 }}>ADMIN SESSION PROTECTED</span>
       </div>
 
