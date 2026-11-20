@@ -7,9 +7,9 @@ import NEASVoiceAssistant, { type NEASVoiceAssistantHandle } from "./NEASVoiceAs
 export default function NEASOrchestrationCore() {
   const voiceAssistantRef = useRef<NEASVoiceAssistantHandle>(null);
   const startVoice = () => {
-    // Start speech recognition directly from the user's tap.
-    // The voice engine is headless; no popup or modal is rendered.
-    voiceAssistantRef.current?.startListening();
+    // Keep the command-center visual in place while toggling voice chat.
+    // The voice engine renders no popup, modal, or replacement panel.
+    voiceAssistantRef.current?.toggleConversation();
   };
 
   return (
