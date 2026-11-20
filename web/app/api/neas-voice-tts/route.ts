@@ -14,6 +14,27 @@ function unavailable(message: string, status = 503) {
   return NextResponse.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } });
 }
 
+async function providerError(response: Response, provider: string) {
+  const raw = await response.text().catch(() => "");
+  let detail = "";
+  try {
+    const parsed = JSON.parse(raw);
+    detail = String(parsed?.detail?.message || parsed?.error?.message || parsed?.message || parsed?.detail?.code || "");
+  } catch {
+    detail = raw.slice(0, 240);
+  }
+  if (provider === "ElevenLabs") {
+    if (response.status === 401) return new Error("ElevenLabs rejected the API key (401). Create a new key with Text to Speech permission and replace ELEVENLABS_API_KEY in Vercel Production.");
+    if (response.status === 402) return new Error("ElevenLabs account has insufficient credits (402). Add credits or wait for the quota reset.");
+    if (response.status === 403) return new Error("ElevenLabs denied this request (403). Check API key permissions, voice access and plan eligibility.");
+    if (response.status === 429) return new Error("ElevenLabs rate or concurrency limit reached (429). Wait before retrying.");
+  } else {
+    if (response.status === 401 || response.status === 403) return new Error("OpenRouter authentication or permission failed. Verify OPENROUTER_API_KEY and provider access.");
+    if (response.status === 402 || response.status === 429) return new Error("OpenRouter provider quota or rate limit is unavailable.");
+  }
+  return new Error(`${provider} returned HTTP ${response.status}.${detail ? " " + detail : ""}`);
+}
+
 async function elevenLabsSpeech(text: string) {
   const response = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(ELEVENLABS_VOICE_ID)}?output_format=mp3_44100_128`,
@@ -25,21 +46,17 @@ async function elevenLabsSpeech(text: string) {
         model_id: "eleven_flash_v2_5",
         voice_settings: { stability: 0.48, similarity_boost: 0.78, style: 0.22, use_speaker_boost: true },
       }),
-      signal: AbortSignal.timeout(25_000),
+      signal: AbortSignal.timeout(18_000),
     },
   );
-  if (!response.ok) {
-    if (response.status === 401 || response.status === 403) throw new Error("ElevenLabs authentication failed. Verify ELEVENLABS_API_KEY in Vercel Production environment.");
-    if (response.status === 402 || response.status === 429) throw new Error("ElevenLabs voice credits or rate limit are unavailable. Check the ElevenLabs workspace quota and billing.");
-    throw new Error(`ElevenLabs speech service returned HTTP ${response.status}. Written AI replies remain available.`);
-  }
+  if (!response.ok) throw await providerError(response, "ElevenLabs");
   const audio = await response.arrayBuffer();
   if (!audio.byteLength) throw new Error("ElevenLabs returned an empty audio response.");
   return audio;
 }
 
 async function openRouterSpeech(text: string) {
-  if (!OPENROUTER_API_KEY) throw new Error("No natural-voice provider key is configured. Add ELEVENLABS_API_KEY or OPENROUTER_API_KEY in Vercel.");
+  if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is not configured as a natural-voice fallback in Vercel.");
   const input = "[Warm, confident, natural conversational professional voice. Clear English pronunciation, moderate pace, expressive intonation and natural pauses.] " + text;
   const response = await fetch("https://openrouter.ai/api/v1/audio/speech", {
     method: "POST",
@@ -51,15 +68,11 @@ async function openRouterSpeech(text: string) {
       "x-title": "NEAS AI Orchestration Core",
     },
     body: JSON.stringify({ model: OPENROUTER_TTS_MODEL, input, response_format: "mp3" }),
-    signal: AbortSignal.timeout(25_000),
+    signal: AbortSignal.timeout(18_000),
   });
-  if (!response.ok) {
-    if (response.status === 402 || response.status === 429) throw new Error("Natural voice provider quota is unavailable. Check provider credits or retry after the quota resets.");
-    if (response.status === 401 || response.status === 403) throw new Error("Natural voice provider authentication failed. Verify the server-side API key.");
-    throw new Error(`Natural voice provider returned HTTP ${response.status}.`);
-  }
+  if (!response.ok) throw await providerError(response, "OpenRouter");
   const audio = await response.arrayBuffer();
-  if (!audio.byteLength) throw new Error("Natural voice provider returned empty audio.");
+  if (!audio.byteLength) throw new Error("OpenRouter returned empty audio.");
   return audio;
 }
 
@@ -74,20 +87,40 @@ export async function POST(req: NextRequest) {
   if (!text) return unavailable("No text provided.", 400);
   if (text.length > MAX_TEXT_LENGTH) return unavailable("Text is too long.", 413);
 
-  try {
-    // Prefer the configured ElevenLabs account rather than the exhausted free Fish Audio allowance.
-    const audio = ELEVENLABS_API_KEY ? await elevenLabsSpeech(text) : await openRouterSpeech(text);
-    return new NextResponse(audio, {
-      status: 200,
-      headers: {
-        "Content-Type": "audio/mpeg",
-        "Cache-Control": "no-store",
-        "X-NEAS-Voice-Model": ELEVENLABS_API_KEY ? "elevenlabs/eleven_flash_v2_5" : OPENROUTER_TTS_MODEL,
-      },
-    });
-  } catch (cause) {
-    const message = cause instanceof Error ? cause.message : "Natural voice generation failed. Written AI replies remain available.";
-    const timedOut = cause instanceof Error && (cause.name === "TimeoutError" || cause.name === "AbortError");
-    return unavailable(timedOut ? "Natural voice generation timed out. Please try again." : message, timedOut ? 504 : 503);
+  let audio: ArrayBuffer;
+  let voiceModel = "";
+  let primaryFailure: Error | null = null;
+
+  if (ELEVENLABS_API_KEY) {
+    try {
+      audio = await elevenLabsSpeech(text);
+      voiceModel = "elevenlabs/eleven_flash_v2_5";
+    } catch (cause) {
+      primaryFailure = cause instanceof Error ? cause : new Error("ElevenLabs natural voice failed.");
+      console.warn("[neas-natural-tts] ElevenLabs failed; trying configured natural-voice fallback.", primaryFailure.message);
+    }
   }
+
+  if (!voiceModel) {
+    try {
+      audio = await openRouterSpeech(text);
+      voiceModel = OPENROUTER_TTS_MODEL;
+    } catch (cause) {
+      const fallbackFailure = cause instanceof Error ? cause : new Error("OpenRouter natural voice failed.");
+      const message = primaryFailure
+        ? `Natural voice is unavailable. ElevenLabs: ${primaryFailure.message} Fallback: ${fallbackFailure.message}`
+        : fallbackFailure.message;
+      console.error("[neas-natural-tts] All configured natural-voice providers failed.", message);
+      return unavailable(message, 503);
+    }
+  }
+
+  return new NextResponse(audio!, {
+    status: 200,
+    headers: {
+      "Content-Type": "audio/mpeg",
+      "Cache-Control": "no-store",
+      "X-NEAS-Voice-Model": voiceModel,
+    },
+  });
 }
