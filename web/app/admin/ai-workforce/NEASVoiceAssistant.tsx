@@ -19,7 +19,7 @@ type SpeechWindow = Window & {
 };
 type Turn = { role: "user" | "assistant"; content: string };
 
-export type NEASVoiceAssistantHandle = { startListening: () => void };
+export type NEASVoiceAssistantHandle = { toggleConversation: () => void };
 
 const NEASVoiceAssistant = forwardRef<NEASVoiceAssistantHandle, object>(
 function NEASVoiceAssistant(_props, ref) {
@@ -28,10 +28,12 @@ function NEASVoiceAssistant(_props, ref) {
   const [busy, setBusy] = useState(false);
   const [, setError] = useState("");
   const recognition = useRef<RecognitionInstance | null>(null);
+  const conversationActive = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
 
   useEffect(() => () => {
+    conversationActive.current = false;
     recognition.current?.stop();
     audioRef.current?.pause();
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
@@ -70,6 +72,7 @@ function NEASVoiceAssistant(_props, ref) {
           URL.revokeObjectURL(audioUrl);
           audioUrlRef.current = null;
           audioRef.current = null;
+          if (conversationActive.current) startListening();
         }
       };
       audio.onerror = () => {
@@ -77,8 +80,9 @@ function NEASVoiceAssistant(_props, ref) {
           URL.revokeObjectURL(audioUrl);
           audioUrlRef.current = null;
           audioRef.current = null;
-        }
           setError("Natural voice playback failed.");
+          if (conversationActive.current) startListening();
+        }
       };
       await audio.play();
     } catch (cause) {
@@ -106,7 +110,7 @@ function NEASVoiceAssistant(_props, ref) {
       const answer = String(data.reply || "").trim();
       if (!answer) throw new Error("The AI provider returned an empty response.");
       setHistory([...nextHistory, { role: "assistant" as const, content: answer }].slice(-16));
-      speak(answer);
+      await speak(answer);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The voice assistant request failed.");
     } finally {
@@ -115,6 +119,7 @@ function NEASVoiceAssistant(_props, ref) {
   };
 
   const startListening = () => {
+    if (!conversationActive.current) return;
     setError("");
     const speechWindow = window as SpeechWindow;
     const Recognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
@@ -141,9 +146,20 @@ function NEASVoiceAssistant(_props, ref) {
     }
   };
 
-  // Expose microphone start so the central NEAS AI tap can invoke it
-  // synchronously inside the user's click gesture (before opening the panel).
-  useImperativeHandle(ref, () => ({ startListening }), [startListening]);
+  const toggleConversation = () => {
+    if (conversationActive.current) {
+      conversationActive.current = false;
+      recognition.current?.stop();
+      stopAudio();
+      return;
+    }
+    conversationActive.current = true;
+    startListening();
+  };
+
+  // The central core remains visible throughout the conversation. A tap
+  // toggles the microphone; after each spoken answer, listening resumes.
+  useImperativeHandle(ref, () => ({ toggleConversation }), [toggleConversation]);
 
   // Voice runs headlessly: tapping the NEAS AI core starts recognition
   // and responses play through the configured natural voice provider.
