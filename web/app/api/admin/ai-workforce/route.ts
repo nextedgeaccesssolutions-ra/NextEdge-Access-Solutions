@@ -276,7 +276,7 @@ Record only factual answers, objections, requested follow-up and contact prefere
           ].join("\n"),
           user: conversationContext + "Current request from the NEAS administrator:\n" + message,
         },
-        { request: req },
+        { request: req, maxTokens: 1200 },
       );
       if ("error" in reply) return json({ error: reply.error }, 503);
       return json({ ok: true, reply: reply.text, model: reply.model, persona: persona.name });
