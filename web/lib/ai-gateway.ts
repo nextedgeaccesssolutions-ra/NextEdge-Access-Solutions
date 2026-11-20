@@ -223,6 +223,7 @@ export async function generateAIGatewayText(
     provider?: Provider;
     providerApiKey?: string;
     fetchImpl?: typeof fetch;
+    maxTokens?: number;
   } = {},
 ): Promise<AIGatewayResult> {
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -276,7 +277,7 @@ export async function generateAIGatewayText(
   }
 
   try {
-    const response = await fetchImpl("https://ai-gateway.vercel.sh/v1/chat/completions", {
+    const gatewayRequest = () => fetchImpl("https://ai-gateway.vercel.sh/v1/chat/completions", {
       method: "POST",
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
       body: JSON.stringify({
@@ -285,10 +286,24 @@ export async function generateAIGatewayText(
           { role: "system", content: input.system },
           { role: "user", content: input.user },
         ],
-        max_tokens: 4000,
+        max_tokens: options.maxTokens ?? 4000,
       }),
       signal: AbortSignal.timeout(45_000),
     });
+    let response = await gatewayRequest();
+    // Retry one short, transient 429 in-place. Respect Retry-After, but keep the
+    // extra wait bounded so voice callers are not left hanging for long windows.
+    if (response.status === 429) {
+      const retryAfter = response.headers.get("retry-after");
+      const seconds = retryAfter ? Number(retryAfter) : Number.NaN;
+      const dateDelay = retryAfter && !Number.isFinite(seconds) ? Date.parse(retryAfter) - Date.now() : Number.NaN;
+      const delayMs = Number.isFinite(seconds) ? seconds * 1000
+        : Number.isFinite(dateDelay) ? dateDelay : 400;
+      if (delayMs >= 0 && delayMs <= 1200) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        response = await gatewayRequest();
+      }
+    }
     const payload = await response.json().catch(() => ({})) as UnknownRecord;
     if (!response.ok) {
       const errorObject = record(payload.error);

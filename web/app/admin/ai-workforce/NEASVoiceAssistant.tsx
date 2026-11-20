@@ -2,7 +2,8 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
-type RecognitionEvent = { results: ArrayLike<ArrayLike<{ transcript: string }>> };
+type RecognitionResult = ArrayLike<{ transcript: string }> & { isFinal: boolean };
+type RecognitionEvent = { resultIndex?: number; results: ArrayLike<RecognitionResult> };
 type RecognitionInstance = {
   lang: string;
   interimResults: boolean;
@@ -34,7 +35,7 @@ const NEASVoiceAssistant = forwardRef<NEASVoiceAssistantHandle, NEASVoiceAssista
 function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
   const persona = "ceo";
   const [history, setHistory] = useState<Turn[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [, setBusy] = useState(false);
   const [, setError] = useState("");
   const reportError = (message: string) => { setError(message); onStatusChange?.("error", message); };
   const recognition = useRef<RecognitionInstance | null>(null);
@@ -44,6 +45,10 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
   // Set before any deliberate speechSynthesis.cancel() so the resulting "canceled"
   // error is not mistaken for the browser voice failing.
   const speechCancelled = useRef(false);
+  const silenceTimer = useRef<number | null>(null);
+  const pendingFinalTranscript = useRef("");
+  const pendingInterimTranscript = useRef("");
+  const busyRef = useRef(false);
 
   const cancelBrowserSpeech = () => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
@@ -53,6 +58,7 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
 
   useEffect(() => () => {
     conversationActive.current = false;
+    if (silenceTimer.current !== null) window.clearTimeout(silenceTimer.current);
     recognition.current?.stop();
     audioRef.current?.pause();
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
@@ -80,9 +86,14 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
       // Same cap the remote provider gets, so the spoken reply never runs far longer
       // than the natural-voice path would have.
       const utterance = new SpeechSynthesisUtterance(value.slice(0, MAX_SPOKEN_CHARS));
-      utterance.lang = "en-PH";
-      utterance.rate = 1;
-      utterance.pitch = 1;
+      const availableVoices = synth.getVoices();
+      const preferredVoice = availableVoices.find((voice) => /^en-PH/i.test(voice.lang))
+        || availableVoices.find((voice) => /^en-US/i.test(voice.lang))
+        || availableVoices.find((voice) => /^en/i.test(voice.lang));
+      if (preferredVoice) utterance.voice = preferredVoice;
+      utterance.lang = preferredVoice?.lang || "en-PH";
+      utterance.rate = 0.96;
+      utterance.pitch = 1.03;
 
       let settled = false;
       let started = false;
@@ -195,7 +206,8 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
 
   const sendMessage = async (rawMessage: string) => {
     const prompt = rawMessage.trim();
-    if (!prompt || busy) return;
+    if (!prompt || busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     setError("");
     onStatusChange?.("thinking");
@@ -218,10 +230,21 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
       onTranscript?.(answer);
       await speak(answer);
     } catch (cause) {
-      conversationActive.current = false;
-      recognition.current?.stop();
-      reportError(cause instanceof Error ? cause.message : "The voice assistant request failed. The microphone has stopped so this error remains visible.");
+      const message = cause instanceof Error ? cause.message : "The voice assistant request failed.";
+      if (conversationActive.current && /429|rate limit|temporarily|could not reach|timed out/i.test(message)) {
+        // Keep the conversation usable during transient capacity/network failures.
+        reportError(message);
+        await fallbackToBrowserVoice(
+          "I'm having trouble reaching the AI service right now. Please repeat your request in a moment.",
+          message,
+        );
+      } else {
+        conversationActive.current = false;
+        recognition.current?.stop();
+        reportError(message + " The microphone has stopped so this error remains visible.");
+      }
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
@@ -238,34 +261,75 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
     try {
       const instance = new Recognition();
       instance.lang = "en-PH";
-      instance.interimResults = false;
+      instance.interimResults = true;
       instance.maxAlternatives = 1;
       let capturedSpeech = false;
       let recognitionFailed = false;
-      instance.onstart = () => onStatusChange?.("listening");
+      let turnSubmitted = false;
+      const submitRecognizedTurn = () => {
+        if (turnSubmitted) return;
+        turnSubmitted = true;
+        if (silenceTimer.current !== null) window.clearTimeout(silenceTimer.current);
+        silenceTimer.current = null;
+        const transcript = [pendingFinalTranscript.current, pendingInterimTranscript.current]
+          .filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+        pendingFinalTranscript.current = "";
+        pendingInterimTranscript.current = "";
+        if (!transcript || !conversationActive.current) return;
+        instance.stop();
+        void sendMessage(transcript);
+      };
+      instance.onstart = () => onStatusChange?.("listening", "Speak naturally. NEAS AI sends automatically when you finish.");
       instance.onresult = (event) => {
-        const transcript = event.results?.[0]?.[0]?.transcript || "";
-        if (transcript) {
-          capturedSpeech = true;
-          onStatusChange?.("thinking");
-          void sendMessage(transcript);
+        let finalChunk = "";
+        let interimChunk = "";
+        const startIndex = event.resultIndex ?? 0;
+        for (let index = startIndex; index < event.results.length; index++) {
+          const result = event.results[index];
+          const transcript = result?.[0]?.transcript?.trim() || "";
+          if (!transcript) continue;
+          if (result.isFinal) finalChunk += (finalChunk ? " " : "") + transcript;
+          else interimChunk = transcript;
         }
+        if (finalChunk) {
+          pendingFinalTranscript.current = [pendingFinalTranscript.current, finalChunk].filter(Boolean).join(" ");
+          pendingInterimTranscript.current = "";
+          capturedSpeech = true;
+        }
+        if (interimChunk) {
+          pendingInterimTranscript.current = interimChunk;
+          capturedSpeech = true;
+        }
+        if (!capturedSpeech) return;
+        onStatusChange?.("listening", "Finishing your sentence…");
+        if (silenceTimer.current !== null) window.clearTimeout(silenceTimer.current);
+        silenceTimer.current = window.setTimeout(submitRecognizedTurn, 1100);
       };
       instance.onerror = (event) => {
         recognitionFailed = true;
+        if (event.error === "no-speech") {
+          if (conversationActive.current) {
+            window.setTimeout(() => { if (conversationActive.current && !busyRef.current) startListening(); }, 350);
+          }
+          return;
+        }
         const detail = event.error === "not-allowed" || event.error === "service-not-allowed"
           ? "Microphone permission is blocked. Select the lock icon beside the website address, set Microphone to Allow, then reload."
           : event.error === "audio-capture"
             ? "No microphone was detected. Connect or select a microphone in Chrome settings."
             : event.error === "network"
               ? "Browser speech recognition network service is unavailable. Check your internet connection."
-              : event.error === "no-speech"
-                ? "No speech was detected. Tap the NEAS AI core and speak again."
-                : "Browser speech recognition error: " + event.error;
+              : "Browser speech recognition error: " + event.error;
         reportError(detail);
       };
       instance.onend = () => {
-        if (!capturedSpeech && !recognitionFailed && conversationActive.current) onStatusChange?.("idle");
+        if (capturedSpeech && !turnSubmitted) {
+          submitRecognizedTurn();
+          return;
+        }
+        if (!capturedSpeech && !recognitionFailed && conversationActive.current) {
+          window.setTimeout(() => { if (conversationActive.current && !busyRef.current) startListening(); }, 250);
+        }
       };
       recognition.current = instance;
       instance.start();
@@ -277,6 +341,10 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
   const toggleConversation = () => {
     if (conversationActive.current) {
       conversationActive.current = false;
+      if (silenceTimer.current !== null) window.clearTimeout(silenceTimer.current);
+      silenceTimer.current = null;
+      pendingFinalTranscript.current = "";
+      pendingInterimTranscript.current = "";
       recognition.current?.stop();
       stopAudio();
       onStatusChange?.("idle");
