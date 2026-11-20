@@ -116,6 +116,30 @@ async function generateProviderText(
   }
 }
 
+/** Classifies an OpenRouter failure as one the configured Groq fallback should
+ *  carry, returning a short reason for the surfaced model label, or null to let
+ *  the original error stand.
+ *
+ *  Capacity, quota and routing failures qualify. That includes the 404 OpenRouter
+ *  returns when every endpoint for a model is filtered out by the account's
+ *  data-policy or guardrail settings ("0 endpoints out of N requested are
+ *  available"). That condition is persistent rather than transient, and it
+ *  previously failed the whole call — so specialist, outreach and voice inference
+ *  broke while a healthy Groq fallback sat configured and unused.
+ *
+ *  A rejected API key deliberately does not qualify. That is a configuration
+ *  fault an administrator needs to see and fix, not one to mask behind a silent
+ *  provider switch. A timeout does not qualify either: the provider timeout is
+ *  45s and the calling routes cap at 60s, so a second attempt would exceed the
+ *  function budget and fail anyway. */
+export function openRouterFailoverReason(error: string): string | null {
+  if (/rejected the server-side API key/i.test(error)) return null;
+  if (/rate limit|account quota|credits or quota are exhausted/i.test(error)) return "OpenRouter quota";
+  if (/endpoints out of|no endpoints|data policy|guardrail/i.test(error)) return "OpenRouter had no eligible endpoints";
+  if (/inference failed \((?:404|409|5\d\d)\)/i.test(error)) return "OpenRouter failure";
+  return null;
+}
+
 export async function generateAIGatewayText(
   input: { system: string; user: string },
   options: {
@@ -145,12 +169,15 @@ export async function generateAIGatewayText(
     }
     // Direct provider billing is separate from the Vercel project budget. OpenRouter failover is limited to the explicitly configured Groq key; it never falls back from Vercel OIDC or changes the selected provider for other errors.
     const primary = await generateProviderText(provider, input, apiKey, fetchImpl);
-    if (provider === "openrouter" && "error" in primary && /rate limit|account quota|credits or quota are exhausted/i.test(primary.error)) {
-      const groqKey = (process.env.GROQ_API_KEY ?? "").trim();
-      if (!groqKey) return { error: `${primary.error} Automatic Groq fallback is not configured because GROQ_API_KEY is missing.` };
-      const fallback = await generateProviderText("groq", input, groqKey, fetchImpl);
-      if (!("error" in fallback)) return { ...fallback, model: `${fallback.model} (automatic fallback after OpenRouter quota)` };
-      return { error: `${primary.error} Groq fallback also failed: ${fallback.error}` };
+    if (provider === "openrouter" && "error" in primary) {
+      const failoverReason = openRouterFailoverReason(primary.error);
+      if (failoverReason) {
+        const groqKey = (process.env.GROQ_API_KEY ?? "").trim();
+        if (!groqKey) return { error: `${primary.error} Automatic Groq fallback is not configured because GROQ_API_KEY is missing.` };
+        const fallback = await generateProviderText("groq", input, groqKey, fetchImpl);
+        if (!("error" in fallback)) return { ...fallback, model: `${fallback.model} (automatic fallback after ${failoverReason})` };
+        return { error: `${primary.error} Groq fallback also failed: ${fallback.error}` };
+      }
     }
     return primary;
   }

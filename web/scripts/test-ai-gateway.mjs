@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_AI_GATEWAY_MODEL, extractGatewayText, generateAIGatewayText, usesProjectAIGateway } from "../lib/ai-gateway.ts";
+import { DEFAULT_AI_GATEWAY_MODEL, extractGatewayText, generateAIGatewayText, openRouterFailoverReason, usesProjectAIGateway } from "../lib/ai-gateway.ts";
 
 test("uses the live catalog-selected GPT-4o Mini model by default", () => {
   assert.equal(DEFAULT_AI_GATEWAY_MODEL, "openai/gpt-4o-mini");
@@ -307,4 +307,73 @@ test("does not silently fall back to paid inference when Groq has no key", async
 
 test("does not force unrelated marketing tasks onto the AI Workforce Gateway", () => {
   for (const task of ["caption", "seo", "facebook", "campaign"]) assert.equal(usesProjectAIGateway(task), false);
+});
+
+test("switches to Groq when OpenRouter has no endpoints left under its data policy", async () => {
+  // Observed in production: every endpoint for the routed model is filtered out
+  // by the account data policy, so OpenRouter answers 404. This is persistent,
+  // not transient, and it used to fail the whole call despite a healthy fallback.
+  const previous = process.env.GROQ_API_KEY;
+  process.env.GROQ_API_KEY = "test-groq-fallback-key";
+  const calls = [];
+  try {
+    const result = await generateAIGatewayText({ system: "NEAS", user: "Speak as the CEO" }, {
+      provider: "openrouter",
+      providerApiKey: "test-openrouter-key",
+      fetchImpl: async (url, init) => {
+        calls.push({ url, body: JSON.parse(init.body) });
+        if (url.includes("openrouter.ai")) {
+          return new Response(JSON.stringify({
+            error: { message: "0 endpoints out of 10 requested are available matching your guardrail restrictions and data policy." },
+          }), { status: 404 });
+        }
+        return new Response(JSON.stringify({ choices: [{ message: { content: "Groq carried the call" } }] }), { status: 200 });
+      },
+    });
+    assert.deepEqual(result, {
+      text: "Groq carried the call",
+      model: "groq:openai/gpt-oss-120b (automatic fallback after OpenRouter had no eligible endpoints)",
+    });
+    assert.equal(calls.length, 2);
+    assert.equal(calls[1].body.model, "openai/gpt-oss-120b");
+  } finally {
+    if (previous === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = previous;
+  }
+});
+
+test("reports the OpenRouter no-endpoint failure when Groq is not configured", async () => {
+  const previous = process.env.GROQ_API_KEY;
+  delete process.env.GROQ_API_KEY;
+  try {
+    const result = await generateAIGatewayText({ system: "s", user: "u" }, {
+      provider: "openrouter",
+      providerApiKey: "test-openrouter-key",
+      fetchImpl: async () => new Response(JSON.stringify({
+        error: { message: "0 endpoints out of 10 requested are available matching your guardrail restrictions and data policy." },
+      }), { status: 404 }),
+    });
+    assert.equal("error" in result, true);
+    if ("error" in result) {
+      assert.match(result.error, /endpoints out of 10/);
+      assert.match(result.error, /GROQ_API_KEY is missing/);
+    }
+  } finally {
+    if (previous !== undefined) process.env.GROQ_API_KEY = previous;
+  }
+});
+
+test("classifies which OpenRouter failures may switch providers", () => {
+  assert.equal(openRouterFailoverReason("openrouter rate limit or account quota reached."), "OpenRouter quota");
+  assert.equal(openRouterFailoverReason("openrouter account credits or quota are exhausted."), "OpenRouter quota");
+  assert.equal(
+    openRouterFailoverReason("openrouter inference failed (404): 0 endpoints out of 10 requested are available matching your guardrail restrictions and data policy."),
+    "OpenRouter had no eligible endpoints",
+  );
+  assert.equal(openRouterFailoverReason("openrouter inference failed (503): upstream unavailable"), "OpenRouter failure");
+  // A bad key must stay visible rather than be masked by a provider switch.
+  assert.equal(openRouterFailoverReason("openrouter rejected the server-side API key. Verify the key in Vercel environment variables."), null);
+  // A timeout must not burn a second attempt inside the function budget.
+  assert.equal(openRouterFailoverReason("Could not reach the configured openrouter API or the request timed out. No alternate provider was used."), null);
+  assert.equal(openRouterFailoverReason("openrouter returned no usable answer text. No response was saved."), null);
 });
