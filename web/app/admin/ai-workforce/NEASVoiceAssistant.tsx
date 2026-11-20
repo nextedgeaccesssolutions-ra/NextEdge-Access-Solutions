@@ -21,7 +21,7 @@ type Turn = { role: "user" | "assistant"; content: string };
 
 export type NEASVoiceAssistantHandle = { startListening: () => void };
 
-const NEASVoiceAssistant = forwardRef<NEASVoiceAssistantHandle, Record<string, never>>(
+const NEASVoiceAssistant = forwardRef<NEASVoiceAssistantHandle, object>(
 function NEASVoiceAssistant(_props, ref) {
   const persona = "ceo";
   const [history, setHistory] = useState<Turn[]>([]);
