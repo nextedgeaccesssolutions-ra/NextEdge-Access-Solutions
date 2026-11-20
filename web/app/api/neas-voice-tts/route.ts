@@ -7,7 +7,11 @@ export const maxDuration = 30;
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY?.trim();
 const ELEVENLABS_VOICE_ID = process.env.NEAS_ELEVENLABS_VOICE_ID?.trim() || "nF0O6s45DRguoQfSSA3a";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY?.trim();
-const OPENROUTER_TTS_MODEL = "fish-audio/s2.1-pro-free:free";
+// The default is a ":free" variant, which is capped account-wide at 20 requests per
+// minute and 50 per day until $10 of credits has been purchased (1000/day above that).
+// A paid variant carries no free-model request cap but bills per request, so it only
+// works once the account has credit. Override without a code change once it does.
+const OPENROUTER_TTS_MODEL = process.env.OPENROUTER_TTS_MODEL?.trim() || "fish-audio/s2.1-pro-free:free";
 const MAX_TEXT_LENGTH = 1000;
 
 function unavailable(message: string, status = 503) {
@@ -30,7 +34,10 @@ async function providerError(response: Response, provider: string) {
     if (response.status === 429) return new Error("ElevenLabs rate or concurrency limit reached (429). Wait before retrying.");
   } else {
     if (response.status === 401 || response.status === 403) return new Error("OpenRouter authentication or permission failed. Verify OPENROUTER_API_KEY and provider access.");
-    if (response.status === 402 || response.status === 429) return new Error("OpenRouter provider quota or rate limit is unavailable.");
+    // 402 and 429 have different causes and different fixes; collapsing them into one
+    // message makes a rate limit look like an empty balance and costs diagnosis time.
+    if (response.status === 402) return new Error(`OpenRouter balance cannot cover this request (402). Add credits at openrouter.ai.${detail ? " " + detail : ""}`);
+    if (response.status === 429) return new Error(`OpenRouter rate limit reached (429) on model ${OPENROUTER_TTS_MODEL}. Free ":free" models are capped account-wide at 20 requests per minute and 50 per day until $10 of credits has been purchased, after which the daily cap is 1000. Add credits, or set OPENROUTER_TTS_MODEL to a paid variant.${detail ? " " + detail : ""}`);
   }
   return new Error(`${provider} returned HTTP ${response.status}.${detail ? " " + detail : ""}`);
 }
