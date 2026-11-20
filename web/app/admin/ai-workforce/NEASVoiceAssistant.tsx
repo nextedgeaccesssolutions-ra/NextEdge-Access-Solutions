@@ -35,7 +35,7 @@ const NEASVoiceAssistant = forwardRef<NEASVoiceAssistantHandle, NEASVoiceAssista
 function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
   const persona = "ceo";
   const [history, setHistory] = useState<Turn[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [, setBusy] = useState(false);
   const [, setError] = useState("");
   const reportError = (message: string) => { setError(message); onStatusChange?.("error", message); };
   const recognition = useRef<RecognitionInstance | null>(null);
@@ -86,9 +86,14 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
       // Same cap the remote provider gets, so the spoken reply never runs far longer
       // than the natural-voice path would have.
       const utterance = new SpeechSynthesisUtterance(value.slice(0, MAX_SPOKEN_CHARS));
-      utterance.lang = "en-PH";
-      utterance.rate = 1;
-      utterance.pitch = 1;
+      const availableVoices = synth.getVoices();
+      const preferredVoice = availableVoices.find((voice) => /^en-PH/i.test(voice.lang))
+        || availableVoices.find((voice) => /^en-US/i.test(voice.lang))
+        || availableVoices.find((voice) => /^en/i.test(voice.lang));
+      if (preferredVoice) utterance.voice = preferredVoice;
+      utterance.lang = preferredVoice?.lang || "en-PH";
+      utterance.rate = 0.96;
+      utterance.pitch = 1.03;
 
       let settled = false;
       let started = false;
@@ -267,7 +272,7 @@ function NEASVoiceAssistant({ onStatusChange, onTranscript }, ref) {
         if (silenceTimer.current !== null) window.clearTimeout(silenceTimer.current);
         silenceTimer.current = null;
         const transcript = [pendingFinalTranscript.current, pendingInterimTranscript.current]
-          .filter(Boolean).join(" ").replace(/\\s+/g, " ").trim();
+          .filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
         pendingFinalTranscript.current = "";
         pendingInterimTranscript.current = "";
         if (!transcript || !conversationActive.current) return;
