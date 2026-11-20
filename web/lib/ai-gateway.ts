@@ -10,6 +10,78 @@ export function usesProjectAIGateway(task: string): boolean {
 
 export type AIGatewayResult = { text: string; model: string } | { error: string };
 type Provider = "openrouter" | "gemini" | "groq" | "xai" | "vercel";
+
+/** Maps a provider name as stored in the aiw_model_routes registry onto a
+ *  runtime this module can actually call. A registry row naming anything else
+ *  (omniroute, ollama) has no implementation here, so it is never selected and
+ *  can never be enabled by the control plane's health check. */
+const REGISTRY_PROVIDERS: Record<string, Provider> = {
+  "vercel-ai-gateway": "vercel",
+  vercel: "vercel",
+  openrouter: "openrouter",
+  gemini: "gemini",
+  google: "gemini",
+  groq: "groq",
+  xai: "xai",
+  grok: "xai",
+};
+
+export function mapRegistryProvider(value: unknown): Provider | null {
+  const key = String(value ?? "").trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(REGISTRY_PROVIDERS, key) ? REGISTRY_PROVIDERS[key] : null;
+}
+
+export type RegistrySelection = { provider: Provider; model: string; routeName: string };
+
+/** Short cache so routing does not add a Supabase round trip to every inference
+ *  call. It also bounds how long a toggle takes to take effect across warm
+ *  serverless instances, which do not share memory. */
+const REGISTRY_CACHE_MS = 60_000;
+let registryCache: { at: number; selection: RegistrySelection | null } | null = null;
+
+export function clearRegistryRouteCache(): void {
+  registryCache = null;
+}
+
+/** Highest-priority enabled route this runtime can serve, or null to leave the
+ *  environment configuration in charge.
+ *
+ *  Routing must never be the reason inference fails, so every failure here —
+ *  Supabase unconfigured, unreachable, or holding only unsupported providers —
+ *  resolves to null and falls back to the previous env-driven behaviour. */
+async function readEnabledRoutes(fetchImpl: typeof fetch): Promise<Array<Record<string, unknown>>> {
+  // Read at call time, not module load, so tests and a late-bound environment
+  // both see the current configuration.
+  const key = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+  if (!key) return [];
+  const base = process.env.SUPABASE_URL || "https://smlxekhbaefbvdbfxpew.supabase.co";
+  const response = await fetchImpl(
+    `${base}/rest/v1/aiw_model_routes?enabled=eq.true&select=route_name,provider,model,priority&order=priority.asc`,
+    { cache: "no-store", headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" } },
+  );
+  if (!response.ok) return [];
+  const raw = await response.text();
+  return raw ? JSON.parse(raw) as Array<Record<string, unknown>> : [];
+}
+
+export async function selectRegistryRoute(now: number = Date.now(), fetchImpl: typeof fetch = fetch): Promise<RegistrySelection | null> {
+  if (registryCache && now - registryCache.at < REGISTRY_CACHE_MS) return registryCache.selection;
+  let selection: RegistrySelection | null = null;
+  try {
+    const rows = await readEnabledRoutes(fetchImpl);
+    for (const row of rows ?? []) {
+      const provider = mapRegistryProvider(row.provider);
+      const model = String(row.model ?? "").trim();
+      if (!provider || !model) continue;
+      selection = { provider, model, routeName: String(row.route_name ?? "") };
+      break;
+    }
+  } catch {
+    selection = null;
+  }
+  registryCache = { at: now, selection };
+  return selection;
+}
 type UnknownRecord = Record<string, unknown>;
 const record = (value: unknown): UnknownRecord | null =>
   value !== null && typeof value === "object" && !Array.isArray(value) ? value as UnknownRecord : null;
@@ -67,6 +139,7 @@ async function generateProviderText(
   input: { system: string; user: string },
   apiKey: string,
   fetchImpl: typeof fetch,
+  modelOverride?: string,
 ): Promise<AIGatewayResult> {
   const isOpenRouter = provider === "openrouter";
   const isGemini = provider === "gemini";
@@ -78,7 +151,7 @@ async function generateProviderText(
       : isGroq
         ? "https://api.groq.com/openai/v1/chat/completions"
         : "https://api.x.ai/v1/chat/completions";
-  const model = isOpenRouter ? FREE_OPENROUTER_MODEL : isGemini ? FREE_GEMINI_MODEL : isGroq ? GROQ_MODEL : XAI_GROK_MODEL;
+  const model = modelOverride?.trim() || (isOpenRouter ? FREE_OPENROUTER_MODEL : isGemini ? FREE_GEMINI_MODEL : isGroq ? GROQ_MODEL : XAI_GROK_MODEL);
   const providerName = isOpenRouter ? "OpenRouter" : isGemini ? "Gemini" : isGroq ? "Groq" : "xAI Grok";
   try {
     const response = await fetchImpl(url, {
@@ -152,12 +225,19 @@ export async function generateAIGatewayText(
     fetchImpl?: typeof fetch;
   } = {},
 ): Promise<AIGatewayResult> {
-  const configuredProvider = options.provider ?? (process.env.NEAS_AI_PROVIDER?.trim() || (process.env.OPENROUTER_API_KEY?.trim() ? "openrouter" : "vercel"));
+  const fetchImpl = options.fetchImpl ?? fetch;
+  // An explicit provider (a health check probing one specific route, or a test)
+  // bypasses the registry entirely. Otherwise the enabled routes decide, and the
+  // environment configuration remains the fallback when none applies.
+  const registry = options.provider ? null : await selectRegistryRoute(Date.now(), fetchImpl);
+  const configuredProvider = options.provider ?? registry?.provider ?? (process.env.NEAS_AI_PROVIDER?.trim() || (process.env.OPENROUTER_API_KEY?.trim() ? "openrouter" : "vercel"));
   if (!["openrouter", "gemini", "groq", "xai", "vercel"].includes(configuredProvider)) {
     return { error: "NEAS_AI_PROVIDER must be set to openrouter, gemini, groq, xai or vercel. No inference request was sent." };
   }
   const provider = configuredProvider as Provider;
-  const fetchImpl = options.fetchImpl ?? fetch;
+  // Only honour the registry's model when its provider is the one being used,
+  // so a model name is never sent to a runtime it does not belong to.
+  const registryModel = registry && registry.provider === provider ? registry.model : undefined;
 
   if (provider !== "vercel") {
     const keyName = provider === "openrouter" ? "OPENROUTER_API_KEY"
@@ -168,7 +248,7 @@ export async function generateAIGatewayText(
       return { error: `NEAS AI provider is set to ${provider}, but ${keyName} is missing. Add the key as a Vercel server-side environment variable. No provider fallback was used.` };
     }
     // Direct provider billing is separate from the Vercel project budget. OpenRouter failover is limited to the explicitly configured Groq key; it never falls back from Vercel OIDC or changes the selected provider for other errors.
-    const primary = await generateProviderText(provider, input, apiKey, fetchImpl);
+    const primary = await generateProviderText(provider, input, apiKey, fetchImpl, registryModel);
     if (provider === "openrouter" && "error" in primary) {
       const failoverReason = openRouterFailoverReason(primary.error);
       if (failoverReason) {
@@ -185,7 +265,7 @@ export async function generateAIGatewayText(
   // Vercel Functions expose the deployment OIDC token on the incoming Request.
   const token = options.token ?? options.request?.headers.get("x-vercel-oidc-token") ?? process.env.VERCEL_OIDC_TOKEN;
   const apiKey = options.apiKey ?? process.env.AI_GATEWAY_API_KEY;
-  const model = options.model ?? DEFAULT_AI_GATEWAY_MODEL;
+  const model = options.model ?? registryModel ?? DEFAULT_AI_GATEWAY_MODEL;
 
   // Static Gateway keys are intentionally rejected so the project OIDC budget remains enforceable.
   if (apiKey) {
