@@ -22,7 +22,7 @@ type Turn = { role: "user" | "assistant"; content: string };
 
 export type NEASVoiceStatus = "idle" | "listening" | "thinking" | "speaking" | "error";
 export type NEASVoiceAssistantHandle = { toggleConversation: () => void };
-type NEASVoiceAssistantProps = { onStatusChange?: (status: NEASVoiceStatus) => void };
+type NEASVoiceAssistantProps = { onStatusChange?: (status: NEASVoiceStatus, detail?: string) => void };
 
 const NEASVoiceAssistant = forwardRef<NEASVoiceAssistantHandle, NEASVoiceAssistantProps>(
 function NEASVoiceAssistant({ onStatusChange }, ref) {
@@ -30,6 +30,7 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
   const [history, setHistory] = useState<Turn[]>([]);
   const [busy, setBusy] = useState(false);
   const [, setError] = useState("");
+  const reportError = (message: string) => { setError(message); onStatusChange?.("error", message); };
   const recognition = useRef<RecognitionInstance | null>(null);
   const conversationActive = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -84,16 +85,15 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
           URL.revokeObjectURL(audioUrl);
           audioUrlRef.current = null;
           audioRef.current = null;
-          setError("Natural voice playback failed.");
-          onStatusChange?.("error");
+          reportError("Natural voice playback failed.");
           if (conversationActive.current) startListening();
         }
       };
       onStatusChange?.("speaking");
       await audio.play();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Natural AI voice generation failed. Your written response remains available.");
-      onStatusChange?.("error");
+      reportError(cause instanceof Error ? cause.message : "Natural AI voice generation failed. Your written response remains available.");
+      if (conversationActive.current) startListening();
     }
   };
 
@@ -120,8 +120,8 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
       setHistory([...nextHistory, { role: "assistant" as const, content: answer }].slice(-16));
       await speak(answer);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "The voice assistant request failed.");
-      onStatusChange?.("error");
+      reportError(cause instanceof Error ? cause.message : "The voice assistant request failed.");
+      if (conversationActive.current) startListening();
     } finally {
       setBusy(false);
     }
@@ -133,8 +133,7 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
     const speechWindow = window as SpeechWindow;
     const Recognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
     if (!Recognition) {
-      setError("Live microphone input is not supported in this browser. Type your message instead; spoken replies remain available.");
-      onStatusChange?.("error");
+      reportError("Live microphone input is not supported in this browser. Use Chrome or Edge, or type your message.");
       return;
     }
     try {
@@ -153,8 +152,14 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
         }
       };
       instance.onerror = (event) => {
-        setError(event.error === "not-allowed" ? "Microphone permission is blocked. Allow microphone access for this website in your browser settings." : "Voice recognition stopped: " + event.error);
-        onStatusChange?.("error");
+        const detail = event.error === "not-allowed" || event.error === "service-not-allowed"
+          ? "Microphone permission is blocked. Select the lock icon beside the website address, set Microphone to Allow, then reload."
+          : event.error === "audio-capture"
+            ? "No microphone was detected. Connect or select a microphone in Chrome settings."
+            : event.error === "network"
+              ? "Browser speech recognition network service is unavailable. Check your internet connection."
+              : "Browser speech recognition error: " + event.error;
+        reportError(detail);
       };
       instance.onend = () => {
         if (!capturedSpeech && conversationActive.current) onStatusChange?.("idle");
@@ -162,8 +167,7 @@ function NEASVoiceAssistant({ onStatusChange }, ref) {
       recognition.current = instance;
       instance.start();
     } catch {
-      setError("Could not start the microphone. Check browser permission and try again.");
-      onStatusChange?.("error");
+      reportError("Could not start the microphone. Check Chrome microphone permission and selected input device.");
     }
   };
 
