@@ -26,6 +26,10 @@ const REGISTRY_PROVIDERS: Record<string, Provider> = {
   grok: "xai",
 };
 
+/** Provider names a registry row may use and still be enableable. Anything else
+ *  is denied as provider_not_implemented, so the admin UI lists these. */
+export const SUPPORTED_REGISTRY_PROVIDERS: string[] = Object.keys(REGISTRY_PROVIDERS);
+
 export function mapRegistryProvider(value: unknown): Provider | null {
   const key = String(value ?? "").trim().toLowerCase();
   return Object.prototype.hasOwnProperty.call(REGISTRY_PROVIDERS, key) ? REGISTRY_PROVIDERS[key] : null;
