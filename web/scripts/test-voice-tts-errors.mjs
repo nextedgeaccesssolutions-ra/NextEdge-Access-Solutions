@@ -24,7 +24,7 @@ test("OpenRouter 402 and 429 are distinguishable", () => {
 test("OpenRouter 429 names the model in use and the real caps", () => {
   const message = providerErrorMessage("OpenRouter", 429, "", "fish-audio/s2.1-pro-free:free");
 
-  assert.match(message, /fish-audio\\/s2\\.1-pro-free:free/);
+  assert.match(message, /fish-audio\/s2\.1-pro-free:free/);
   assert.match(message, /20 requests per minute/);
   assert.match(message, /50 per day/);
   assert.match(message, /1000/);
@@ -34,8 +34,8 @@ test("OpenRouter 429 names the model in use and the real caps", () => {
 test("OpenRouter 429 omits the model clause when no model is known", () => {
   const message = providerErrorMessage("OpenRouter", 429);
 
-  assert.doesNotMatch(message, /on model\\s*\\./);
-  assert.match(message, /^OpenRouter rate limit reached \\(429\\)\\./);
+  assert.doesNotMatch(message, /on model\s*\./);
+  assert.match(message, /^OpenRouter rate limit reached \(429\)\./);
 });
 
 test("OpenRouter fallback requires an explicit model configuration", () => {
@@ -75,8 +75,8 @@ test("upstream detail is appended where it helps and withheld where it does not"
 });
 
 test("no trailing separator when there is no detail", () => {
-  assert.doesNotMatch(providerErrorMessage("OpenRouter", 402), /\\s$/);
-  assert.doesNotMatch(providerErrorMessage("OpenRouter", 500), /\\s$/);
+  assert.doesNotMatch(providerErrorMessage("OpenRouter", 402), /\s$/);
+  assert.doesNotMatch(providerErrorMessage("OpenRouter", 500), /\s$/);
 });
 
 test("parseProviderDetail reads the common provider body shapes", () => {
