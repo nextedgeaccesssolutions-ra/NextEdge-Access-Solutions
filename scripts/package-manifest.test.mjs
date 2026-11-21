@@ -14,6 +14,7 @@ test("root package.json remains valid JSON without generated read annotations", 
   assert.doesNotMatch(manifestText, /^\[(?:Reading|executed on device:)/m);
   assert.ok(manifest.dependencies["@vercel/speed-insights"]);
   assert.ok(manifest.dependencies["express-rate-limit"]);
+  assert.ok(manifest.dependencies["ipaddr.js"]);
 });
 
 test("root pnpm lockfile remains complete and synchronized with runtime dependencies", () => {
@@ -25,6 +26,7 @@ test("root pnpm lockfile remains complete and synchronized with runtime dependen
   assert.match(lockfile, /^snapshots:/m);
   assert.match(lockfile, /@vercel\/speed-insights/);
   assert.match(lockfile, /express-rate-limit/);
+  assert.match(lockfile, /ipaddr\.js/);
   assert.doesNotMatch(lockfile, /^\[(?:Reading|executed on device:)/m);
 });
 
