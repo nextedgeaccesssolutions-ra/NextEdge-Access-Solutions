@@ -52,7 +52,15 @@ async function gmailRequest(account: AiwGmailAccount, actorId: number, scope: st
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const providerReason = String(data?.error?.errors?.[0]?.reason ?? data?.error?.status ?? data?.error?.code ?? "unknown").replace(/[^a-zA-Z0-9_.-]/g, "").slice(0, 80);
+    // Google uses two error envelopes. The legacy one puts the reason in
+    // error.errors[0].reason; the newer one reports status PERMISSION_DENIED and
+    // carries the real cause (e.g. SERVICE_DISABLED) in error.details[].reason.
+    // Reading only the legacy shape made a disabled Gmail API look like a revoked
+    // authorization, so the UI told administrators to reconnect indefinitely.
+    const detailReason = Array.isArray(data?.error?.details)
+      ? data.error.details.map((d: { reason?: unknown }) => d?.reason).find((v: unknown) => typeof v === "string" && v)
+      : undefined;
+    const providerReason = String(data?.error?.errors?.[0]?.reason ?? detailReason ?? data?.error?.status ?? data?.error?.code ?? "unknown").replace(/[^a-zA-Z0-9_.-]/g, "").slice(0, 80);
     const providerCode = String(response.status) + ":" + providerReason;
     await recordAiwGmailAudit({ accountKey: account, actorId, action: "gmail_api", outcome: "failure", providerCode, detail: "Gmail API request failed." });
     const explained = explainGmailFailure(response.status, providerReason);
