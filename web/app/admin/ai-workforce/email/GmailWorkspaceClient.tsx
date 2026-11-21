@@ -19,6 +19,7 @@ export default function GmailWorkspaceClient() {
   const [audit, setAudit] = useState<Audit[]>([]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
+  const [ok, setOk] = useState(true);
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -30,21 +31,21 @@ export default function GmailWorkspaceClient() {
   }
 
   async function loadInbox() {
-    setBusy(true); setStatus("");
+    setBusy(true); setStatus(""); setOk(true);
     try {
       const response = await fetch("/api/admin/gmail/inbox?account=" + account + "&maxResults=20", { cache: "no-store" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Inbox could not be loaded.");
       setMessages(Array.isArray(data.messages) ? data.messages : []);
-      setStatus("Inbox metadata loaded. Message bodies are not stored in the NEAS workspace.");
+      setOk(true); setStatus("Inbox metadata loaded. Message bodies are not stored in the NEAS workspace.");
       await loadAudit();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Inbox could not be loaded.");
+      setOk(false); setStatus(error instanceof Error ? error.message : "Inbox could not be loaded.");
     } finally { setBusy(false); }
   }
 
   async function createDraft(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setStatus("");
+    event.preventDefault(); setBusy(true); setStatus(""); setOk(true);
     try {
       const response = await fetch("/api/admin/gmail/drafts", {
         method: "POST", headers: { "content-type": "application/json" },
@@ -52,11 +53,11 @@ export default function GmailWorkspaceClient() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Draft creation failed.");
-      setStatus("Gmail draft created successfully. It has not been sent.");
+      setOk(true); setStatus("Gmail draft created successfully. It has not been sent.");
       setTo(""); setSubject(""); setBody("");
       await loadAudit();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Draft creation failed.");
+      setOk(false); setStatus(error instanceof Error ? error.message : "Draft creation failed.");
     } finally { setBusy(false); }
   }
 
@@ -76,7 +77,7 @@ export default function GmailWorkspaceClient() {
       <span style={{fontSize:11,fontWeight:700,color:"#ebc07e",border:"1px solid #ca933255",borderRadius:99,padding:"6px 10px"}}>SENDING DISABLED</span>
     </div>
     <label style={{display:"block",fontSize:12,color:"#c8d3dd",marginTop:14}}>Mailbox
-      <select value={account} onChange={e=>{setAccount(e.target.value as Account);setMessages([]);setStatus("");}} style={styles.field}>
+      <select value={account} onChange={e=>{setAccount(e.target.value as Account);setMessages([]);setStatus("");setOk(true);}} style={styles.field}>
         <option value="info">NEAS Information — info.nextedgeaccesssolutions@gmail.com</option>
         <option value="operations">NEAS Operations — nextedgeaccesssolutions@gmail.com</option>
       </select>
@@ -84,7 +85,9 @@ export default function GmailWorkspaceClient() {
     <div style={{display:"flex",gap:10,marginTop:12,flexWrap:"wrap"}}>
       <button type="button" onClick={loadInbox} disabled={busy} style={styles.button}>{busy?"Working…":"Load inbox metadata"}</button>
     </div>
-    {status && <p role="status" style={{...styles.muted,marginTop:12,color:status.includes("successfully")||status.includes("loaded")?"#9ad0b2":"#ebc07e"}}>{status}</p>}
+    {status && (ok
+      ? <p role="status" style={{...styles.muted,marginTop:12,color:"#9ad0b2"}}>{status}</p>
+      : <div role="alert" style={{marginTop:12,padding:"12px 14px",border:"1px solid #c27a52",borderRadius:10,background:"#2a1811",color:"#f6c8ac",fontSize:13,lineHeight:1.55,display:"flex",gap:10,alignItems:"flex-start"}}><span aria-hidden>⚠</span><span><b style={{display:"block",fontSize:11,letterSpacing:".08em",textTransform:"uppercase",opacity:.85,marginBottom:3}}>Gmail request failed</b>{status}</span></div>)}
     <div style={{display:"grid",gap:10,marginTop:14}}>
       {messages.map(m=><article key={m.id} style={{border:"1px solid #294153",borderRadius:10,padding:12,background:"#102235"}}>
         <div style={{display:"flex",justifyContent:"space-between",gap:8}}><b style={{fontSize:13}}>{m.subject || "(No subject)"}</b>{m.unread&&<span style={{fontSize:10,color:"#ebc07e"}}>UNREAD</span>}</div>

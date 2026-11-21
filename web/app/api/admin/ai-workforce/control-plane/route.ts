@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { cronToken } from "@/lib/cron-token";
-import { generateAIGatewayText, mapRegistryProvider, clearRegistryRouteCache } from "@/lib/ai-gateway";
+import { generateAIGatewayText, mapRegistryProvider, clearRegistryRouteCache, SUPPORTED_REGISTRY_PROVIDERS } from "@/lib/ai-gateway";
 import { aiwSupabase as supabase, aiwAudit, type AiwRow } from "@/lib/aiw-supabase";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +41,15 @@ export async function GET() {
       // Preconditions the POST handler enforces for schedule.enable. Returned so the
       // UI can block the action up front rather than reporting a denial after the click.
       schedulerReady: Boolean(cronToken()),
+      // A registry row naming a provider with no implementation can never be enabled
+      // (setModelRoute denies it as provider_not_implemented). Flag it per row so the
+      // UI can disable the control instead of producing another denial loop.
+      supportedProviders: SUPPORTED_REGISTRY_PROVIDERS,
+      modelRouteSupport: (modelRoutes as Row[]).map((r) => ({
+        id: String(r.id),
+        providerImplemented: mapRegistryProvider(r.provider) !== null,
+        modelSet: String(r.model ?? "").trim().length > 0 && String(r.model ?? "").trim() !== "provider/model",
+      })),
       agents,
       tasks,
       approvals,
