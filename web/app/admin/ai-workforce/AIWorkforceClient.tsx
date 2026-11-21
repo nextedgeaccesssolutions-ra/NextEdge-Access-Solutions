@@ -174,7 +174,7 @@ export default function AIWorkforceClient(){
         {tab==="ecosystem"&&<>
           <div className="wf-ecosystem">
             <section className="wf-card">
-              <div className="wf-ecosystem-intro"><div><div className="wf-kicker">NEAS AI · Connected business intelligence</div><h2 style={{fontSize:20,margin:"4px 0"}}>One intelligence core. Every department.</h2><p style={{margin:0}}>Select a department to open its assigned NEAS AI specialists. Metrics below come from records already stored in this workforce.</p></div><span className="wf-pill">JARVIS CONTROL LAYER</span></div>
+              <div className="wf-ecosystem-intro"><div><div className="wf-kicker">NEAS AI · Connected business intelligence</div><h2 style={{fontSize:20,margin:"4px 0"}}>One intelligence core. Every department.</h2><p style={{margin:0}}>Select a department to open its assigned NEAS AI capability agents. <b>Figures below are workspace-wide totals</b>, not per-department splits — the same lead and pipeline totals appear on more than one card.</p></div><span className="wf-pill">JARVIS CONTROL LAYER</span></div>
               <div className="wf-ecosystem-hub" style={{marginTop:16}}>
                 <div className="wf-dept-column">
                   <button className="wf-dept-card" onClick={()=>{setSelectedAgent("JARVIS");setExpanded("JARVIS");setTab("agents")}}><b>Executive</b><small>JARVIS · All departments</small><div className="wf-dept-metrics"><span>Tracked leads<strong>{data.metrics.leads}</strong></span><span>Pipeline value<strong>{peso(data.metrics.pipeline)}</strong></span></div></button>
@@ -184,8 +184,8 @@ export default function AIWorkforceClient(){
                 <div className="wf-neural-core"><div className="wf-neural-ring"><div className="wf-neural-center"><b>NEAS AI</b><small>JARVIS · CORE</small></div><svg className="wf-neural-wave" viewBox="0 0 180 55" aria-hidden="true"><path d="M2 28 C24 5 38 50 61 28 S98 5 119 28 S153 50 178 25" fill="none" stroke="#f5d68d" strokeWidth="2.2"/><path d="M2 28 C34 17 48 38 75 28 S126 17 178 28" fill="none" stroke="#bd8d3b" strokeWidth="1"/></svg></div></div>
                 <div className="wf-dept-column">
                   <button className="wf-dept-card" onClick={()=>{setSelectedAgent("MARKETING");setExpanded("MARKETING");setTab("agents")}}><b>Marketing</b><small>SEO · Content · Demand generation</small><div className="wf-dept-metrics"><span>Tracked leads<strong>{data.metrics.leads}</strong></span><span>Outreach drafts<strong>{data.metrics.drafts}</strong></span></div></button>
-                  <button className="wf-dept-card" onClick={()=>{setSelectedAgent("PROJECTS");setExpanded("PROJECTS");setTab("agents")}}><b>Operations</b><small>Projects · Engineering · Quality</small><div className="wf-dept-metrics"><span>Specialist tasks<strong>{data.tasks.length}</strong></span><span>Awaiting review<strong>{data.tasks.filter(t=>t.status==="needs_review").length}</strong></span></div></button>
-                  <button className="wf-dept-card" onClick={()=>{setSelectedAgent("SKILLS");setExpanded("SKILLS");setTab("agents")}}><b>People & Competency</b><small>Skills · Human relationships · Training</small><div className="wf-dept-metrics"><span>Specialist roles<strong>{AGENTS.length}</strong></span><span>Skill groups<strong>{data.skills.length}</strong></span></div></button>
+                  <button className="wf-dept-card" onClick={()=>{setSelectedAgent("PROJECTS");setExpanded("PROJECTS");setTab("agents")}}><b>Operations</b><small>Projects · Engineering · Quality</small><div className="wf-dept-metrics"><span>Work orders<strong>{data.tasks.length}</strong></span><span>Awaiting review<strong>{data.tasks.filter(t=>t.status==="needs_review").length}</strong></span></div></button>
+                  <button className="wf-dept-card" onClick={()=>{setSelectedAgent("SKILLS");setExpanded("SKILLS");setTab("agents")}}><b>People & Competency</b><small>Skills · Human relationships · Training</small><div className="wf-dept-metrics"><span>Capability agents<strong>{AGENTS.length}</strong></span><span>Skill groups<strong>{data.skills.length}</strong></span></div></button>
                 </div>
               </div>
             </section>
@@ -203,12 +203,12 @@ export default function AIWorkforceClient(){
                 <a className="wf-tool-node n7" href="https://business.facebook.com/" target="_blank" rel="noopener noreferrer"><span className="wf-tool-icon">f</span><b>Meta</b><small>Business Suite</small></a>
                 <a className="wf-tool-node n8" href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer"><span className="wf-tool-icon">in</span><b>LinkedIn</b><small>Open network</small></a>
               </div>
-              <div className="wf-toolwheel-foot">Workspace shortcuts are not proof of an active API authorization. Each service must be independently authenticated before agent actions can use it.</div>
+              <div className="wf-toolwheel-foot">Shortcuts open a workspace; they do not authenticate it. Each service authenticates separately before agent actions can use it.</div>
             </section>
           </div>
         </>}
         {tab==="agents"&&<>
-          <div className="wf-note">All 23 specialist roles are now available for bounded internal work orders, with role-specific instructions, persistent task records and human review. External actions and regulated sign-offs remain restricted by the authority matrix.</div>
+          <div className="wf-note">All 23 capability agents are available for bounded internal work orders, with role-specific instructions, persistent task records and human review. External actions and regulated sign-offs remain restricted by the authority matrix.</div>
           <div className="wf-agentgrid">{AGENTS.map(a=><button key={a.id} className={"wf-agent "+(expanded===a.id?"selected":"")} onClick={()=>setExpanded(expanded===a.id?null:a.id)}><div className="wf-agenthead"><span className="wf-orb" style={{borderColor:a.color+"88",color:a.color}}>{a.id.slice(0,2)}</span><div><b>{a.name}</b><small style={{display:"block"}}>{a.lane} · {a.status.toUpperCase()}</small></div></div><p>{a.role}</p>{expanded===a.id&&<p style={{color:"#e1c58e"}}>Primary KPI: {a.metric}. Scoped task execution is available; external actions require human approval.</p>}<span className="wf-button" style={{display:"inline-block",marginTop:9}} onClick={e=>{e.stopPropagation();setSelectedAgent(a.id);setTab("workbench");}}>Open workbench →</span></button>)}</div>
         </>}
         {tab==="leads"&&<>
@@ -256,7 +256,7 @@ export default function AIWorkforceClient(){
           </article>)}</div>
         </>}
         {tab==="workbench"&&<>
-          <div className="wf-note">All specialist roles can now create persistent, role-scoped work orders. Outputs are internal drafts for review. This does not grant authority to send communications, publish campaigns, commit prices, approve engineering or safety work, or sign contracts.</div>
+          <div className="wf-note">All capability agents can create persistent, role-scoped work orders. Outputs are internal drafts for review. This does not grant authority to send communications, publish campaigns, commit prices, approve engineering or safety work, or sign contracts.</div>
           <div className="wf-columns">
             <section className="wf-card"><h3>Launch a specialist work order</h3><p>Select a specialist and define the business outcome. The system applies the role's scope, controls and review requirements.</p>
               <div className="wf-note" style={{marginTop:10}}>{selectedSkill?<>Active skill: <b>{selectedSkill.name}</b> | {selectedSkill.description}</>:"No skill mapping found for this specialist."}</div>

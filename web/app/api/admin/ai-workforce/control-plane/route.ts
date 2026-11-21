@@ -38,6 +38,9 @@ export async function GET() {
       ok: true,
       source: "supabase",
       generatedAt: new Date().toISOString(),
+      // Preconditions the POST handler enforces for schedule.enable. Returned so the
+      // UI can block the action up front rather than reporting a denial after the click.
+      schedulerReady: Boolean(cronToken()),
       agents,
       tasks,
       approvals,
