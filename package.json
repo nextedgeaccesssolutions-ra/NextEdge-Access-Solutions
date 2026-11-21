@@ -123,7 +123,9 @@
       "katex": "0.18.2",
       "mdast-util-to-hast": "13.2.1",
       "@smithy/config-resolver": "4.7.2",
-      "uuid": "11.1.1"
+      "uuid": "11.1.1",
+      "tar": "7.5.23",
+      "browserslist": "4.28.7"
     }
   }
 }
