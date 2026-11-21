@@ -54,7 +54,7 @@ export function providerErrorMessage(
   const suffix = detail ? " " + detail : "";
 
   if (provider === "ElevenLabs") {
-    if (status === 401) return "ElevenLabs rejected the API key (401). Check the existing key's Text to Speech permission; rotate it only through an approved credential-change process.";
+    if (status === 401) return "ElevenLabs rejected ELEVENLABS_API_KEY (401). Check the existing key's Text to Speech permission; rotate it only through an approved credential-change process.";
     if (status === 402) return "ElevenLabs account has insufficient credits (402). Add credits or wait for the quota reset.";
     if (status === 403) return "ElevenLabs denied this request (403). Check API key permissions, voice access and plan eligibility.";
     if (status === 429) return "ElevenLabs rate or concurrency limit reached (429). Wait before retrying.";
