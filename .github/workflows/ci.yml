@@ -29,6 +29,9 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
+      - name: Validate root dependency manifests
+        run: node --test scripts/package-manifest.test.mjs
+
       - name: Verify package.json/package-lock.json synchronization
         run: npm run test:lockfile
         working-directory: web
