@@ -8,23 +8,27 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const readRootFile = name => readFileSync(resolve(repositoryRoot, name), "utf8");
 
 test("root package.json remains valid JSON without generated read annotations", () => {
-  const manifest = readRootFile("package.json");
+  const manifestText = readRootFile("package.json");
+  const manifest = JSON.parse(manifestText);
 
-  assert.doesNotThrow(() => JSON.parse(manifest));
-  assert.doesNotMatch(manifest, /^\[(?:Reading|executed on device:)/m);
+  assert.doesNotMatch(manifestText, /^\[(?:Reading|executed on device:)/m);
+  assert.ok(manifest.dependencies["@vercel/speed-insights"]);
+  assert.ok(manifest.dependencies["express-rate-limit"]);
 });
 
-test("root pnpm lockfile remains complete and free of generated read annotations", () => {
+test("root pnpm lockfile remains complete and synchronized with runtime dependencies", () => {
   const lockfile = readRootFile("pnpm-lock.yaml");
 
   assert.match(lockfile, /^lockfileVersion: ['"]?9\.0['"]?$/m);
   assert.match(lockfile, /^importers:/m);
   assert.match(lockfile, /^packages:/m);
   assert.match(lockfile, /^snapshots:/m);
+  assert.match(lockfile, /@vercel\/speed-insights/);
+  assert.match(lockfile, /express-rate-limit/);
   assert.doesNotMatch(lockfile, /^\[(?:Reading|executed on device:)/m);
 });
 
-test("root TypeScript check uses only repository-local source paths", () => {
+test("root TypeScript check uses repository-local application sources and excludes unrelated skill tooling", () => {
   const config = JSON.parse(readRootFile("tsconfig.json"));
 
   assert.equal(config.extends, undefined);
@@ -32,4 +36,15 @@ test("root TypeScript check uses only repository-local source paths", () => {
   assert.ok(config.include?.includes("client/src/**/*.tsx"));
   assert.ok(config.include?.includes("server/**/*.ts"));
   assert.ok(config.include?.includes("shared/**/*.ts"));
+
+  for (const file of [
+    "vitest.config.ts",
+    "generate-registry.ts",
+    "scan-skills.ts",
+    "skill.ts",
+    "utils.ts",
+    "validate-skills.ts",
+  ]) {
+    assert.ok(config.exclude?.includes(file));
+  }
 });

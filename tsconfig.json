@@ -50,6 +50,12 @@
     "dist",
     "web",
     "jest.config.ts",
+    "vitest.config.ts",
+    "generate-registry.ts",
+    "scan-skills.ts",
+    "skill.ts",
+    "utils.ts",
+    "validate-skills.ts",
     "**/*.test.ts",
     "**/*.spec.ts"
   ]
