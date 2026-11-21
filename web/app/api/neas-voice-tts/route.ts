@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimitRequest } from "@/lib/rate-limit";
-import { parseProviderDetail, providerErrorMessage, type VoiceProvider } from "@/lib/voice-tts-errors";
+import {
+  buildOpenRouterTtsPayload,
+  parseProviderDetail,
+  providerErrorMessage,
+  resolveOpenRouterTtsModel,
+  type VoiceProvider,
+} from "@/lib/voice-tts-errors";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -8,11 +14,10 @@ export const maxDuration = 30;
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY?.trim();
 const ELEVENLABS_VOICE_ID = process.env.NEAS_ELEVENLABS_VOICE_ID?.trim() || "nF0O6s45DRguoQfSSA3a";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY?.trim();
-// The default is a ":free" variant, which is capped account-wide at 20 requests per
-// minute and 50 per day until $10 of credits has been purchased (1000/day above that).
-// A paid variant carries no free-model request cap but bills per request, so it only
-// works once the account has credit. Override without a code change once it does.
-const OPENROUTER_TTS_MODEL = process.env.OPENROUTER_TTS_MODEL?.trim() || "fish-audio/s2.1-pro-free:free";
+// Do not default to Fish Audio's free model: its endpoints are excluded by the
+// configured ZDR policy. A fallback must be explicitly configured and remains
+// request-level ZDR enforced below.
+const OPENROUTER_TTS_MODEL = resolveOpenRouterTtsModel(process.env.OPENROUTER_TTS_MODEL);
 const MAX_TEXT_LENGTH = 1000;
 
 function unavailable(message: string, status = 503) {
@@ -22,7 +27,7 @@ function unavailable(message: string, status = 503) {
 async function providerError(response: Response, provider: VoiceProvider) {
   const raw = await response.text().catch(() => "");
   const detail = parseProviderDetail(raw);
-  return new Error(providerErrorMessage(provider, response.status, detail, OPENROUTER_TTS_MODEL));
+  return new Error(providerErrorMessage(provider, response.status, detail, OPENROUTER_TTS_MODEL ?? ""));
 }
 
 async function elevenLabsSpeech(text: string) {
@@ -47,6 +52,9 @@ async function elevenLabsSpeech(text: string) {
 
 async function openRouterSpeech(text: string) {
   if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is not configured as a natural-voice fallback in Vercel.");
+  if (!OPENROUTER_TTS_MODEL) {
+    throw new Error("OpenRouter TTS fallback is disabled until OPENROUTER_TTS_MODEL is explicitly configured with a ZDR-eligible endpoint.");
+  }
   const input = "[Warm, confident, natural conversational professional voice. Clear English pronunciation, moderate pace, expressive intonation and natural pauses.] " + text;
   const response = await fetch("https://openrouter.ai/api/v1/audio/speech", {
     method: "POST",
@@ -57,7 +65,7 @@ async function openRouterSpeech(text: string) {
       "http-referer": process.env.SITE_URL || "https://www.nextedge-access-solutions.com",
       "x-title": "NEAS AI Orchestration Core",
     },
-    body: JSON.stringify({ model: OPENROUTER_TTS_MODEL, input, response_format: "mp3" }),
+    body: JSON.stringify(buildOpenRouterTtsPayload(OPENROUTER_TTS_MODEL, input)),
     signal: AbortSignal.timeout(18_000),
   });
   if (!response.ok) throw await providerError(response, "OpenRouter");
@@ -94,7 +102,7 @@ export async function POST(req: NextRequest) {
   if (!voiceModel) {
     try {
       audio = await openRouterSpeech(text);
-      voiceModel = OPENROUTER_TTS_MODEL;
+      voiceModel = OPENROUTER_TTS_MODEL ?? "";
     } catch (cause) {
       const fallbackFailure = cause instanceof Error ? cause : new Error("OpenRouter natural voice failed.");
       const message = primaryFailure
