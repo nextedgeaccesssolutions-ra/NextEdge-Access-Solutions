@@ -28,3 +28,23 @@ test("unknown 403 reasons keep Google's reason in the message", () => {
 test("other server errors are left to the caller", () => {
   assert.equal(explainGmailFailure(500, "backendError"), null);
 });
+
+test("maps PERMISSION_DENIED instead of advising a pointless reconnect", () => {
+  const result = explainGmailFailure(403, "PERMISSION_DENIED");
+  assert.equal(result?.code, "gmail_permission_denied");
+  // The failure an administrator actually hits: the advice must lead with the
+  // Gmail API / consent-screen check, not with reconnecting the mailbox.
+  assert.match(result?.message ?? "", /Gmail API is not enabled/);
+  assert.match(result?.message ?? "", /test user/);
+});
+
+test("a disabled API reported via details[].reason still reads as disabled", () => {
+  assert.equal(explainGmailFailure(403, "SERVICE_DISABLED")?.code, "gmail_api_disabled");
+  assert.equal(explainGmailFailure(403, "serviceDisabled")?.code, "gmail_api_disabled");
+});
+
+test("generic 403 advice no longer leads with reconnecting", () => {
+  const message = explainGmailFailure(403, "somethingNew")?.message ?? "";
+  assert.ok(message.indexOf("Gmail API is enabled") < message.indexOf("reconnect the mailbox"),
+    "the actionable cause must come before the reconnect suggestion");
+});
