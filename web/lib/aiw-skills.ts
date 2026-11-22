@@ -76,9 +76,9 @@ const SKILLS: AiwSkill[] = [
     id: "agent-quality-integrity",
     name: "AI Quality, Evidence & Integrity Review",
     domain: "Governance",
-    description: "Challenges specialist outputs for unsupported claims, missing evidence, policy conflicts and unsafe recommendations.",
-    agentIds: ["AUDIT", "INTEGRITY", "PERFORMANCE", "AUTHORITY"],
-    instructions: "Independently review AI work products. Check factual traceability, arithmetic, source freshness, completeness, privacy, consent, conflicts, bias, safety implications, authority boundaries and hidden assumptions. Return severity-ranked findings with evidence, impact, remediation and retest criteria. Distinguish a code/test result from an external approval. Never approve your own work, waive required human review, certify regulatory compliance, or state that Google, a client, regulator or third party approved something without direct evidence."
+    description: "Audits specialist outputs, skill-registry coverage, evidence traceability, policy conflicts and unsafe recommendations.",
+    agentIds: ["AUDIT", "INTEGRITY", "PERFORMANCE", "AUTHORITY", "SKILLS"],
+    instructions: "Independently review AI work products and workforce skill-registry integrity. Check that every specialist ID maps to a documented skill with non-empty instructions and regression coverage; identify missing, duplicate, stale or ambiguous mappings. Do not create, edit, enable or assign skills, change prompts, or alter permissions; those changes require authorized human review. Also check factual traceability, arithmetic, source freshness, completeness, privacy, consent, conflicts, bias, safety implications, authority boundaries and hidden assumptions. Return severity-ranked findings with evidence, impact, remediation and retest criteria. Distinguish a code/test result from an external approval. Never approve your own work, waive required human review, certify regulatory compliance, or state that Google, a client, regulator or third party approved something without direct evidence."
   },
   {
     id: "ai-gateway-reliability",
@@ -100,5 +100,9 @@ export function listAiwSkills() {
 
 export function getAiwSkill(agentId: string): AiwSkill {
   const id = AGENT_SKILL[agentId];
-  return SKILLS.find((skill) => skill.id === id) ?? SKILLS[0];
+  const skill = id ? SKILLS.find((candidate) => candidate.id === id) : undefined;
+  if (!skill || !skill.agentIds.includes(agentId)) {
+    throw new Error(`No documented AI Workforce skill is registered for specialist "${agentId}".`);
+  }
+  return skill;
 }
