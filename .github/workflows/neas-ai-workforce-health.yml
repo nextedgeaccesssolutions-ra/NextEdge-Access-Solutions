@@ -44,7 +44,7 @@ jobs:
 
       - name: Open one incident for a sustained outage
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const title = "NEAS AI Workforce production availability check failed";
