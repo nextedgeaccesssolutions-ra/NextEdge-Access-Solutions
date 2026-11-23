@@ -1,0 +1,106 @@
+diff --git a/.github/dependabot.yml b/.github/dependabot.yml
+new file mode 100644
+index 0000000..a8ba743
+--- /dev/null
++++ b/.github/dependabot.yml
+@@ -0,0 +1,44 @@
++# Dependabot: keep npm packages and GitHub Actions fresh on a safe cadence.
++# - Patch + minor npm updates are grouped into one weekly PR.
++# - Major npm updates are grouped separately and NEVER auto-merged (human review).
++# - Node itself is pinned to 22 (.node-version + engines); majors need intent.
++version: 2
++updates:
++  - package-ecosystem: "npm"
++    directory: "/"
++    schedule:
++      interval: "weekly"
++      day: "monday"
++      time: "03:00"
++      timezone: "Asia/Manila"
++    groups:
++      neas-minor-patch:
++        patterns: ["*"]
++        exclude-patterns: []
++        # Dependabot still splits majors out of groups by default when
++        # grouped-update types are unspecified; the automerge workflow below
++        # additionally only merges version-update:semver-patch.
++    open-pull-requests-limit: 5
++    labels: ["dependencies", "automation"]
++    commit-message:
++      prefix: "chore(deps)"
++    # Do not touch these without human review: runtime + security boundary.
++    ignore:
++      - dependency-name: "node"
++      - dependency-name: "next"
++        update-types: ["version-update:semver-major"]
++
++  - package-ecosystem: "github-actions"
++    directory: "/"
++    schedule:
++      interval: "weekly"
++      day: "monday"
++      time: "03:00"
++      timezone: "Asia/Manila"
++    groups:
++      actions-minor-patch:
++        patterns: ["*"]
++    open-pull-requests-limit: 5
++    labels: ["dependencies", "automation"]
++    commit-message:
++      prefix: "chore(actions)"
+diff --git a/.github/workflows/dependency-automerge.yml b/.github/workflows/dependency-automerge.yml
+new file mode 100644
+index 0000000..f005071
+--- /dev/null
++++ b/.github/workflows/dependency-automerge.yml
+@@ -0,0 +1,50 @@
++name: NEAS dependency automerge (patch only)
++
++# Merges Dependabot PATCH updates automatically, and only after the blocking
++# verify gates (tests, typecheck, build in ci.yml) succeed on the PR.
++# Minor and major updates are intentionally left for human review:
++# minors can change behavior, majors can break the worker's security boundary.
++
++on:
++  pull_request:
++    branches: ["main"]
++  pull_request_target:
++    types: [synchronize]
++    branches: ["main"]
++  workflow_dispatch:
++    inputs:
++      pr:
++        description: "PR number to evaluate for patch automerge"
++        required: false
++
++permissions:
++  contents: write
++  pull-requests: write
++
++jobs:
++  automerge-patch:
++    if: github.actor == 'dependabot[bot]'
++    runs-on: ubuntu-latest
++    timeout-minutes: 10
++    steps:
++      - name: Check update type
++        id: meta
++        uses: dependabot/fetch-metadata@v2
++        with:
++          github-token: ${{ secrets.GITHUB_TOKEN }}
++
++      - name: Enable squash auto-merge for patch updates only
++        if: steps.meta.outputs.update-type == 'version-update:semver-patch'
++        run: gh pr merge --auto --squash "$PR_URL"
++        env:
++          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++          PR_URL: ${{ github.event.pull_request.html_url }}
++
++      - name: Leave minors and majors for human review
++        if: steps.meta.outputs.update-type != 'version-update:semver-patch'
++        run: |
++          echo "Update type is ${{ steps.meta.outputs.update-type }} — leaving for human review."
++          gh pr comment "$PR_URL" --body "NEAS automerge: this is a \`${{ steps.meta.outputs.update-type }}\` update, so it needs human review. Patch updates merge automatically once CI is green." || true
++        env:
++          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++          PR_URL: ${{ github.event.pull_request.html_url }}
