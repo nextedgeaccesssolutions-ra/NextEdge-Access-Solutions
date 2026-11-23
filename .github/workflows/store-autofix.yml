@@ -1,0 +1,170 @@
+name: Store autofix and health watch
+
+# Mechanical auto-fixes (formatting only — never logic) on PRs, plus hard
+# verification gates (tests, typecheck, build) and a scheduled production
+# probe that files/updates a single rolling issue with evidence.
+#
+# What this does NOT do: rewrite application logic, touch secrets, deploy,
+# or publish policy fields (return/shipping terms stay human-authored).
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+  schedule:
+    # Every 30 minutes, production probe (runs on default branch).
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: store-autofix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  safe-fix:
+    name: Formatting-only autofix (PRs)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: true
+
+      - name: Changed files
+        id: changed
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              { owner: context.repo.owner, repo: context.repo.repo, pull_number: context.issue.number, per_page: 100 },
+            );
+            const names = files
+              .map((f) => f.filename)
+              .filter((n) => /\.(ts|tsx|js|jsx|json|css|md)$/.test(n));
+            core.setOutput('list', names.join(' '));
+            core.setOutput('count', String(names.length));
+
+      - name: Prettier write (formatting only)
+        if: steps.changed.outputs.count != '0'
+        run: npx --yes prettier@3 --write ${{ steps.changed.outputs.list }}
+
+      - name: Push formatting fixes to PR branch
+        if: steps.changed.outputs.count != '0'
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes."
+            exit 0
+          fi
+          git config user.name "neas-autofix[bot]"
+          git config user.email "neas-autofix[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style: prettier autofix (mechanical formatting only)"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+
+  verify:
+    name: Tests, typecheck, build (blocking gates)
+    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        run: pnpm check
+
+      - name: Tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  probe-production:
+    name: Store smoke probe (auto-detect, auto-report)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROD_URL: "https://www.nextedge-access-solutions.com"
+      PROBE_PRODUCT: "https://www.nextedge-access-solutions.com/store/p/s474c1ac9f7"
+    steps:
+      - name: Probe storefront and structured data
+        id: probe
+        run: |
+          set -u
+          FAILS=""
+          note() { echo "$1"; FAILS="${FAILS}${1}; "; }
+
+          for path in "/" "/store"; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}${path}" || echo "000")
+            echo "GET ${path} -> ${CODE}"
+            if [ "${CODE}" != "200" ]; then note "FAIL GET ${path} expected=200 got=${CODE}"; fi
+          done
+
+          # PR #239 regression detector: the Offer must name NEAS as seller.
+          curl -sL "${PROBE_PRODUCT}" -o /tmp/product.html || true
+          if grep -q '"seller"' /tmp/product.html; then
+            echo "seller markup present"
+          else
+            note "FAIL product JSON-LD missing seller (PR #239 regression)"
+          fi
+          # Brand must NOT be asserted as NEAS the manufacturer.
+          if grep -q '\"brand\":{\"@type\":\"Brand\",\"name\":\"NEAS\"}' /tmp/product.html; then
+            note "INFO product still asserts Brand=NEAS (see PR #239 follow-up)"
+          fi
+
+          # Workforce handoff (PR #240): admin page must leave the store.
+          RCODE=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}/admin/ai-workforce" || echo "000")
+          echo "/admin/ai-workforce -> ${RCODE}"
+          if [ "${RCODE}" != "301" ] && [ "${RCODE}" != "302" ] && [ "${RCODE}" != "307" ] && [ "${RCODE}" != "308" ]; then
+            note "INFO /admin/ai-workforce expected=redirect got=${RCODE} (ok until PR #240 merges)"
+          fi
+
+          echo "summary=${FAILS:-all-green}" >> "$GITHUB_OUTPUT"
+          if echo "${FAILS}" | grep -q "FAIL"; then
+            echo "verdict=fail" >> "$GITHUB_OUTPUT"
+          else
+            echo "verdict=pass" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: File or update rolling watch issue
+        if: steps.probe.outputs.verdict == 'fail'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SUMMARY: ${{ steps.probe.outputs.summary }}
+        run: |
+          TITLE="[auto-watch] Store production probe failures"
+          BODY="Automated store probe failed at $(date -u +%FT%T%Z).
+          - Prod: ${PROD_URL}
+          - Evidence: ${SUMMARY}
+          - Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          Check the failing URL in Rich Results Test before touching markup."
+          EXISTING=$(gh issue list --state open --search "${TITLE} in:title" --json number --jq '.[0].number' || true)
+          if [ -n "${EXISTING}" ]; then
+            gh issue comment "${EXISTING}" --body "${BODY}"
+          else
+            gh issue create --title "${TITLE}" --body "${BODY}" --label "automation"
+          fi
