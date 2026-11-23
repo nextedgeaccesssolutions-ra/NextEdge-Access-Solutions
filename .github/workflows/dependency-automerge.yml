@@ -1,0 +1,49 @@
+name: Store dependency automerge (patch only)
+
+# Merges Dependabot PATCH updates automatically, and only after the blocking
+# verify gates (tests, typecheck, build) succeed on the PR. Minors and majors
+# stay for human review.
+
+on:
+  pull_request:
+    branches: ["main"]
+  pull_request_target:
+    types: [synchronize]
+    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "PR number to evaluate for patch automerge"
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge-patch:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check update type
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable squash auto-merge for patch updates only
+        if: steps.meta.outputs.update-type == 'version-update:semver-patch'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+
+      - name: Leave minors and majors for human review
+        if: steps.meta.outputs.update-type != 'version-update:semver-patch'
+        run: |
+          echo "Update type is ${{ steps.meta.outputs.update-type }} \u2014 leaving for human review."
+          gh pr comment "$PR_URL" --body "NEAS automerge: this is a `${{ steps.meta.outputs.update-type }}` update, so it needs human review. Patch updates merge automatically once CI is green." || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
