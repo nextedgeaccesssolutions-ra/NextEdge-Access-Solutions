@@ -1,0 +1,164 @@
+diff --git a/.github/workflows/autofix.yml b/.github/workflows/autofix.yml
+new file mode 100644
+index 0000000..18eced9
+--- /dev/null
++++ b/.github/workflows/autofix.yml
+@@ -0,0 +1,158 @@
++name: NEAS APEX auto-fix and health watch
++
++# Mechanical auto-fixes (formatting only — never logic) on PRs, plus hard
++# verification gates (tests, typecheck, build) and a scheduled production
++# probe that files/updates a single rolling issue with evidence.
++#
++# What this does NOT do: rewrite application logic, touch secrets, promote
++# deployments, or mark agents active. Those stay human-gated.
++
++on:
++  pull_request:
++    branches: ["main"]
++  push:
++    branches: ["main"]
++  schedule:
++    # Every 30 minutes, production probe (runs on default branch).
++    - cron: "*/30 * * * *"
++  workflow_dispatch:
++
++permissions:
++  contents: write
++  issues: write
++
++concurrency:
++  group: neas-autofix-${{ github.ref }}
++  cancel-in-progress: true
++
++jobs:
++  safe-fix:
++    name: Formatting-only autofix (PRs)
++    if: github.event_name == 'pull_request'
++    runs-on: ubuntu-latest
++    timeout-minutes: 10
++    steps:
++      - name: Checkout PR head
++        uses: actions/checkout@v7.0.1
++        with:
++          ref: ${{ github.event.pull_request.head.sha }}
++          # GITHUB_TOKEN with contents:write can push back to same-repo PR branches.
++          persist-credentials: true
++
++      - name: Changed files
++        id: changed
++        uses: actions/github-script@v8
++        with:
++          script: |
++            const files = await github.paginate(
++              github.rest.pulls.listFiles,
++              { owner: context.repo.owner, repo: context.repo.repo, pull_number: context.issue.number, per_page: 100 },
++            );
++            const names = files
++              .map((f) => f.filename)
++              .filter((n) => /\.(ts|tsx|js|jsx|json|css|md)$/.test(n));
++            core.setOutput('list', names.join(' '));
++            core.setOutput('count', String(names.length));
++
++      - name: Prettier write (formatting only)
++        if: steps.changed.outputs.count != '0'
++        run: npx --yes prettier@3 --write ${{ steps.changed.outputs.list }}
++
++      - name: Push formatting fixes to PR branch
++        if: steps.changed.outputs.count != '0'
++        run: |
++          if git diff --quiet; then
++            echo "No formatting changes."
++            exit 0
++          fi
++          git config user.name "neas-autofix[bot]"
++          git config user.email "neas-autofix[bot]@users.noreply.github.com"
++          git add -A
++          git commit -m "style: prettier autofix (mechanical formatting only)"
++          git push origin HEAD:${{ github.event.pull_request.head.ref }}
++
++  verify:
++    name: Tests, typecheck, build (blocking gates)
++    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
++    runs-on: ubuntu-latest
++    timeout-minutes: 25
++    steps:
++      - name: Checkout repository
++        uses: actions/checkout@v7.0.1
++
++      - name: Set up Node.js
++        uses: actions/setup-node@v7.1.0
++        with:
++          node-version: 22
++          cache: npm
++
++      - name: Install dependencies
++        run: npm ci
++
++      - name: Security regression tests
++        run: npm test
++
++      - name: Type-check
++        run: npm run typecheck
++
++      - name: Build Next.js application
++        run: npm run build
++
++  probe-production:
++    name: Production smoke probe (auto-detect, auto-report)
++    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
++    runs-on: ubuntu-latest
++    timeout-minutes: 10
++    env:
++      PROD_URL: "https://neas-apex.vercel.app"
++      WORKER_PATH: "/api/internal/workforce/worker"
++    steps:
++      - name: Probe production endpoints
++        id: probe
++        run: |
++          set -u
++          FAILS=""
++          note() { echo "$1"; FAILS="${FAILS}${1}; "; }
++
++          # 1. Worker route must exist and enforce auth: no secret -> 401 (NOT 404).
++          WCODE=$(curl -s -o /tmp/worker.json -w "%{http_code}" "${PROD_URL}${WORKER_PATH}" || echo "000")
++          WBODY=$(head -c 300 /tmp/worker.json 2>/dev/null || true)
++          echo "worker_noauth_status=${WCODE} body=${WBODY}"
++          if [ "${WCODE}" != "401" ]; then note "FAIL worker-noauth expected=401 got=${WCODE} body=${WBODY}"; fi
++
++          # 2. Health route (present after fix deploy): expect 200 {ok:true}.
++          HCODE=$(curl -s -o /tmp/health.json -w "%{http_code}" "${PROD_URL}/api/health" || echo "000")
++          HBODY=$(head -c 300 /tmp/health.json 2>/dev/null || true)
++          echo "health_status=${HCODE} body=${HBODY}"
++          if [ "${HCODE}" != "200" ]; then note "INFO health expected=200 got=${HCODE} body=${HBODY} (ok if fix not yet deployed)"; fi
++
++          # 3. Homepage must still embed the ElevenLabs widget marker.
++          if ! curl -sL "${PROD_URL}/" | grep -q "elevenlabs-convai"; then
++            note "FAIL homepage missing elevenlabs-convai marker"
++          fi
++
++          echo "summary=${FAILS:-all-green}" >> "$GITHUB_OUTPUT"
++          if echo "${FAILS}" | grep -q "FAIL"; then
++            echo "verdict=fail" >> "$GITHUB_OUTPUT"
++          else
++            echo "verdict=pass" >> "$GITHUB_OUTPUT"
++          fi
++
++      - name: File or update rolling watch issue
++        if: steps.probe.outputs.verdict == 'fail'
++        env:
++          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++          SUMMARY: ${{ steps.probe.outputs.summary }}
++        run: |
++          TITLE="[auto-watch] NEAS production probe failures"
++          BODY="Automated production probe failed at $(date -u +%FT%TZ).
++          - Prod: ${PROD_URL}
++          - Evidence: ${SUMMARY}
++          - Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
++          Next: do NOT mark agents active. Inspect worker logs, lease table, and deployment alias before any promotion."
++          EXISTING=$(gh issue list --state open --search "${TITLE} in:title" --json number --jq '.[0].number' || true)
++          if [ -n "${EXISTING}" ]; then
++            gh issue comment "${EXISTING}" --body "${BODY}"
++          else
++            gh issue create --title "${TITLE}" --body "${BODY}" --label "automation"
++          fi
