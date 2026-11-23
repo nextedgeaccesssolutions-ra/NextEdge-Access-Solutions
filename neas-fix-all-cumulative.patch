@@ -1,0 +1,610 @@
+diff --git a/.github/dependabot.yml b/.github/dependabot.yml
+new file mode 100644
+index 0000000..a8ba743
+--- /dev/null
++++ b/.github/dependabot.yml
+@@ -0,0 +1,44 @@
++# Dependabot: keep npm packages and GitHub Actions fresh on a safe cadence.
++# - Patch + minor npm updates are grouped into one weekly PR.
++# - Major npm updates are grouped separately and NEVER auto-merged (human review).
++# - Node itself is pinned to 22 (.node-version + engines); majors need intent.
++version: 2
++updates:
++  - package-ecosystem: "npm"
++    directory: "/"
++    schedule:
++      interval: "weekly"
++      day: "monday"
++      time: "03:00"
++      timezone: "Asia/Manila"
++    groups:
++      neas-minor-patch:
++        patterns: ["*"]
++        exclude-patterns: []
++        # Dependabot still splits majors out of groups by default when
++        # grouped-update types are unspecified; the automerge workflow below
++        # additionally only merges version-update:semver-patch.
++    open-pull-requests-limit: 5
++    labels: ["dependencies", "automation"]
++    commit-message:
++      prefix: "chore(deps)"
++    # Do not touch these without human review: runtime + security boundary.
++    ignore:
++      - dependency-name: "node"
++      - dependency-name: "next"
++        update-types: ["version-update:semver-major"]
++
++  - package-ecosystem: "github-actions"
++    directory: "/"
++    schedule:
++      interval: "weekly"
++      day: "monday"
++      time: "03:00"
++      timezone: "Asia/Manila"
++    groups:
++      actions-minor-patch:
++        patterns: ["*"]
++    open-pull-requests-limit: 5
++    labels: ["dependencies", "automation"]
++    commit-message:
++      prefix: "chore(actions)"
+diff --git a/.github/workflows/autofix.yml b/.github/workflows/autofix.yml
+new file mode 100644
+index 0000000..18eced9
+--- /dev/null
++++ b/.github/workflows/autofix.yml
+@@ -0,0 +1,158 @@
++name: NEAS APEX auto-fix and health watch
++
++# Mechanical auto-fixes (formatting only — never logic) on PRs, plus hard
++# verification gates (tests, typecheck, build) and a scheduled production
++# probe that files/updates a single rolling issue with evidence.
++#
++# What this does NOT do: rewrite application logic, touch secrets, promote
++# deployments, or mark agents active. Those stay human-gated.
++
++on:
++  pull_request:
++    branches: ["main"]
++  push:
++    branches: ["main"]
++  schedule:
++    # Every 30 minutes, production probe (runs on default branch).
++    - cron: "*/30 * * * *"
++  workflow_dispatch:
++
++permissions:
++  contents: write
++  issues: write
++
++concurrency:
++  group: neas-autofix-${{ github.ref }}
++  cancel-in-progress: true
++
++jobs:
++  safe-fix:
++    name: Formatting-only autofix (PRs)
++    if: github.event_name == 'pull_request'
++    runs-on: ubuntu-latest
++    timeout-minutes: 10
++    steps:
++      - name: Checkout PR head
++        uses: actions/checkout@v7.0.1
++        with:
++          ref: ${{ github.event.pull_request.head.sha }}
++          # GITHUB_TOKEN with contents:write can push back to same-repo PR branches.
++          persist-credentials: true
++
++      - name: Changed files
++        id: changed
++        uses: actions/github-script@v8
++        with:
++          script: |
++            const files = await github.paginate(
++              github.rest.pulls.listFiles,
++              { owner: context.repo.owner, repo: context.repo.repo, pull_number: context.issue.number, per_page: 100 },
++            );
++            const names = files
++              .map((f) => f.filename)
++              .filter((n) => /\.(ts|tsx|js|jsx|json|css|md)$/.test(n));
++            core.setOutput('list', names.join(' '));
++            core.setOutput('count', String(names.length));
++
++      - name: Prettier write (formatting only)
++        if: steps.changed.outputs.count != '0'
++        run: npx --yes prettier@3 --write ${{ steps.changed.outputs.list }}
++
++      - name: Push formatting fixes to PR branch
++        if: steps.changed.outputs.count != '0'
++        run: |
++          if git diff --quiet; then
++            echo "No formatting changes."
++            exit 0
++          fi
++          git config user.name "neas-autofix[bot]"
++          git config user.email "neas-autofix[bot]@users.noreply.github.com"
++          git add -A
++          git commit -m "style: prettier autofix (mechanical formatting only)"
++          git push origin HEAD:${{ github.event.pull_request.head.ref }}
++
++  verify:
++    name: Tests, typecheck, build (blocking gates)
++    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
++    runs-on: ubuntu-latest
++    timeout-minutes: 25
++    steps:
++      - name: Checkout repository
++        uses: actions/checkout@v7.0.1
++
++      - name: Set up Node.js
++        uses: actions/setup-node@v7.1.0
++        with:
++          node-version: 22
++          cache: npm
++
++      - name: Install dependencies
++        run: npm ci
++
++      - name: Security regression tests
++        run: npm test
++
++      - name: Type-check
++        run: npm run typecheck
++
++      - name: Build Next.js application
++        run: npm run build
++
++  probe-production:
++    name: Production smoke probe (auto-detect, auto-report)
++    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
++    runs-on: ubuntu-latest
++    timeout-minutes: 10
++    env:
++      PROD_URL: "https://neas-apex.vercel.app"
++      WORKER_PATH: "/api/internal/workforce/worker"
++    steps:
++      - name: Probe production endpoints
++        id: probe
++        run: |
++          set -u
++          FAILS=""
++          note() { echo "$1"; FAILS="${FAILS}${1}; "; }
++
++          # 1. Worker route must exist and enforce auth: no secret -> 401 (NOT 404).
++          WCODE=$(curl -s -o /tmp/worker.json -w "%{http_code}" "${PROD_URL}${WORKER_PATH}" || echo "000")
++          WBODY=$(head -c 300 /tmp/worker.json 2>/dev/null || true)
++          echo "worker_noauth_status=${WCODE} body=${WBODY}"
++          if [ "${WCODE}" != "401" ]; then note "FAIL worker-noauth expected=401 got=${WCODE} body=${WBODY}"; fi
++
++          # 2. Health route (present after fix deploy): expect 200 {ok:true}.
++          HCODE=$(curl -s -o /tmp/health.json -w "%{http_code}" "${PROD_URL}/api/health" || echo "000")
++          HBODY=$(head -c 300 /tmp/health.json 2>/dev/null || true)
++          echo "health_status=${HCODE} body=${HBODY}"
++          if [ "${HCODE}" != "200" ]; then note "INFO health expected=200 got=${HCODE} body=${HBODY} (ok if fix not yet deployed)"; fi
++
++          # 3. Homepage must still embed the ElevenLabs widget marker.
++          if ! curl -sL "${PROD_URL}/" | grep -q "elevenlabs-convai"; then
++            note "FAIL homepage missing elevenlabs-convai marker"
++          fi
++
++          echo "summary=${FAILS:-all-green}" >> "$GITHUB_OUTPUT"
++          if echo "${FAILS}" | grep -q "FAIL"; then
++            echo "verdict=fail" >> "$GITHUB_OUTPUT"
++          else
++            echo "verdict=pass" >> "$GITHUB_OUTPUT"
++          fi
++
++      - name: File or update rolling watch issue
++        if: steps.probe.outputs.verdict == 'fail'
++        env:
++          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++          SUMMARY: ${{ steps.probe.outputs.summary }}
++        run: |
++          TITLE="[auto-watch] NEAS production probe failures"
++          BODY="Automated production probe failed at $(date -u +%FT%TZ).
++          - Prod: ${PROD_URL}
++          - Evidence: ${SUMMARY}
++          - Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
++          Next: do NOT mark agents active. Inspect worker logs, lease table, and deployment alias before any promotion."
++          EXISTING=$(gh issue list --state open --search "${TITLE} in:title" --json number --jq '.[0].number' || true)
++          if [ -n "${EXISTING}" ]; then
++            gh issue comment "${EXISTING}" --body "${BODY}"
++          else
++            gh issue create --title "${TITLE}" --body "${BODY}" --label "automation"
++          fi
+diff --git a/.github/workflows/dependency-automerge.yml b/.github/workflows/dependency-automerge.yml
+new file mode 100644
+index 0000000..f005071
+--- /dev/null
++++ b/.github/workflows/dependency-automerge.yml
+@@ -0,0 +1,50 @@
++name: NEAS dependency automerge (patch only)
++
++# Merges Dependabot PATCH updates automatically, and only after the blocking
++# verify gates (tests, typecheck, build in ci.yml) succeed on the PR.
++# Minor and major updates are intentionally left for human review:
++# minors can change behavior, majors can break the worker's security boundary.
++
++on:
++  pull_request:
++    branches: ["main"]
++  pull_request_target:
++    types: [synchronize]
++    branches: ["main"]
++  workflow_dispatch:
++    inputs:
++      pr:
++        description: "PR number to evaluate for patch automerge"
++        required: false
++
++permissions:
++  contents: write
++  pull-requests: write
++
++jobs:
++  automerge-patch:
++    if: github.actor == 'dependabot[bot]'
++    runs-on: ubuntu-latest
++    timeout-minutes: 10
++    steps:
++      - name: Check update type
++        id: meta
++        uses: dependabot/fetch-metadata@v2
++        with:
++          github-token: ${{ secrets.GITHUB_TOKEN }}
++
++      - name: Enable squash auto-merge for patch updates only
++        if: steps.meta.outputs.update-type == 'version-update:semver-patch'
++        run: gh pr merge --auto --squash "$PR_URL"
++        env:
++          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++          PR_URL: ${{ github.event.pull_request.html_url }}
++
++      - name: Leave minors and majors for human review
++        if: steps.meta.outputs.update-type != 'version-update:semver-patch'
++        run: |
++          echo "Update type is ${{ steps.meta.outputs.update-type }} — leaving for human review."
++          gh pr comment "$PR_URL" --body "NEAS automerge: this is a \`${{ steps.meta.outputs.update-type }}\` update, so it needs human review. Patch updates merge automatically once CI is green." || true
++        env:
++          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++          PR_URL: ${{ github.event.pull_request.html_url }}
+diff --git a/app/api/health/route.ts b/app/api/health/route.ts
+new file mode 100644
+index 0000000..d4e4789
+--- /dev/null
++++ b/app/api/health/route.ts
+@@ -0,0 +1,11 @@
++import { NextResponse } from "next/server";
++
++export const runtime = "nodejs";
++export const dynamic = "force-dynamic";
++
++export async function GET() {
++  return NextResponse.json(
++    { ok: true, worker: "/api/internal/workforce/worker" },
++    { headers: { "Cache-Control": "no-store" } },
++  );
++}
+diff --git a/app/api/internal/workforce/worker/route.ts b/app/api/internal/workforce/worker/route.ts
+index ac08461..426ab23 100644
+--- a/app/api/internal/workforce/worker/route.ts
++++ b/app/api/internal/workforce/worker/route.ts
+@@ -25,19 +25,53 @@ type ExpiredTask = { id: string; attempt_count: number; max_attempts: number; wo
+ 
+ const WORKER_ID = "neas-apex-shared-worker-v1";
+ const SAFE_OPERATIONS = new Set(["summarize_internal", "draft_internal", "plan_tasks", "read_only_check"]);
++const GEMINI_WORKER_MODEL = (process.env.GEMINI_WORKER_MODEL ?? "gemini-2.5-flash-lite").trim() || "gemini-2.5-flash-lite";
++// LLM provider switch. "gemini" (default) works everywhere, including Vercel.
++// "lmstudio" targets any OpenAI-compatible local server (LM Studio default:
++// http://localhost:1234/v1) and therefore only works where the server can reach
++// that URL — local `next dev`, never Vercel builds. The ElevenLabs Convai widget
++// itself always talks to ElevenLabs cloud; this switch only changes the worker's
++// draft-inference backend (and can back local chat too).
+ 
+ function unauthorized() {
+   return NextResponse.json({ error: "Worker authorization failed." }, { status: 401, headers: { "Cache-Control": "no-store" } });
+ }
+ 
++type WorkerLlmProvider = "gemini" | "lmstudio";
++
++function llmProvider(): WorkerLlmProvider {
++  return process.env.WORKER_LLM_PROVIDER?.trim().toLowerCase() === "lmstudio" ? "lmstudio" : "gemini";
++}
++
+ function config() {
+-  if (!getNeasWorkerConfigStatus(process.env).configured) throw new Error("Worker dependencies are not configured.");
++  const status = getNeasWorkerConfigStatus(process.env);
++  if (!status.configured) throw new Error("Worker dependencies are not configured: " + status.missing.join(", ") + ".");
+   const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim().replace(/\/$/, "");
++  const provider = llmProvider();
++  if (provider === "lmstudio") {
++    const baseUrl = (process.env.LMSTUDIO_BASE_URL ?? "http://localhost:1234/v1").trim().replace(/\/$/, "");
++    const model = (process.env.LMSTUDIO_MODEL ?? "").trim();
++    if (!model) throw new Error("WORKER_LLM_PROVIDER=lmstudio requires LMSTUDIO_MODEL set to the loaded LM Studio model identifier.");
++    return {
++      url,
++      key: process.env.SUPABASE_SERVICE_ROLE_KEY!.trim(),
++      cronSecret: process.env.CRON_SECRET!.trim(),
++      geminiKey: "",
++      provider,
++      lmBaseUrl: baseUrl,
++      lmModel: model,
++      lmApiKey: (process.env.LMSTUDIO_API_KEY ?? "lm-studio").trim() || "lm-studio",
++    };
++  }
+   return {
+     url,
+     key: process.env.SUPABASE_SERVICE_ROLE_KEY!.trim(),
+     cronSecret: process.env.CRON_SECRET!.trim(),
+     geminiKey: process.env.GEMINI_API_KEY!.trim(),
++    provider,
++    lmBaseUrl: "",
++    lmModel: "",
++    lmApiKey: "",
+   };
+ }
+ 
+@@ -129,22 +163,33 @@ async function generateDraft(task: ClaimedTask): Promise<{ text: string; model:
+     "Return a clear, useful result with assumptions and missing information identified. Never fabricate evidence.",
+   ].join("\n\n");
+ 
+-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", {
++  const userPrompt = JSON.stringify({
++    task_title: task.title,
++    task_objective: task.objective,
++    operation,
++  });
++  if (c.provider === "lmstudio") {
++    return generateViaOpenAICompatible(c.lmBaseUrl, c.lmApiKey, c.lmModel, system, userPrompt);
++  }
++  return generateViaGemini(c.geminiKey, system, userPrompt);
++}
++
++async function generateViaGemini(apiKey: string, system: string, userPrompt: string): Promise<{ text: string; model: string }> {
++  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(GEMINI_WORKER_MODEL) + ":generateContent", {
+     method: "POST",
+-    headers: { "Content-Type": "application/json", "x-goog-api-key": c.geminiKey },
++    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+     body: JSON.stringify({
+       system_instruction: { parts: [{ text: system }] },
+-      contents: [{ role: "user", parts: [{ text: JSON.stringify({
+-        task_title: task.title,
+-        task_objective: task.objective,
+-        operation,
+-      }) }] }],
++      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+       generationConfig: { maxOutputTokens: 1200, temperature: 0.2 },
+     }),
+     cache: "no-store",
+     signal: AbortSignal.timeout(25_000),
+   });
+-  if (!response.ok) throw new Error("Gemini worker inference failed (" + response.status + ").");
++  if (!response.ok) {
++    const detail = await response.text().catch(() => "");
++    throw new Error("Gemini worker inference failed (" + response.status + "): " + detail.slice(0, 300));
++  }
+   const payload = await response.json() as {
+     modelVersion?: string;
+     candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }>;
+@@ -152,7 +197,43 @@ async function generateDraft(task: ClaimedTask): Promise<{ text: string; model:
+   const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? "";
+   if (!text || payload.candidates?.[0]?.finishReason === "SAFETY") throw new Error("Gemini returned no usable task output.");
+   if (text.length > 20_000) throw new Error("Gemini task output exceeded the storage limit.");
+-  return { text, model: payload.modelVersion || "gemini-3.5-flash-lite" };
++  return { text, model: payload.modelVersion || GEMINI_WORKER_MODEL };
++}
++
++async function generateViaOpenAICompatible(baseUrl: string, apiKey: string, model: string, system: string, userPrompt: string): Promise<{ text: string; model: string }> {
++  // LM Studio (and any OpenAI-compatible server): POST {baseUrl}/chat/completions.
++  let response: Response;
++  try {
++    response = await fetch(baseUrl + "/chat/completions", {
++      method: "POST",
++      headers: { "Content-Type": "application/json", Authorization: "Bearer " + apiKey },
++      body: JSON.stringify({
++        model,
++        messages: [
++          { role: "system", content: system },
++          { role: "user", content: userPrompt },
++        ],
++        temperature: 0.2,
++        max_tokens: 1200,
++      }),
++      cache: "no-store",
++      signal: AbortSignal.timeout(25_000),
++    });
++  } catch (cause) {
++    throw new Error("LM Studio server unreachable at " + baseUrl + ". Start LM Studio, load a model, and enable the local server. (" + (cause instanceof Error ? cause.message : String(cause)) + ")");
++  }
++  if (!response.ok) {
++    const detail = await response.text().catch(() => "");
++    throw new Error("LM Studio inference failed (" + response.status + "): " + detail.slice(0, 300));
++  }
++  const payload = await response.json() as {
++    model?: string;
++    choices?: Array<{ message?: { content?: string | null }; finish_reason?: string }>;
++  };
++  const text = (payload.choices?.[0]?.message?.content ?? "").trim();
++  if (!text) throw new Error("LM Studio returned no usable task output.");
++  if (text.length > 20_000) throw new Error("LM Studio task output exceeded the storage limit.");
++  return { text, model: payload.model || model };
+ }
+ 
+ export async function GET(request: NextRequest) {
+@@ -212,8 +293,9 @@ export async function GET(request: NextRequest) {
+       },
+     }).catch(() => null);
+     return NextResponse.json({ worker: WORKER_ID, recovered: leaseRecovery.recovered, failedRecovered: leaseRecovery.failed, claimed: claimed.length, results }, { headers: { "Cache-Control": "no-store" } });
+-  } catch {
+-    return NextResponse.json({ error: "Workforce worker could not claim or process tasks." }, { status: 503, headers: { "Cache-Control": "no-store" } });
++  } catch (error) {
++    const message = error instanceof Error ? error.message : "Workforce worker could not claim or process tasks.";
++    return NextResponse.json({ error: "Workforce worker could not claim or process tasks.", detail: message.slice(0, 500) }, { status: 503, headers: { "Cache-Control": "no-store" } });
+   }
+ }
+ 
+diff --git a/components/FreeVoiceAIWidget.tsx b/components/FreeVoiceAIWidget.tsx
+index 998d38f..473c96f 100644
+--- a/components/FreeVoiceAIWidget.tsx
++++ b/components/FreeVoiceAIWidget.tsx
+@@ -6,7 +6,11 @@ import EngineeringAIWelcome from "./EngineeringAIWelcome";
+ 
+ type ChatMessage = { id: string; role: "user" | "assistant"; text: string; agent?: string };
+ type AudioInput = { mimeType: string; data: string };
+-type ElevenLabsWidgetElement = HTMLElement & { startConversation?: () => Promise<unknown> | void; endConversation?: () => Promise<unknown> | void };
++// The @elevenlabs/convai-widget-embed bundle (verified against 0.28.0 dist) exposes NO
++// startConversation/endConversation methods and NO conversationStarted/Ended events.
++// The <elevenlabs-convai> element is declarative: it renders its own orb + call UI and
++// the user starts the call with the widget's own button (a genuine mic/autoplay gesture).
++type ElevenLabsWidgetElement = HTMLElement;
+ const NEAS_ELEVENLABS_AGENT_ID = process.env.NEXT_PUBLIC_NEAS_ELEVENLABS_AGENT_ID || "agent_8601m7zrgsg4f98srgkekzq7ana9";
+ type RecognitionAlternative = { transcript: string };
+ type RecognitionResult = { isFinal: boolean; 0: RecognitionAlternative };
+@@ -110,24 +114,10 @@ export default function FreeVoiceAIWidget() {
+ 
+   useEffect(() => {
+     let cancelled = false;
+-    let widget: ElevenLabsWidgetElement | null = null;
+-    const onConversationStarted = () => {
+-      elevenLabsActiveRef.current = true;
+-      voiceEnabledRef.current = true;
+-      setVoiceEnabled(true);
+-      setListening(true);
+-      setSpeaking(false);
+-      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: true, enabled: true } }));
+-    };
+-    const onConversationEnded = () => {
+-      elevenLabsActiveRef.current = false;
+-      voiceEnabledRef.current = false;
+-      setVoiceEnabled(false);
+-      setListening(false);
+-      setSpeaking(false);
+-      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: false } }));
+-      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
+-    };
++    // NOTE: the convai-widget-embed bundle exposes no conversationStarted/Ended
++    // events and no startConversation/endConversation methods (verified in dist).
++    // The widget renders its own orb + call button; the call starts from the
++    // user's tap on the widget itself, which also satisfies mic/autoplay gesture rules.
+     const mountWidget = () => {
+       if (cancelled || !voiceMountRef.current || !customElements.get("elevenlabs-convai")) return;
+       let element = document.getElementById("neas-elevenlabs-voice") as ElevenLabsWidgetElement | null;
+@@ -137,14 +127,16 @@ export default function FreeVoiceAIWidget() {
+         element.setAttribute("agent-id", NEAS_ELEVENLABS_AGENT_ID);
+         element.setAttribute("variant", "full");
+         element.setAttribute("server-location", "global");
+-        element.style.cssText = "position:fixed;left:-10000px;bottom:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none";
++        // Keep the widget mounted for session startup, but visible and tappable.
++        // Hidden 1px/off-screen parking breaks mic gesture + autoplay and guarantees no audio round-trip.
++        element.style.cssText = "position:fixed;right:20px;bottom:20px;z-index:70;";
++        element.setAttribute("data-neas-voice-mounted", "true");
+         voiceMountRef.current.appendChild(element);
+       }
+-      widget = element;
+       elevenLabsWidgetRef.current = element;
+-      setElevenLabsReady(typeof element.startConversation === "function");
+-      element.addEventListener("conversationStarted", onConversationStarted);
+-      element.addEventListener("conversationEnded", onConversationEnded);
++      // The custom element being defined means the widget script loaded and the
++      // element upgraded; the widget then renders its own tappable call UI.
++      setElevenLabsReady(true);
+     };
+     const loadScript = (src: string, fallback?: string) => {
+       const script = document.createElement("script");
+@@ -167,8 +159,6 @@ export default function FreeVoiceAIWidget() {
+     }
+     return () => {
+       cancelled = true;
+-      widget?.removeEventListener("conversationStarted", onConversationStarted);
+-      widget?.removeEventListener("conversationEnded", onConversationEnded);
+       elevenLabsWidgetRef.current = null;
+     };
+   }, []);
+@@ -413,39 +403,26 @@ export default function FreeVoiceAIWidget() {
+   }, [listening, pending, sendMessage, startRecordingFallback]);
+   startListeningRef.current = startListening;
+ 
+-  // Start the ElevenLabs session directly from the user's gesture.
++  // Reveal the ElevenLabs widget from the user's gesture. The widget renders its
++  // own orb + call button: the voice call starts from the user's tap on the
++  // widget itself, which is the gesture microphone/autoplay policies require.
+   const startCore = useCallback(() => {
+-    if (elevenLabsActiveRef.current) {
+-      setExpanded(true);
+-      return;
+-    }
+     setExpanded(true);
+     setError("");
+     const widget = elevenLabsWidgetRef.current ?? document.getElementById("neas-elevenlabs-voice") as ElevenLabsWidgetElement | null;
+-    if (!widget || typeof widget.startConversation !== "function") {
+-      setError("NEAS voice service is still loading. Please wait a moment and tap START VOICE again.");
++    if (!widget || !elevenLabsReady) {
++      setError("NEAS voice widget is still loading. Please wait a moment and tap TAP TO START again.");
+       return;
+     }
+-    try {
+-      const started = widget.startConversation();
+-      if (started && typeof (started as Promise<unknown>).catch === "function") {
+-        void (started as Promise<unknown>).catch(() => setError("Unable to start the NEAS voice session. Check microphone permission and try again."));
+-      }
+-    } catch {
+-      setError("Unable to start the NEAS voice session. Check microphone permission and try again.");
+-    }
+-  }, []);
++    elevenLabsActiveRef.current = true;
++    voiceEnabledRef.current = true;
++    setVoiceEnabled(true);
++    widget.scrollIntoView({ behavior: "smooth", block: "nearest" });
++  }, [elevenLabsReady]);
+ 
+   const stopVoice = useCallback(() => {
+-    const widget = elevenLabsWidgetRef.current ?? document.getElementById("neas-elevenlabs-voice") as ElevenLabsWidgetElement | null;
+-    try {
+-      const ended = widget?.endConversation?.();
+-      if (ended && typeof (ended as Promise<unknown>).catch === "function") {
+-        void (ended as Promise<unknown>).catch(() => setError("The voice session could not be closed cleanly."));
+-      }
+-    } catch {
+-      setError("The voice session could not be closed cleanly.");
+-    }
++    // The widget owns its call lifecycle: end the call from the widget's own
++    // end-call button. Here we only stop our browser-voice fallbacks.
+     elevenLabsActiveRef.current = false;
+     voiceEnabledRef.current = false;
+     setVoiceEnabled(false);
+diff --git a/lib/neas-workforce-worker-config.ts b/lib/neas-workforce-worker-config.ts
+index 53c3422..b642905 100644
+--- a/lib/neas-workforce-worker-config.ts
++++ b/lib/neas-workforce-worker-config.ts
+@@ -15,7 +15,18 @@ export function getNeasWorkerConfigStatus(env: NeasWorkerEnvironment): NeasWorke
+ 
+   if (env.WORKFORCE_WORKER_ENABLED !== "true") missing.push("WORKFORCE_WORKER_ENABLED");
+   if (cronSecret.length < 32) missing.push("CRON_SECRET");
+-  if (!geminiKey) missing.push("GEMINI_API_KEY");
++  if ((env.WORKER_LLM_PROVIDER ?? "gemini").trim().toLowerCase() === "lmstudio") {
++    // Local LM Studio (or any OpenAI-compatible server). Reachable only from
++    // machines that can see the base URL — local dev, never Vercel.
++    const base = (env.LMSTUDIO_BASE_URL ?? "http://localhost:1234/v1").trim();
++    try {
++      const parsed = new URL(base);
++      if (!["http:", "https:"].includes(parsed.protocol)) missing.push("LMSTUDIO_BASE_URL");
++    } catch {
++      missing.push("LMSTUDIO_BASE_URL");
++    }
++    if (!(env.LMSTUDIO_MODEL ?? "").trim()) missing.push("LMSTUDIO_MODEL");
++  } else if (!geminiKey) missing.push("GEMINI_API_KEY");
+   if (!serviceRoleKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+ 
+   try {
+diff --git a/proxy.ts b/proxy.ts
+index 99eb2e4..345760f 100644
+--- a/proxy.ts
++++ b/proxy.ts
+@@ -1,5 +1,6 @@
+ import { NextResponse,type NextRequest } from "next/server";
+-const PUBLIC_API_PATHS=new Set(["/api/weather","/api/ai/chat","/api/admin/login","/api/admin/session","/api/admin/logout","/api/admin/workforce/tasks","/api/admin/models/probe","/api/admin/giie/sources","/api/giie/search","/api/giie/ingest","/api/internal/workforce/worker"]);
++// Canonical worker endpoint: /api/internal/workforce/worker (cron + manual). Do not probe /api/worker/* — it 404s by design.
++const PUBLIC_API_PATHS=new Set(["/api/weather","/api/ai/chat","/api/health","/api/admin/login","/api/admin/session","/api/admin/logout","/api/admin/workforce/tasks","/api/admin/models/probe","/api/admin/giie/sources","/api/giie/search","/api/giie/ingest","/api/internal/workforce/worker"]);
+ export function proxy(request:NextRequest) {
+  const {pathname}=request.nextUrl;
+  // Keep the admin UI closed until each page is connected to session authorization.
