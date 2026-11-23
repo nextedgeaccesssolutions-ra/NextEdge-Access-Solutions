@@ -1,6 +1,6 @@
 name: Store autofix and health watch
 
-# Mechanical auto-fixes (formatting only — never logic) on PRs, plus hard
+# Mechanical auto-fixes (formatting only - never logic) on PRs, plus hard
 # verification gates (tests, typecheck, build) and a scheduled production
 # probe that files/updates a single rolling issue with evidence.
 #
@@ -13,7 +13,6 @@ on:
   push:
     branches: ["main"]
   schedule:
-    # Every 30 minutes, production probe (runs on default branch).
     - cron: "*/30 * * * *"
   workflow_dispatch:
 
@@ -105,10 +104,16 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
     env:
       PROD_URL: "https://www.nextedge-access-solutions.com"
       PROBE_PRODUCT: "https://www.nextedge-access-solutions.com/store/p/s474c1ac9f7"
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Probe storefront and structured data
         id: probe
         run: |
@@ -122,19 +127,17 @@ jobs:
             if [ "${CODE}" != "200" ]; then note "FAIL GET ${path} expected=200 got=${CODE}"; fi
           done
 
-          # PR #239 regression detector: the Offer must name NEAS as seller.
           curl -sL "${PROBE_PRODUCT}" -o /tmp/product.html || true
           if grep -q '"seller"' /tmp/product.html; then
             echo "seller markup present"
           else
             note "FAIL product JSON-LD missing seller (PR #239 regression)"
           fi
-          # Brand must NOT be asserted as NEAS the manufacturer.
-          if grep -q '\"brand\":{\"@type\":\"Brand\",\"name\":\"NEAS\"}' /tmp/product.html; then
+
+          if grep -q 'brand.*NEAS' /tmp/product.html; then
             note "INFO product still asserts Brand=NEAS (see PR #239 follow-up)"
           fi
 
-          # Workforce handoff (PR #240): admin page must leave the store.
           RCODE=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}/admin/ai-workforce" || echo "000")
           echo "/admin/ai-workforce -> ${RCODE}"
           if [ "${RCODE}" != "301" ] && [ "${RCODE}" != "302" ] && [ "${RCODE}" != "307" ] && [ "${RCODE}" != "308" ]; then
@@ -155,11 +158,7 @@ jobs:
           SUMMARY: ${{ steps.probe.outputs.summary }}
         run: |
           TITLE="[auto-watch] Store production probe failures"
-          BODY="Automated store probe failed at $(date -u +%FT%T%Z).
-          - Prod: ${PROD_URL}
-          - Evidence: ${SUMMARY}
-          - Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-          Check the failing URL in Rich Results Test before touching markup."
+          BODY="Automated store probe failed at $(date -u +%FT%TZ). Evidence: ${SUMMARY}. Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. Check Rich Results Test before touching markup."
           EXISTING=$(gh issue list --state open --search "${TITLE} in:title" --json number --jq '.[0].number' || true)
           if [ -n "${EXISTING}" ]; then
             gh issue comment "${EXISTING}" --body "${BODY}"
