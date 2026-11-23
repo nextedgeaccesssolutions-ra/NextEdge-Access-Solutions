@@ -1,16 +1,14 @@
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
-import AIWorkforceClient from "./AIWorkforceClient";
-import WorkforceAuthorityPanel from "./WorkforceAuthorityPanel";
-import NEASControlPlane from "./NEASControlPlane";
-import NEASOrchestrationCore from "./NEASOrchestrationCore";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "NEAS AI Workforce — Admin", robots: { index: false, follow: false } };
+export const metadata = { title: "NEAS AI Workforce \u2014 Admin", robots: { index: false, follow: false } } };
 
+// The workforce console moved to the dedicated NEAS APEX app. This route only
+// verifies the admin session, then hands off \u2014 no workforce UI lives here.
 export default async function AIWorkforcePage() {
   const user = await getUser();
   if (!user) redirect("/admin/login");
-  if (user.role !== "admin") return <div className="wrap" style={{padding:50}}><h1>Admins only</h1><p className="muted">Your account does not have AI Workforce access.</p></div>;
-  return <div className="wrap" style={{maxWidth:1600,padding:"20px 14px 50px"}}><NEASOrchestrationCore /><NEASControlPlane /><WorkforceAuthorityPanel /><AIWorkforceClient /></div>;
+  if (user.role !== "admin") redirect("/admin/login");
+  redirect("https://neas-apex.vercel.app/");
 }
