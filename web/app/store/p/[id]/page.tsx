@@ -24,7 +24,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const p = await find((await params).id);
   if (!p) notFound();
   const ld = { "@context": "https://schema.org", "@type": "Product", name: p.name, sku: p.code || undefined, category: p.category, image: abs(p.image),
-    brand: { "@type": "Brand", name: "NEAS" }, offers: { "@type": "Offer", priceCurrency: "PHP", price: p.price, availability: "https://schema.org/InStock", url: `${ORIGIN}/store/p/${p.id}` } };
+    offers: { "@type": "Offer", priceCurrency: "PHP", price: p.price, availability: "https://schema.org/InStock", url: `${ORIGIN}/store/p/${p.id}`, seller: { "@type": "Organization", name: "NextEdge Access Solutions (NEAS) OPC", url: ORIGIN } } };
   return <div className="wrap" style={{ padding: "36px 20px", maxWidth: 980 }}>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld).replace(/</g, "\\u003c") }} />
     <a href="/store" className="muted" style={{ fontSize: 14 }}>← Back to Online Store</a>
