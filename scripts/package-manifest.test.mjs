@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -30,23 +31,18 @@ test("root pnpm lockfile remains complete and synchronized with runtime dependen
   assert.doesNotMatch(lockfile, /^\[(?:Reading|executed on device:)/m);
 });
 
-test("root TypeScript check uses repository-local application sources and excludes unrelated skill tooling", () => {
+test("root TypeScript check covers the application sources and no stray upload tooling", () => {
   const config = JSON.parse(readRootFile("tsconfig.json"));
 
   assert.equal(config.extends, undefined);
   assert.equal(config.compilerOptions?.noEmit, true);
-  assert.ok(config.include?.includes("client/src/**/*.tsx"));
-  assert.ok(config.include?.includes("server/**/*.ts"));
-  assert.ok(config.include?.includes("shared/**/*.ts"));
+  for (const glob of ["client/src/**/*", "server/**/*", "shared/**/*"]) {
+    assert.ok(config.include?.includes(glob), `tsconfig include is missing ${glob}`);
+  }
 
-  for (const file of [
-    "vitest.config.ts",
-    "generate-registry.ts",
-    "scan-skills.ts",
-    "skill.ts",
-    "utils.ts",
-    "validate-skills.ts",
-  ]) {
-    assert.ok(config.exclude?.includes(file));
+  // These came from unrelated projects uploaded on 18 Nov 2026 and were removed;
+  // they must not reappear at the repository root.
+  for (const file of ["generate-registry.ts", "scan-skills.ts", "skill.ts", "utils.ts", "validate-skills.ts", "AGENT_GUIDE.md"]) {
+    assert.equal(existsSync(new URL(`../${file}`, import.meta.url)), false, `${file} should not be in the repo root`);
   }
 });
