@@ -20,16 +20,15 @@
       "node",
       "vite/client"
     ],
-    "baseUrl": ".",
     "paths": {
       "@/*": [
-        "client/src/*"
+        "./client/src/*"
       ],
       "@shared/*": [
-        "shared/*"
+        "./shared/*"
       ],
       "@assets/*": [
-        "attached_assets/*"
+        "./attached_assets/*"
       ]
     },
     "allowImportingTsExtensions": true,
