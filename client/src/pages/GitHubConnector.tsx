@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, ExternalLink, GitBranch, Github, LockKeyhole, RefreshCw, ShieldCheck, Star } from "lucide-react";
+import { ArrowLeft, ExternalLink, GitBranch, LockKeyhole, RefreshCw, ShieldCheck, Star } from "lucide-react";
 import { Link } from "wouter";
 import { githubCapabilities, githubSnapshot, formatGitHubDate } from "@/data/githubSnapshot";
 
@@ -17,7 +17,7 @@ export default function GitHubConnector() {
             <ArrowLeft size={17} /> Back to NEAS
           </Link>
           <div className="hidden items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-[#6b9631] sm:flex">
-            <Github size={17} /> Connector lab
+            <GitBranch size={17} /> Connector lab
           </div>
         </div>
       </header>
@@ -43,7 +43,7 @@ export default function GitHubConnector() {
           <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-[#dce7e4] md:col-span-2">
             <div className="flex items-start justify-between gap-4">
               <div><p className="text-xs font-bold uppercase tracking-[.18em] text-[#6b9631]">Account snapshot</p><h2 className="mt-2 text-2xl font-semibold">{account.name}</h2></div>
-              <Github className="text-[#6b9631]" size={28} />
+              <GitBranch className="text-[#6b9631]" size={28} />
             </div>
             <p className="mt-2 font-mono text-sm text-[#667b80]">@{account.login}</p>
             <div className="mt-7 grid grid-cols-3 gap-3">
