@@ -22,6 +22,13 @@ function logMissingConfig(where: string, clientId?: string, clientSecret?: strin
   if (missing.length) console.warn(`[admin-google:${where}] not configured, missing: ${missing.join(", ")}`);
 }
 
+/** Logs why verification failed (never tokens or secrets), so the generic browser
+ *  message can be traced in the deployment's runtime logs. */
+function verifyFail(req: Request, detail: string) {
+  console.warn(`[admin-google:callback] verification failed: ${detail}`);
+  return fail(req, "verification");
+}
+
 function fail(req: Request, reason = "denied") {
   return NextResponse.redirect(new URL(`/admin/login?google_error=${encodeURIComponent(reason)}`, req.url));
 }
@@ -45,8 +52,10 @@ export async function GET(req: Request) {
     return fail(req, "expired");
   }
 
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  // Trimmed for the same reason as the start route: a stray newline breaks the
+  // token exchange (invalid_client) and the ID-token audience check.
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
   const allowlist = new Set((process.env.ADMIN_GOOGLE_EMAILS || "").split(",").map((v) => v.trim().toLowerCase()).filter(Boolean));
   if (!clientId || !clientSecret || allowlist.size === 0) {
     logMissingConfig("callback", clientId, clientSecret, allowlist.size);
@@ -69,11 +78,14 @@ export async function GET(req: Request) {
       }),
       cache: "no-store",
     });
-    const tokens = await tokenResponse.json();
-    if (!tokenResponse.ok || typeof tokens.id_token !== "string") return fail(req, "verification");
+    const tokens = await tokenResponse.json().catch(() => ({}));
+    if (!tokenResponse.ok || typeof tokens.id_token !== "string") {
+      // Google's error code (e.g. invalid_client, redirect_uri_mismatch, invalid_grant) is safe to log.
+      return verifyFail(req, `token exchange ${tokenResponse.status} ${tokens.error ?? "no id_token"}${tokens.error_description ? ` (${tokens.error_description})` : ""}; redirect_uri=${redirectUri}`);
+    }
     idToken = tokens.id_token;
-  } catch {
-    return fail(req, "verification");
+  } catch (err) {
+    return verifyFail(req, `token request threw: ${(err as Error).message}`);
   }
 
   let email = "";
@@ -81,19 +93,26 @@ export async function GET(req: Request) {
     const { payload } = await jwtVerify(idToken, GOOGLE_KEYS, {
       issuer: ["https://accounts.google.com", "accounts.google.com"],
       audience: clientId,
+      clockTolerance: 60,
     });
-    if (payload.nonce !== saved.nonce || payload.email_verified !== true || typeof payload.email !== "string") {
-      return fail(req, "verification");
-    }
+    if (payload.nonce !== saved.nonce) return verifyFail(req, "nonce mismatch");
+    if (payload.email_verified !== true) return verifyFail(req, "Google account email is not verified");
+    if (typeof payload.email !== "string") return verifyFail(req, "ID token has no email");
     email = payload.email.trim().toLowerCase();
-  } catch {
-    return fail(req, "verification");
+  } catch (err) {
+    return verifyFail(req, `ID token rejected: ${(err as Error).message}`);
   }
 
-  if (!allowlist.has(email)) return fail(req, "denied");
+  if (!allowlist.has(email)) {
+    console.warn(`[admin-google:callback] ${email} is not in ADMIN_GOOGLE_EMAILS`);
+    return fail(req, "denied");
+  }
 
   const user = (await sql`select id, role from users where lower(email) = ${email} limit 1`)[0];
-  if (!user || user.role !== "admin") return fail(req, "denied");
+  if (!user || user.role !== "admin") {
+    console.warn(`[admin-google:callback] ${email} has no admin user record (role: ${user?.role ?? "none"})`);
+    return fail(req, "denied");
+  }
 
   await createSession(Number(user.id));
   return NextResponse.redirect(new URL("/admin", req.url));

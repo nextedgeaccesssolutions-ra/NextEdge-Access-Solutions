@@ -30,8 +30,10 @@ export async function GET(req: Request) {
   }
 
   await loadConfig().catch(() => {});
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  // Trim: values pasted into Vercel often carry a trailing newline, which Google
+  // tolerates on the consent screen but not in the token exchange or the ID-token audience.
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
   const allowed = (process.env.ADMIN_GOOGLE_EMAILS || "").split(",").map((v) => v.trim().toLowerCase()).filter(Boolean);
   if (!clientId || !clientSecret || allowed.length === 0) {
     logMissingConfig("start", clientId, clientSecret, allowed.length);
