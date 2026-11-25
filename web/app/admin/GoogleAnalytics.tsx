@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type Item = { label: string; value: number };
 type SearchItem = { label: string; clicks: number; impressions: number; ctr: number; position: number };
