@@ -234,6 +234,7 @@ export type Ga4Summary = {
     avgEngagementSec: number;
     conversions: number;
   };
+  comparison: { users: number; sessions: number; pageviews: number };
   daily: { date: string; users: number; sessions: number }[];
   topPages: { label: string; value: number }[];
   sources: { label: string; value: number }[];
@@ -339,6 +340,15 @@ export async function ga4Summary(
     top("deviceCategory", "sessions", 5),
   ]);
   const t = totals.rows?.[0]?.metricValues ?? [];
+  const previous = await call(
+    cfg, token, "runReport",
+    {
+      dateRanges: [{ startDate: `${days * 2}daysAgo`, endDate: `${days + 1}daysAgo` }],
+      metrics: [{ name: "totalUsers" }, { name: "sessions" }, { name: "screenPageViews" }],
+    },
+    fetcher
+  );
+  const p = previous.rows?.[0]?.metricValues ?? [];
   const users = num(t[0]?.value);
   return {
     realtime: {
@@ -355,6 +365,11 @@ export async function ga4Summary(
       engagementRate: Math.round(num(t[4]?.value) * 1000) / 10,
       avgEngagementSec: users ? Math.round(num(t[5]?.value) / users) : 0,
       conversions: num(t[6]?.value),
+    },
+    comparison: {
+      users: num(p[0]?.value),
+      sessions: num(p[1]?.value),
+      pageviews: num(p[2]?.value),
     },
     daily: (daily.rows ?? []).map(r => {
       const d = r.dimensionValues?.[0]?.value ?? "";
