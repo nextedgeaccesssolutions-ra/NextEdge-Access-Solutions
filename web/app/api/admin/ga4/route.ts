@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   const cfg = ga4Config();
   if (!cfg)
     return bad(
-      "Google Analytics is not connected. Set GA4_PROPERTY_ID, GA4_CLIENT_EMAIL and GA4_PRIVATE_KEY in the server environment.",
+      "Google Analytics is not connected. Set GA4_PROPERTY_ID, GA4_CLIENT_EMAIL and either GA4_WIF_AUDIENCE (keyless) or GA4_PRIVATE_KEY in the server environment.",
       503
     );
   const requested = Number(new URL(req.url).searchParams.get("days"));
@@ -16,7 +16,14 @@ export async function GET(req: Request) {
   try {
     return ok({
       connected: true,
-      ...(await ga4Summary(cfg, days)),
+      ...(await ga4Summary(
+        cfg,
+        days,
+        fetch,
+        req.headers.get("x-vercel-oidc-token") ||
+          process.env.VERCEL_OIDC_TOKEN ||
+          undefined
+      )),
       checkedAt: new Date().toISOString(),
     });
   } catch (error) {

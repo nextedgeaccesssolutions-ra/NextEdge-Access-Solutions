@@ -84,4 +84,41 @@ describe("ga4Summary", () => {
         : json({}, 403)) as typeof fetch;
     await expect(ga4Summary(cfg, 28, fetcher)).rejects.toBeInstanceOf(Ga4Error);
   });
+
+  it("uses keyless workload identity federation when no private key is set", async () => {
+    const aud =
+      "//iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/vercel/providers/vercel";
+    const cfg = ga4Config({
+      GA4_PROPERTY_ID: "412345678",
+      GA4_CLIENT_EMAIL: "wif@neas-site.iam.gserviceaccount.com",
+      GA4_WIF_AUDIENCE: aud,
+    })!;
+    expect(cfg.wifAudience).toBe(aud);
+    const seen: string[] = [];
+    const fetcher = (async (url: string, init?: RequestInit) => {
+      const host = new URL(url).host;
+      seen.push(host);
+      if (host === "sts.googleapis.com") {
+        const b = new URLSearchParams(String(init?.body));
+        expect(b.get("subject_token")).toBe("vercel-oidc");
+        expect(b.get("audience")).toBe(aud);
+        return json({ access_token: "federated" });
+      }
+      if (host === "iamcredentials.googleapis.com")
+        return json({
+          accessToken: "sa-token",
+          expireTime: new Date(Date.now() + 3600e3).toISOString(),
+        });
+      expect((init?.headers as Record<string, string>).authorization).toBe(
+        "Bearer sa-token"
+      );
+      return json({ rows: [] });
+    }) as typeof fetch;
+    const s = await ga4Summary(cfg, 7, fetcher, "vercel-oidc");
+    expect(s.period).toBe("Last 7 days");
+    expect(seen.slice(0, 2)).toEqual([
+      "sts.googleapis.com",
+      "iamcredentials.googleapis.com",
+    ]);
+  });
 });

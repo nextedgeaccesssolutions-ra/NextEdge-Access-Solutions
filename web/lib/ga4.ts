@@ -10,10 +10,13 @@
  */
 import { SignJWT, importPKCS8 } from "jose";
 
+/** Either a service-account private key, or keyless Workload Identity Federation
+ *  (Vercel OIDC token exchanged at Google STS, then service-account impersonation). */
 export type Ga4Config = {
   propertyId: string;
   clientEmail: string;
-  privateKey: string;
+  privateKey?: string;
+  wifAudience?: string;
 };
 
 export function ga4Config(
@@ -27,15 +30,82 @@ export function ga4Config(
   if (!/^\d{5,15}$/.test(propertyId)) return null;
   if (!/^[^\s@]+@[^\s@]+\.iam\.gserviceaccount\.com$/.test(clientEmail))
     return null;
-  if (!privateKey.includes("BEGIN PRIVATE KEY")) return null;
-  return { propertyId, clientEmail, privateKey };
+  const wifAudience = (env.GA4_WIF_AUDIENCE || "").trim();
+  const hasKey = privateKey.includes("BEGIN PRIVATE KEY");
+  const hasWif =
+    /^\/\/iam\.googleapis\.com\/projects\/\d+\/locations\/global\/workloadIdentityPools\/[a-z0-9-]+\/providers\/[a-z0-9-]+$/.test(
+      wifAudience
+    );
+  if (!hasKey && !hasWif) return null;
+  return hasKey
+    ? { propertyId, clientEmail, privateKey }
+    : { propertyId, clientEmail, wifAudience };
 }
 
 let cachedToken: { key: string; token: string; expires: number } | null = null;
 
+async function federatedToken(
+  cfg: Ga4Config,
+  oidcToken: string,
+  fetcher: typeof fetch
+): Promise<{ token: string; expires: number }> {
+  const sts = await fetcher("https://sts.googleapis.com/v1/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+      audience: cfg.wifAudience ?? "",
+      scope: "https://www.googleapis.com/auth/cloud-platform",
+      requested_token_type: "urn:ietf:params:oauth:token-type:access_token",
+      subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
+      subject_token: oidcToken,
+    }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(10000),
+  });
+  const s = (await sts.json().catch(() => ({}))) as { access_token?: string };
+  if (!sts.ok || !s.access_token)
+    throw new Ga4Error(
+      "auth",
+      "Google did not accept the Vercel identity. Check the workload identity pool and provider."
+    );
+  const res = await fetcher(
+    `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(cfg.clientEmail)}:generateAccessToken`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${s.access_token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        scope: ["https://www.googleapis.com/auth/analytics.readonly"],
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    }
+  );
+  const j = (await res.json().catch(() => ({}))) as {
+    accessToken?: string;
+    expireTime?: string;
+  };
+  if (!res.ok || !j.accessToken)
+    throw new Ga4Error(
+      "auth",
+      "Vercel may not impersonate the GA4 service account. Grant it Workload Identity User."
+    );
+  const exp = Date.parse(j.expireTime ?? "");
+  return {
+    token: j.accessToken,
+    expires: Number.isFinite(exp)
+      ? Math.floor(exp / 1000)
+      : Math.floor(Date.now() / 1000) + 3000,
+  };
+}
+
 async function accessToken(
   cfg: Ga4Config,
-  fetcher: typeof fetch
+  fetcher: typeof fetch,
+  oidcToken?: string
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   if (
@@ -44,6 +114,16 @@ async function accessToken(
     cachedToken.expires - 60 > now
   )
     return cachedToken.token;
+  if (!cfg.privateKey) {
+    if (!oidcToken)
+      throw new Ga4Error(
+        "auth",
+        "No Vercel OIDC token available. Enable OIDC Federation in the Vercel project settings."
+      );
+    const t = await federatedToken(cfg, oidcToken, fetcher);
+    cachedToken = { key: cfg.clientEmail, ...t };
+    return t.token;
+  }
   const key = await importPKCS8(cfg.privateKey, "RS256");
   const assertion = await new SignJWT({
     scope: "https://www.googleapis.com/auth/analytics.readonly",
@@ -164,9 +244,10 @@ export type Ga4Summary = {
 export async function ga4Summary(
   cfg: Ga4Config,
   days = 28,
-  fetcher: typeof fetch = fetch
+  fetcher: typeof fetch = fetch,
+  oidcToken?: string
 ): Promise<Ga4Summary> {
-  const token = await accessToken(cfg, fetcher);
+  const token = await accessToken(cfg, fetcher, oidcToken);
   const range = [{ startDate: `${days}daysAgo`, endDate: "today" }];
   const top = (dimension: string, metric = "sessions", limit = 10) =>
     call(
