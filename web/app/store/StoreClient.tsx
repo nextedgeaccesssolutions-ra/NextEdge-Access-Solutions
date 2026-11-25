@@ -6,6 +6,10 @@ import ShareBar from "@/components/ShareBar";
 type P = { id: string; category: string; code: string; name: string; price: number; image?: string; description?: string; features?: string; specs_url?: string };
 type Bank = { accountName: string; accountNumber: string; swift: string; bank: string };
 const peso = (n: number) => "₱" + Math.round(n).toLocaleString("en-PH");
+function trackGa4Event(name: string, params: Record<string, string | number>) {
+  const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
+  if (typeof gtag === "function") gtag("event", name, params);
+}
 
 function BankBox({ bank }: { bank: Bank }) {
   const [copied, setCopied] = useState(false);
@@ -35,7 +39,13 @@ export default function StoreClient({ products, user, bank, linkable = false }: 
   const count = lines.reduce((s, l) => s + l.n, 0), total = lines.reduce((s, l) => s + l.n * l.p.price, 0);
   const add = (id: string, n: number) => setCart((c) => ({ ...c, [id]: Math.min(999, (c[id] || 0) + n) }));
   const setLine = (id: string, n: number) => setCart((c) => { const x = { ...c }; if (n <= 0) delete x[id]; else x[id] = Math.min(999, n); return x; });
-  const checkout = (persist?: Record<string, number>) => { if (!user) { try { localStorage.setItem("neasCart", JSON.stringify(persist ?? cart)); } catch {} location.href = "/login?next=/store"; return; } setErr(""); setModal({ kind: "checkout" }); };
+  const checkout = (persist?: Record<string, number>) => {
+    const selected = persist ?? cart;
+    const value = Object.entries(selected).reduce((sum, [id, quantity]) => sum + (byId.get(id)?.price ?? 0) * quantity, 0);
+    trackGa4Event("begin_checkout", { currency: "PHP", value, items_count: Object.values(selected).reduce((sum, quantity) => sum + quantity, 0) });
+    if (!user) { try { localStorage.setItem("neasCart", JSON.stringify(selected)); } catch {} location.href = "/login?next=/store"; return; }
+    setErr(""); setModal({ kind: "checkout" });
+  };
 
   async function placeOrder(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setErr(""); setBusy(true);
@@ -56,6 +66,8 @@ export default function StoreClient({ products, user, bank, linkable = false }: 
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) { location.href = "/login?next=/store"; return; }
       if (!res.ok) { setErr(data.error || data.message || "Order could not be placed."); return; }
+      // This workflow records an order with bank-transfer proof; it is not yet a confirmed payment.
+      trackGa4Event("order_submitted", { transaction_id: String(data.order.reference || ""), currency: "PHP", value: Number(data.order.total || 0) });
       setCart({});
       setModal({ kind: "done", ref: data.order.reference, total: Number(data.order.total) });
     } catch {
@@ -79,7 +91,7 @@ export default function StoreClient({ products, user, bank, linkable = false }: 
         <div className="sp-code">{p.code && "Code: " + p.code}</div>
         <div className="sp-price">{peso(p.price)}</div>
         <div className="qty"><button type="button" className="minus" aria-label="Less" onClick={() => setQty((x) => ({ ...x, [p.id]: Math.max(1, n - 1) }))}>−</button><span>{n}</span><button type="button" className="plus" aria-label="More" onClick={() => setQty((x) => ({ ...x, [p.id]: Math.min(999, n + 1) }))}>+</button>{cart[p.id] ? <em>{cart[p.id]} in cart</em> : null}</div>
-        <div className="btns"><button type="button" className="buy" onClick={() => { setCart({ [p.id]: n }); setQty((x) => ({ ...x, [p.id]: 1 })); checkout({ [p.id]: n }); }}>BUY NOW</button><button type="button" className="add" onClick={() => { add(p.id, n); setQty((x) => ({ ...x, [p.id]: 1 })); }}>ADD TO CART</button></div>
+        <div className="btns"><button type="button" className="buy" onClick={() => { setCart({ [p.id]: n }); setQty((x) => ({ ...x, [p.id]: 1 })); checkout({ [p.id]: n }); }}>BUY NOW</button><button type="button" className="add" onClick={() => { add(p.id, n); trackGa4Event("add_to_cart", { currency: "PHP", value: p.price * n, items_count: n }); setQty((x) => ({ ...x, [p.id]: 1 })); }}>ADD TO CART</button></div>
       </article>; })}
     </div>
     {count > 0 && <div className="cartbar"><div>🛒 <b>{count}</b> item(s) · <b>{peso(total)}</b></div><div style={{ display: "flex", gap: 8 }}><button type="button" className="ghost" onClick={() => setCart({})}>Clear</button><button type="button" className="go" onClick={() => checkout()}>{user ? "Checkout" : "Log in to checkout"}</button></div></div>}
