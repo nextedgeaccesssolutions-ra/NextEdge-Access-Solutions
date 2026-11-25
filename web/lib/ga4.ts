@@ -32,9 +32,14 @@ export function ga4Config(
     return null;
   const wifAudience = (env.GA4_WIF_AUDIENCE || "").trim();
   const hasKey = privateKey.includes("BEGIN PRIVATE KEY");
-  const hasWif = /^\/\/iam\.googleapis\.com\/projects\/\d+\/locations\/global\/workloadIdentityPools\/[a-z0-9-]+\/providers\/[a-z0-9-]+$/.test(wifAudience);
+  const hasWif =
+    /^\/\/iam\.googleapis\.com\/projects\/\d+\/locations\/global\/workloadIdentityPools\/[a-z0-9-]+\/providers\/[a-z0-9-]+$/.test(
+      wifAudience
+    );
   if (!hasKey && !hasWif) return null;
-  return hasKey ? { propertyId, clientEmail, privateKey } : { propertyId, clientEmail, wifAudience };
+  return hasKey
+    ? { propertyId, clientEmail, privateKey }
+    : { propertyId, clientEmail, wifAudience };
 }
 
 let cachedToken: { key: string; token: string; expires: number } | null = null;

@@ -16,7 +16,14 @@ export async function GET(req: Request) {
   try {
     return ok({
       connected: true,
-      ...(await ga4Summary(cfg, days, fetch, req.headers.get("x-vercel-oidc-token") || process.env.VERCEL_OIDC_TOKEN || undefined)),
+      ...(await ga4Summary(
+        cfg,
+        days,
+        fetch,
+        req.headers.get("x-vercel-oidc-token") ||
+          process.env.VERCEL_OIDC_TOKEN ||
+          undefined
+      )),
       checkedAt: new Date().toISOString(),
     });
   } catch (error) {
