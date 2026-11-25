@@ -5,6 +5,7 @@ import AdminClient from "./AdminClient";
 import SettingsPanel from "./SettingsPanel";
 import SheetSync from "./SheetSync";
 import RybbitAnalytics from "./RybbitAnalytics";
+import GoogleAnalytics from "./GoogleAnalytics";
 import AdminShell from "./AdminShell";
 import { getSetting, getCategoryMarkup, DEFAULT_SEO, DEFAULT_SOCIAL, DEFAULT_BUSINESS, type Seo, type Social, type Business } from "@/lib/settings";
 export const dynamic = "force-dynamic";
@@ -30,6 +31,6 @@ export default async function Admin() {
     orders: AC("orders"), products: AC("products"), customers: AC("customers"),
     sheet: <SheetSync initial={sheetCfg} />,
     website: <SettingsPanel seo={seo} social={social} business={business} sitePhotos={sitePhotos} />,
-    analytics: <RybbitAnalytics />,
+    analytics: <><GoogleAnalytics /><RybbitAnalytics /></>,
   }} />;
 }
