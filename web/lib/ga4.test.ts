@@ -61,6 +61,7 @@ describe("ga4Summary", () => {
     const s = await ga4Summary(cfg, 28, fetcher);
     expect(s.realtime.activeUsers).toBe(3);
     expect(s.realtime.countries[0]).toEqual({ label: "Philippines", value: 3 });
+    expect(s.comparison).toEqual({ users: 100, sessions: 60, pageviews: 150 });
     expect(s.totals).toMatchObject({
       users: 100,
       sessions: 150,
