@@ -133,12 +133,10 @@ const num = (v?: string) => {
   return Number.isFinite(n) ? n : 0;
 };
 const dims = (r: Report, limit = 10) =>
-  (r.rows ?? [])
-    .slice(0, limit)
-    .map(row => ({
-      label: row.dimensionValues?.[0]?.value || "(not set)",
-      value: num(row.metricValues?.[0]?.value),
-    }));
+  (r.rows ?? []).slice(0, limit).map(row => ({
+    label: row.dimensionValues?.[0]?.value || "(not set)",
+    value: num(row.metricValues?.[0]?.value),
+  }));
 
 export type Ga4Summary = {
   realtime: {
