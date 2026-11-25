@@ -78,7 +78,7 @@ async function federatedToken(
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        scope: ["https://www.googleapis.com/auth/analytics.readonly"],
+        scope: ["https://www.googleapis.com/auth/analytics.readonly", "https://www.googleapis.com/auth/webmasters.readonly"],
       }),
       cache: "no-store",
       signal: AbortSignal.timeout(10000),
@@ -126,7 +126,7 @@ async function accessToken(
   }
   const key = await importPKCS8(cfg.privateKey, "RS256");
   const assertion = await new SignJWT({
-    scope: "https://www.googleapis.com/auth/analytics.readonly",
+    scope: "https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly",
   })
     .setProtectedHeader({ alg: "RS256", typ: "JWT" })
     .setIssuer(cfg.clientEmail)
@@ -371,5 +371,75 @@ export async function ga4Summary(
     sources: dims(sources),
     countries: dims(countries),
     devices: dims(devices, 5),
+  };
+}
+
+
+export type SearchConsoleSummary = {
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+  queries: { label: string; clicks: number; impressions: number; ctr: number; position: number }[];
+  pages: { label: string; clicks: number; impressions: number; ctr: number; position: number }[];
+  daily: { date: string; clicks: number; impressions: number }[];
+};
+
+export async function searchConsoleSummary(
+  cfg: Ga4Config,
+  siteUrl: string,
+  days = 28,
+  fetcher: typeof fetch = fetch,
+  oidcToken?: string
+): Promise<SearchConsoleSummary> {
+  const token = await accessToken(cfg, fetcher, oidcToken);
+  const end = new Date();
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - days);
+  const previousEnd = new Date(start);
+  previousEnd.setUTCDate(previousEnd.getUTCDate() - 1);
+  const previousStart = new Date(previousEnd);
+  previousStart.setUTCDate(previousStart.getUTCDate() - days + 1);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const endpoint = `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`;
+  const query = async (from: Date, to: Date, dimensions: string[] = []) => {
+    const res = await fetcher(endpoint, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ startDate: iso(from), endDate: iso(to), dimensions, rowLimit: 1000 }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(15000),
+    });
+    if (res.status === 403) throw new Ga4Error("permission", "The service account needs access to this Search Console property and the Search Console API must be enabled.");
+    if (res.status === 404) throw new Ga4Error("api", "Search Console property not found. Check GSC_SITE_URL and the exact verified property URL.");
+    if (!res.ok) throw new Ga4Error("api", `Search Console returned HTTP ${res.status}.`);
+    return (await res.json()) as { rows?: { keys?: string[]; clicks?: number; impressions?: number; ctr?: number; position?: number }[] };
+  };
+  const [totals, queries, pages, daily] = await Promise.all([
+    query(start, end),
+    query(start, end, ["query"]),
+    query(start, end, ["page"]),
+    query(start, end, ["date"]),
+  ]);
+  const first = totals.rows?.[0];
+  const map = (rows: NonNullable<typeof queries.rows>) => rows.slice(0, 10).map(r => ({
+    label: r.keys?.[0] || "(not set)",
+    clicks: Number(r.clicks || 0),
+    impressions: Number(r.impressions || 0),
+    ctr: Number(r.ctr || 0) * 100,
+    position: Number(r.position || 0),
+  }));
+  return {
+    clicks: Number(first?.clicks || 0),
+    impressions: Number(first?.impressions || 0),
+    ctr: Number(first?.ctr || 0) * 100,
+    position: Number(first?.position || 0),
+    queries: map(queries.rows || []),
+    pages: map(pages.rows || []),
+    daily: (daily.rows || []).map(r => ({
+      date: r.keys?.[0] || "",
+      clicks: Number(r.clicks || 0),
+      impressions: Number(r.impressions || 0),
+    })),
   };
 }
