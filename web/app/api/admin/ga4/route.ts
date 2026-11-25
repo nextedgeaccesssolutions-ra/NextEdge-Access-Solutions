@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/admin";
 import { bad, ok } from "@/lib/http";
-import { ga4Config, ga4Summary, Ga4Error } from "@/lib/ga4";
+import { ga4Config, ga4Summary, searchConsoleSummary, Ga4Error } from "@/lib/ga4";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
@@ -14,16 +14,27 @@ export async function GET(req: Request) {
   const requested = Number(new URL(req.url).searchParams.get("days"));
   const days = [7, 28, 90].includes(requested) ? requested : 28;
   try {
+    const oidc = req.headers.get("x-vercel-oidc-token") || process.env.VERCEL_OIDC_TOKEN || undefined;
+    const analytics = await ga4Summary(cfg, days, fetch, oidc);
+    const siteUrl = (process.env.GSC_SITE_URL || "").trim();
+    let searchConsole: Record<string, unknown> = { configured: false };
+    if (siteUrl) {
+      try {
+        searchConsole = {
+          configured: true,
+          ...(await searchConsoleSummary(cfg, siteUrl, days, fetch, oidc)),
+        };
+      } catch (error) {
+        searchConsole = {
+          configured: true,
+          error: error instanceof Error ? error.message : "Search Console data unavailable.",
+        };
+      }
+    }
     return ok({
       connected: true,
-      ...(await ga4Summary(
-        cfg,
-        days,
-        fetch,
-        req.headers.get("x-vercel-oidc-token") ||
-          process.env.VERCEL_OIDC_TOKEN ||
-          undefined
-      )),
+      ...analytics,
+      searchConsole,
       checkedAt: new Date().toISOString(),
     });
   } catch (error) {
