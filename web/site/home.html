@@ -1057,6 +1057,11 @@ async function submitForm(e){
     const data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data.error||data.message||'Your enquiry could not be sent. Please try again.');
     form.reset();
+    // Record only successful lead submissions; never send personal form fields to analytics.
+    if(typeof window.gtag==="function"){
+      window.gtag("event","generate_lead",{form_name:"website_contact",lead_type:"contact_enquiry"});
+      window.gtag("event","contact_submission",{form_name:"website_contact"});
+    }
     status.textContent=data.message||'Thank you. Your enquiry has been sent to NEAS.';
     status.classList.add('success');
     status.style.color='#16a34a';
