@@ -4,7 +4,6 @@ import { sql, listProducts, getMarkup } from "@/lib/db";
 import AdminClient from "./AdminClient";
 import SettingsPanel from "./SettingsPanel";
 import SheetSync from "./SheetSync";
-import RybbitAnalytics from "./RybbitAnalytics";
 import GoogleAnalytics from "./GoogleAnalytics";
 import AdminShell from "./AdminShell";
 import {
@@ -124,12 +123,7 @@ export default async function Admin() {
             sitePhotos={sitePhotos}
           />
         ),
-        analytics: (
-          <>
-            <GoogleAnalytics />
-            <RybbitAnalytics />
-          </>
-        ),
+        analytics: <GoogleAnalytics />,
       }}
     />
   );
