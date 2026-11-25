@@ -39,7 +39,7 @@ describe("ga4Summary", () => {
   it("maps realtime and report rows into the dashboard shape", async () => {
     const cfg = ga4Config(env)!;
     const fetcher = (async (url: string, init?: RequestInit) => {
-      if (url.includes("oauth2.googleapis.com"))
+      if (new URL(url).host === "oauth2.googleapis.com")
         return json({ access_token: "tok", expires_in: 3600 });
       const body = JSON.parse(String(init?.body));
       if (url.endsWith(":runRealtimeReport")) {
@@ -79,7 +79,7 @@ describe("ga4Summary", () => {
       GA4_CLIENT_EMAIL: "other@neas-site.iam.gserviceaccount.com",
     })!;
     const fetcher = (async (url: string) =>
-      url.includes("oauth2")
+      new URL(url).host === "oauth2.googleapis.com"
         ? json({ access_token: "tok" })
         : json({}, 403)) as typeof fetch;
     await expect(ga4Summary(cfg, 28, fetcher)).rejects.toBeInstanceOf(Ga4Error);
