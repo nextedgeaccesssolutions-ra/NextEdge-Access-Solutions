@@ -78,7 +78,10 @@ async function federatedToken(
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        scope: ["https://www.googleapis.com/auth/analytics.readonly", "https://www.googleapis.com/auth/webmasters.readonly"],
+        scope: [
+          "https://www.googleapis.com/auth/analytics.readonly",
+          "https://www.googleapis.com/auth/webmasters.readonly",
+        ],
       }),
       cache: "no-store",
       signal: AbortSignal.timeout(10000),
@@ -126,7 +129,8 @@ async function accessToken(
   }
   const key = await importPKCS8(cfg.privateKey, "RS256");
   const assertion = await new SignJWT({
-    scope: "https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly",
+    scope:
+      "https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly",
   })
     .setProtectedHeader({ alg: "RS256", typ: "JWT" })
     .setIssuer(cfg.clientEmail)
@@ -341,10 +345,18 @@ export async function ga4Summary(
   ]);
   const t = totals.rows?.[0]?.metricValues ?? [];
   const previous = await call(
-    cfg, token, "runReport",
+    cfg,
+    token,
+    "runReport",
     {
-      dateRanges: [{ startDate: `${days * 2}daysAgo`, endDate: `${days + 1}daysAgo` }],
-      metrics: [{ name: "totalUsers" }, { name: "sessions" }, { name: "screenPageViews" }],
+      dateRanges: [
+        { startDate: `${days * 2}daysAgo`, endDate: `${days + 1}daysAgo` },
+      ],
+      metrics: [
+        { name: "totalUsers" },
+        { name: "sessions" },
+        { name: "screenPageViews" },
+      ],
     },
     fetcher
   );
@@ -389,14 +401,25 @@ export async function ga4Summary(
   };
 }
 
-
 export type SearchConsoleSummary = {
   clicks: number;
   impressions: number;
   ctr: number;
   position: number;
-  queries: { label: string; clicks: number; impressions: number; ctr: number; position: number }[];
-  pages: { label: string; clicks: number; impressions: number; ctr: number; position: number }[];
+  queries: {
+    label: string;
+    clicks: number;
+    impressions: number;
+    ctr: number;
+    position: number;
+  }[];
+  pages: {
+    label: string;
+    clicks: number;
+    impressions: number;
+    ctr: number;
+    position: number;
+  }[];
   daily: { date: string; clicks: number; impressions: number }[];
 };
 
@@ -420,15 +443,40 @@ export async function searchConsoleSummary(
   const query = async (from: Date, to: Date, dimensions: string[] = []) => {
     const res = await fetcher(endpoint, {
       method: "POST",
-      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-      body: JSON.stringify({ startDate: iso(from), endDate: iso(to), dimensions, rowLimit: 1000 }),
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        startDate: iso(from),
+        endDate: iso(to),
+        dimensions,
+        rowLimit: 1000,
+      }),
       cache: "no-store",
       signal: AbortSignal.timeout(15000),
     });
-    if (res.status === 403) throw new Ga4Error("permission", "The service account needs access to this Search Console property and the Search Console API must be enabled.");
-    if (res.status === 404) throw new Ga4Error("api", "Search Console property not found. Check GSC_SITE_URL and the exact verified property URL.");
-    if (!res.ok) throw new Ga4Error("api", `Search Console returned HTTP ${res.status}.`);
-    return (await res.json()) as { rows?: { keys?: string[]; clicks?: number; impressions?: number; ctr?: number; position?: number }[] };
+    if (res.status === 403)
+      throw new Ga4Error(
+        "permission",
+        "The service account needs access to this Search Console property and the Search Console API must be enabled."
+      );
+    if (res.status === 404)
+      throw new Ga4Error(
+        "api",
+        "Search Console property not found. Check GSC_SITE_URL and the exact verified property URL."
+      );
+    if (!res.ok)
+      throw new Ga4Error("api", `Search Console returned HTTP ${res.status}.`);
+    return (await res.json()) as {
+      rows?: {
+        keys?: string[];
+        clicks?: number;
+        impressions?: number;
+        ctr?: number;
+        position?: number;
+      }[];
+    };
   };
   const [totals, queries, pages, daily] = await Promise.all([
     query(start, end),
@@ -437,13 +485,14 @@ export async function searchConsoleSummary(
     query(start, end, ["date"]),
   ]);
   const first = totals.rows?.[0];
-  const map = (rows: NonNullable<typeof queries.rows>) => rows.slice(0, 10).map(r => ({
-    label: r.keys?.[0] || "(not set)",
-    clicks: Number(r.clicks || 0),
-    impressions: Number(r.impressions || 0),
-    ctr: Number(r.ctr || 0) * 100,
-    position: Number(r.position || 0),
-  }));
+  const map = (rows: NonNullable<typeof queries.rows>) =>
+    rows.slice(0, 10).map(r => ({
+      label: r.keys?.[0] || "(not set)",
+      clicks: Number(r.clicks || 0),
+      impressions: Number(r.impressions || 0),
+      ctr: Number(r.ctr || 0) * 100,
+      position: Number(r.position || 0),
+    }));
   return {
     clicks: Number(first?.clicks || 0),
     impressions: Number(first?.impressions || 0),
