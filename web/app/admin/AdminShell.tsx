@@ -89,7 +89,7 @@ export default function AdminShell({
           id: "analytics",
           label: "Website Analytics",
           icon: "📊",
-          hint: "Rybbit traffic, sessions and visitors",
+          hint: "Google Analytics 4 traffic, sessions and visitors",
         },
       ],
     },
