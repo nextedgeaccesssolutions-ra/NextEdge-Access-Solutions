@@ -17,6 +17,10 @@ import { SiteNotification } from "@/components/SiteNotification";
 import { quoteNotificationCopy } from "@/components/siteNotificationCopy";
 
 const STORE_URL = "https://neas-store-booking.vercel.app/#quote";
+function trackLeadEvent(eventName: string, formName: string) {
+  const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
+  if (typeof gtag === "function") gtag("event", eventName, { form_name: formName });
+}
 
 const services = [
   ["01", "Residential", "Rope-access cleaning, building maintenance, deep cleaning, gutter work, plumbing, electrical, and property-care support.", "rope"],
@@ -81,6 +85,8 @@ function QuoteForm() {
   const [notification, setNotification] = useState<{ tone: "success" | "error"; title: string; message: string } | null>(null);
   const submit = trpc.publicSite.submitContact.useMutation({
     onSuccess: () => {
+      trackLeadEvent("generate_lead", "homepage_quote");
+      trackLeadEvent("quote_request", "homepage_quote");
       setSent(true);
       setNotification(quoteNotificationCopy.success);
     },
