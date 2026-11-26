@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/admin";
-import { setSetting, cleanText, cleanUrl, DEFAULT_SEO, DEFAULT_SOCIAL, DEFAULT_BUSINESS } from "@/lib/settings";
+import { setSetting, cleanText, cleanUrl, DEFAULT_SEO, DEFAULT_SOCIAL, DEFAULT_BUSINESS, cleanExtraClients } from "@/lib/settings";
 import { bad, ok } from "@/lib/http";
 
 export async function PUT(req: Request) {
@@ -39,6 +39,11 @@ export async function PUT(req: Request) {
       else return bad("Invalid image URL for " + key + ".");
     }
     await setSetting("site_photos", out);
+  }
+  if (b.extraClients !== undefined) {
+    const list = cleanExtraClients(b.extraClients);
+    if (!list) return bad("Each client needs a name, and photos must be an uploaded image or HTTPS URL.");
+    await setSetting("extra_clients", list);
   }
   if (b.business) {
     const out: Record<string, string> = {};

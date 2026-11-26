@@ -80,3 +80,25 @@ export function cleanUrl(v: unknown): string {
 export function cleanText(v: unknown, max: number): string {
   return typeof v === "string" ? v.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max) : "";
 }
+
+export type ExtraClient = { id: string; name: string; sector: string; description: string; photo: string };
+
+export function cleanExtraClients(v: unknown): ExtraClient[] | null {
+  if (!Array.isArray(v)) return null;
+  const out: ExtraClient[] = [];
+  for (const raw of v.slice(0, 50)) {
+    const c = (raw ?? {}) as Record<string, unknown>;
+    const name = cleanText(c.name, 80);
+    if (!name) return null;
+    const photo = String(c.photo ?? "").trim();
+    if (photo && !/^\/api\/img\/[A-Za-z0-9_-]{1,40}$/.test(photo) && !/^https:\/\/[^\s"<>]{1,450}$/i.test(photo)) return null;
+    out.push({
+      id: cleanText(c.id, 40).replace(/[^A-Za-z0-9_-]/g, "") || Math.random().toString(36).slice(2, 10),
+      name,
+      sector: cleanText(c.sector, 80),
+      description: cleanText(c.description, 300),
+      photo,
+    });
+  }
+  return out;
+}

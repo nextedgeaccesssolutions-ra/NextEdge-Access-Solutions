@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import type { Seo, Social, Business } from "@/lib/settings";
+import type { Seo, Social, Business, ExtraClient } from "@/lib/settings";
 import { safeHttpsUrl, safeImageUrl } from "@/lib/html-safety";
 
 type Tab = "seo" | "google" | "social" | "photos";
@@ -95,6 +95,7 @@ export default function SettingsPanel(props: {
   social: Social;
   business: Business;
   sitePhotos: Record<string, string>;
+  extraClients?: ExtraClient[];
 }) {
   const [tab, setTab] = useState<Tab>("seo");
   const [seo, setSeo] = useState(props.seo);
@@ -111,6 +112,9 @@ export default function SettingsPanel(props: {
   const [photoUrlDrafts, setPhotoUrlDrafts] = useState<Record<string, string>>(
     {}
   );
+  const [clients, setClients] = useState<ExtraClient[]>(props.extraClients ?? []);
+  const updateClient = (i: number, patch: Partial<ExtraClient>) =>
+    setClients(cur => cur.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -524,6 +528,85 @@ export default function SettingsPanel(props: {
           >
             Save Photos
           </button>
+
+          <hr style={{ margin: "28px 0 18px", border: 0, borderTop: "1px solid var(--line)" }} />
+          <h3 style={{ marginTop: 0 }}>Additional clients</h3>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Add a client card to the Our Clients page. Logos are auto-fitted. Click Save Clients to publish.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 14 }}>
+            {clients.map((c, i) => (
+              <div key={c.id} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
+                {c.photo ? (
+                  <img src={c.photo} alt={c.name || "Client"} style={{ width: "100%", height: 150, objectFit: "contain", background: "#fff", borderRadius: 8, border: "1px solid var(--line)" }} />
+                ) : (
+                  <div className="muted" style={{ height: 150, display: "grid", placeItems: "center", background: "#eef2f4", borderRadius: 8, fontSize: 13 }}>No logo yet</div>
+                )}
+                <input className="input" placeholder="Client name *" value={c.name} onChange={e => updateClient(i, { name: e.target.value })} />
+                <input className="input" placeholder="Sector (e.g. Wind Energy)" value={c.sector} onChange={e => updateClient(i, { sector: e.target.value })} />
+                <textarea className="input" rows={3} placeholder="Short description" value={c.description} onChange={e => updateClient(i, { description: e.target.value })} />
+                <label className="btn btn-ghost" style={{ cursor: "pointer", textAlign: "center" }}>
+                  Upload logo / photo
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    hidden
+                    onChange={async e => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!file) return;
+                      if (file.size > 3 * 1024 * 1024) { setMsg("Each photo must be 3 MB or smaller."); return; }
+                      const fd = new FormData();
+                      fd.append("file", file);
+                      setBusy(true);
+                      try {
+                        const r = await fetch("/api/admin/upload", { method: "POST", body: fd });
+                        const result = await r.json().catch(() => ({}));
+                        if (!r.ok || !result.url) throw new Error(result.error || "Photo upload failed.");
+                        updateClient(i, { photo: result.url });
+                        setMsg("Logo uploaded. Click Save Clients to publish it.");
+                      } catch (error) {
+                        setMsg(error instanceof Error ? error.message : "Photo upload failed.");
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  />
+                </label>
+                <input className="input" type="url" placeholder="…or paste image URL (https://…)" value={c.photo} onChange={e => updateClient(i, { photo: e.target.value.trim() })} />
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ color: "#b42318" }}
+                  onClick={() => {
+                    if (confirm("Remove " + (c.name || "this client") + "? Click Save Clients afterwards to publish.")) setClients(cur => cur.filter((_, j) => j !== i));
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setClients(cur => [...cur, { id: Math.random().toString(36).slice(2, 10), name: "", sector: "", description: "", photo: "" }])}
+            >
+              + Add new client
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => {
+                if (clients.some(c => !c.name.trim())) { setMsg("Every client needs a name before saving."); return; }
+                save({ extraClients: clients });
+              }}
+            >
+              Save Clients
+            </button>
+          </div>
         </div>
       )}
 
