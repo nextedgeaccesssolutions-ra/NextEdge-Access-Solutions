@@ -26,48 +26,56 @@ concurrency:
 
 jobs:
   safe-fix:
+    # Kept under its original name so any required-check settings still match.
+    # It now REPORTS formatting only and never commits: bot commits pushed to a PR
+    # after CI had passed were held as "action required" by GitHub (red runs once
+    # the PR merged) and could change files the tests had already checked.
     name: Formatting-only autofix (PRs)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - name: Checkout PR head
         uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Changed files
         id: changed
         uses: actions/github-script@v9
         with:
           script: |
+            const fs = require('fs');
             const files = await github.paginate(
               github.rest.pulls.listFiles,
               { owner: context.repo.owner, repo: context.repo.repo, pull_number: context.issue.number, per_page: 100 },
             );
             const names = files
+              .filter((f) => f.status !== 'removed')
               .map((f) => f.filename)
               .filter((n) => /\.(ts|tsx|js|jsx|json|css|md)$/.test(n));
-            core.setOutput('list', names.join(' '));
+            // Written to a file, one per line, so names never pass through shell parsing.
+            fs.writeFileSync('changed-files.txt', names.join('\n'));
             core.setOutput('count', String(names.length));
 
-      - name: Prettier write (formatting only)
-        if: steps.changed.outputs.count != '0'
-        run: npx --yes prettier@3 --write ${{ steps.changed.outputs.list }}
-
-      - name: Push formatting fixes to PR branch
+      - name: Prettier check (report only)
         if: steps.changed.outputs.count != '0'
         run: |
-          if git diff --quiet; then
-            echo "No formatting changes."
-            exit 0
+          mapfile -t files < changed-files.txt
+          if npx --yes prettier@3 --list-different -- "${files[@]}" > unformatted.txt; then
+            echo "All changed files are formatted." >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### Files Prettier would reformat"
+              echo "Run \`npx prettier@3 --write <file>\` locally if you want them tidied. This check never blocks or commits."
+              echo
+              sed 's/^/- `/; s/$/`/' unformatted.txt
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
-          git config user.name "neas-autofix[bot]"
-          git config user.email "neas-autofix[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "style: prettier autofix (mechanical formatting only)"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
 
   verify:
     name: Tests, typecheck, build (blocking gates)
@@ -107,12 +115,30 @@ jobs:
     permissions:
       contents: read
       issues: write
+      statuses: read
     env:
       PROD_URL: "https://www.nextedge-access-solutions.com"
       PROBE_PRODUCT: "https://www.nextedge-access-solutions.com/store/p/s474c1ac9f7"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # On a push the new commit is still deploying; probing at once tests the old
+      # version and can open a false failure issue. Wait for Vercel to finish (max ~12 min).
+      - name: Wait for this commit's production deploy
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          for i in $(seq 1 72); do
+            STATE=$(gh api "repos/${REPO}/commits/${SHA}/statuses" --jq '[.[]|select(.context=="Vercel")]|sort_by(.created_at)|last|.state // ""' || true)
+            echo "Vercel deploy: ${STATE:-not started}"
+            case "${STATE}" in success) exit 0 ;; failure|error) echo "Deploy failed; probing the current production anyway."; exit 0 ;; esac
+            sleep 10
+          done
+          echo "Deploy not finished after 12 minutes; probing the current production."
 
       - name: Probe storefront and structured data
         id: probe
