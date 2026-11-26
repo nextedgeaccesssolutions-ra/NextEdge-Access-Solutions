@@ -3,206 +3,1001 @@ import { useState } from "react";
 import ImageCell from "./ImageCell";
 import PhotoBackup from "./PhotoBackup";
 
-type Prod = { id: string; category: string; code: string; name: string; dealer_price: number; price_override: number | null; active: boolean; price: number; image: string; description: string; features: string; specs_url: string; name_sheet: string; code_sheet: string; category_sheet: string; name_override: string | null; code_override: string | null; category_override: string | null; dealer_price_sheet: number | null; dealer_override: number | null };
-type Order = { id: number; reference: string; status: string; total: number; created_at: string; email: string; customer: string; delivery: string; notes: string; items: { name: string; code: string; quantity: number; unit_price: number }[] };
-type Cust = { id: number; name: string; email: string; phone: string; created_at: string; orders: number };
-function DealerCell({ p, onSaved, flash }: { p: Prod; onSaved: (patch: Partial<Prod>) => void; flash: (t: string) => void }) {
+type Prod = {
+  id: string;
+  category: string;
+  code: string;
+  name: string;
+  dealer_price: number;
+  price_override: number | null;
+  active: boolean;
+  price: number;
+  image: string;
+  description: string;
+  features: string;
+  specs_url: string;
+  name_sheet: string;
+  code_sheet: string;
+  category_sheet: string;
+  name_override: string | null;
+  code_override: string | null;
+  category_override: string | null;
+  dealer_price_sheet: number | null;
+  dealer_override: number | null;
+};
+type Order = {
+  id: number;
+  reference: string;
+  status: string;
+  total: number;
+  created_at: string;
+  email: string;
+  customer: string;
+  delivery: string;
+  notes: string;
+  items: { name: string; code: string; quantity: number; unit_price: number }[];
+};
+type Cust = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  created_at: string;
+  orders: number;
+};
+function DealerCell({
+  p,
+  onSaved,
+  flash,
+}: {
+  p: Prod;
+  onSaved: (patch: Partial<Prod>) => void;
+  flash: (t: string) => void;
+}) {
   const [busy, setBusy] = useState(false);
   async function save(raw: string) {
     const t = raw.trim().replace(/[₱,\s]/g, "");
-    if (t === String(p.dealer_override ?? "") || (t === "" && p.dealer_override == null)) return;
+    if (
+      t === String(p.dealer_override ?? "") ||
+      (t === "" && p.dealer_override == null)
+    )
+      return;
     setBusy(true);
     try {
-      const r = await fetch(`/api/admin/products/${p.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ dealerOverride: t === "" ? null : Number(t) }) });
+      const r = await fetch(`/api/admin/products/${p.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ dealerOverride: t === "" ? null : Number(t) }),
+      });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || "Could not save.");
       const sheet = p.dealer_price_sheet ?? p.dealer_price;
-      onSaved(t === "" ? { dealer_override: null, dealer_price: sheet } : { dealer_override: Number(t), dealer_price: Number(t) });
-      flash(t === "" ? `Dealer price reset to the sheet value ✓` : "Dealer price saved ✓");
-    } catch (e) { flash((e as Error).message); }
-    finally { setBusy(false); }
+      onSaved(
+        t === ""
+          ? { dealer_override: null, dealer_price: sheet }
+          : { dealer_override: Number(t), dealer_price: Number(t) }
+      );
+      flash(
+        t === ""
+          ? `Dealer price reset to the sheet value ✓`
+          : "Dealer price saved ✓"
+      );
+    } catch (e) {
+      flash((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
-  return <div style={{ minWidth: 110 }}>
-    <input className="input" style={{ width: 110 }} inputMode="decimal" disabled={busy} defaultValue={p.dealer_override ?? ""}
-      placeholder={String(p.dealer_price_sheet ?? p.dealer_price)} aria-label={"Dealer price for " + p.name}
-      onBlur={(e) => save(e.target.value)} />
-    <div className="muted" style={{ fontSize: 11 }}>{p.dealer_override != null ? <>custom · sheet ₱{(p.dealer_price_sheet ?? 0).toLocaleString("en-PH")}</> : "from sheet"}</div>
-  </div>;
+  return (
+    <div style={{ minWidth: 110 }}>
+      <input
+        className="input"
+        style={{ width: 110 }}
+        inputMode="decimal"
+        disabled={busy}
+        defaultValue={p.dealer_override ?? ""}
+        placeholder={String(p.dealer_price_sheet ?? p.dealer_price)}
+        aria-label={"Dealer price for " + p.name}
+        onBlur={e => save(e.target.value)}
+      />
+      <div className="muted" style={{ fontSize: 11 }}>
+        {p.dealer_override != null ? (
+          <>
+            custom · sheet ₱
+            {(p.dealer_price_sheet ?? 0).toLocaleString("en-PH")}
+          </>
+        ) : (
+          "from sheet"
+        )}
+      </div>
+    </div>
+  );
 }
 
-function ItemCell({ p, onSaved, flash }: { p: Prod; onSaved: (patch: Partial<Prod>) => void; flash: (t: string) => void }) {
+function ItemCell({
+  p,
+  onSaved,
+  flash,
+}: {
+  p: Prod;
+  onSaved: (patch: Partial<Prod>) => void;
+  flash: (t: string) => void;
+}) {
   const [busy, setBusy] = useState(false);
-  async function save(field: "nameOverride" | "codeOverride" | "categoryOverride", raw: string, sheetValue: string, applied: (v: string | null) => Partial<Prod>) {
+  async function save(
+    field: "nameOverride" | "codeOverride" | "categoryOverride",
+    raw: string,
+    sheetValue: string,
+    applied: (v: string | null) => Partial<Prod>
+  ) {
     const next = raw.trim() === "" ? null : raw.trim();
     setBusy(true);
     try {
-      const r = await fetch(`/api/admin/products/${p.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ [field]: next }) });
+      const r = await fetch(`/api/admin/products/${p.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ [field]: next }),
+      });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || "Could not save.");
       onSaved(applied(next));
-      flash(next === null ? `Reset to the sheet value: ${sheetValue} ✓` : "Saved ✓");
-    } catch (e) { flash((e as Error).message); }
-    finally { setBusy(false); }
+      flash(
+        next === null ? `Reset to the sheet value: ${sheetValue} ✓` : "Saved ✓"
+      );
+    } catch (e) {
+      flash((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
   const box = { width: "100%", fontSize: 13, marginBottom: 4 } as const;
-  return <div style={{ minWidth: 240 }}>
-    <input className="input" style={{ ...box, fontWeight: 700 }} disabled={busy} defaultValue={p.name} placeholder={p.name_sheet}
-      aria-label={"Item name for " + p.name}
-      onBlur={(e) => { if (e.target.value.trim() !== p.name) save("nameOverride", e.target.value, p.name_sheet, (v) => ({ name_override: v, name: v ?? p.name_sheet })); }} />
-    <div style={{ display: "flex", gap: 4 }}>
-      <input className="input" style={box} disabled={busy} defaultValue={p.category} placeholder={p.category_sheet}
-        aria-label={"Category for " + p.name}
-        onBlur={(e) => { if (e.target.value.trim() !== p.category) save("categoryOverride", e.target.value, p.category_sheet, (v) => ({ category_override: v, category: v ?? p.category_sheet })); }} />
-      <input className="input" style={box} disabled={busy} defaultValue={p.code} placeholder={p.code_sheet}
-        aria-label={"Item code for " + p.name}
-        onBlur={(e) => { if (e.target.value.trim() !== p.code) save("codeOverride", e.target.value, p.code_sheet, (v) => ({ code_override: v, code: v ?? p.code_sheet })); }} />
+  return (
+    <div style={{ minWidth: 240 }}>
+      <input
+        className="input"
+        style={{ ...box, fontWeight: 700 }}
+        disabled={busy}
+        defaultValue={p.name}
+        placeholder={p.name_sheet}
+        aria-label={"Item name for " + p.name}
+        onBlur={e => {
+          if (e.target.value.trim() !== p.name)
+            save("nameOverride", e.target.value, p.name_sheet, v => ({
+              name_override: v,
+              name: v ?? p.name_sheet,
+            }));
+        }}
+      />
+      <div style={{ display: "flex", gap: 4 }}>
+        <input
+          className="input"
+          style={box}
+          disabled={busy}
+          defaultValue={p.category}
+          placeholder={p.category_sheet}
+          aria-label={"Category for " + p.name}
+          onBlur={e => {
+            if (e.target.value.trim() !== p.category)
+              save("categoryOverride", e.target.value, p.category_sheet, v => ({
+                category_override: v,
+                category: v ?? p.category_sheet,
+              }));
+          }}
+        />
+        <input
+          className="input"
+          style={box}
+          disabled={busy}
+          defaultValue={p.code}
+          placeholder={p.code_sheet}
+          aria-label={"Item code for " + p.name}
+          onBlur={e => {
+            if (e.target.value.trim() !== p.code)
+              save("codeOverride", e.target.value, p.code_sheet, v => ({
+                code_override: v,
+                code: v ?? p.code_sheet,
+              }));
+          }}
+        />
+      </div>
+      {(p.name_override ?? p.code_override ?? p.category_override) != null && (
+        <span className="muted" style={{ fontSize: 11 }}>
+          Edited here — the sheet sync will not overwrite it. Clear a box to go
+          back to the sheet.
+        </span>
+      )}
     </div>
-    {(p.name_override ?? p.code_override ?? p.category_override) != null &&
-      <span className="muted" style={{ fontSize: 11 }}>Edited here — the sheet sync will not overwrite it. Clear a box to go back to the sheet.</span>}
-  </div>;
+  );
 }
 
 const peso = (n: number) => "₱" + Math.round(n).toLocaleString("en-PH");
-const STATUSES = [["awaiting_payment", "Awaiting payment"], ["paid", "Paid"], ["processing", "Processing"], ["shipped", "Shipped"], ["completed", "Completed"], ["cancelled", "Cancelled"]];
-const sell = (d: number, o: number | null, m: number) => (o != null ? o : Math.ceil((d * (1 + m / 100)) / 5) * 5);
+const STATUSES = [
+  ["awaiting_payment", "Awaiting payment"],
+  ["paid", "Paid"],
+  ["processing", "Processing"],
+  ["shipped", "Shipped"],
+  ["completed", "Completed"],
+  ["cancelled", "Cancelled"],
+];
+const sell = (d: number, o: number | null, m: number) =>
+  o != null ? o : Math.ceil((d * (1 + m / 100)) / 5) * 5;
 
 async function api(url: string, method: string, body: unknown) {
-  const r = await fetch(url, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "Save failed");
+  const r = await fetch(url, {
+    method,
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok)
+    throw new Error((await r.json().catch(() => ({}))).error || "Save failed");
 }
 
-export default function AdminClient(props: { markup: number; categoryMarkup: Record<string, number>; products: Prod[]; orders: Order[]; customers: Cust[]; view?: "orders" | "products" | "customers" }) {
-  const [ownTab, setTab] = useState<"orders" | "products" | "customers">("orders");
+export default function AdminClient(props: {
+  markup: number;
+  categoryMarkup: Record<string, number>;
+  products: Prod[];
+  orders: Order[];
+  customers: Cust[];
+  view?: "orders" | "products" | "customers";
+}) {
+  const [ownTab, setTab] = useState<"orders" | "products" | "customers">(
+    "orders"
+  );
   const tab = props.view ?? ownTab;
   const [markup, setMarkup] = useState(props.markup);
   const [products, setProducts] = useState(props.products);
   const [orders, setOrders] = useState(props.orders);
-  const [msg, setMsg] = useState(""); const [q, setQ] = useState("");
-  const [catMk, setCatMk] = useState<Record<string, number>>(props.categoryMarkup);
-  const [bulkCat, setBulkCat] = useState(""); const [bulkPct, setBulkPct] = useState("");
-  const cats = Array.from(new Set(products.map((p) => p.category)));
+  const [msg, setMsg] = useState("");
+  const [q, setQ] = useState("");
+  const [catMk, setCatMk] = useState<Record<string, number>>(
+    props.categoryMarkup
+  );
+  const [bulkCat, setBulkCat] = useState("");
+  const [bulkPct, setBulkPct] = useState("");
+  const cats = Array.from(new Set(products.map(p => p.category)));
   const mkFor = (c: string) => catMk[c] ?? markup;
-  async function bulk(body: Record<string, unknown>, done: string) { try { await api("/api/admin/pricing", "POST", body); flash(done); setTimeout(() => location.reload(), 600); } catch (e) { flash((e as Error).message); } }
-  const flash = (t: string) => { setMsg(t); setTimeout(() => setMsg(""), 2500); };
-  const pending = orders.filter((o) => o.status === "awaiting_payment").length;
+  async function bulk(body: Record<string, unknown>, done: string) {
+    try {
+      await api("/api/admin/pricing", "POST", body);
+      flash(done);
+      setTimeout(() => location.reload(), 600);
+    } catch (e) {
+      flash((e as Error).message);
+    }
+  }
+  const flash = (t: string) => {
+    setMsg(t);
+    setTimeout(() => setMsg(""), 2500);
+  };
+  const pending = orders.filter(o => o.status === "awaiting_payment").length;
 
-  async function saveMarkup() { try { await api("/api/admin/settings", "PUT", { markupPercent: markup }); flash("Markup saved ✓"); } catch (e) { flash((e as Error).message); } }
-  async function saveCatMarkup(c: string, raw: string) { const v = raw.trim() === "" ? null : Number(raw); try { await api("/api/admin/pricing", "POST", { action: "categoryMarkup", category: c, markupPercent: v }); setCatMk((m) => { const x = { ...m }; if (v === null) delete x[c]; else x[c] = v; return x; }); flash(`${c} markup saved ✓`); } catch (e) { flash((e as Error).message); } }
+  async function saveMarkup() {
+    try {
+      await api("/api/admin/settings", "PUT", { markupPercent: markup });
+      flash("Markup saved ✓");
+    } catch (e) {
+      flash((e as Error).message);
+    }
+  }
+  async function saveCatMarkup(c: string, raw: string) {
+    const v = raw.trim() === "" ? null : Number(raw);
+    try {
+      await api("/api/admin/pricing", "POST", {
+        action: "categoryMarkup",
+        category: c,
+        markupPercent: v,
+      });
+      setCatMk(m => {
+        const x = { ...m };
+        if (v === null) delete x[c];
+        else x[c] = v;
+        return x;
+      });
+      flash(`${c} markup saved ✓`);
+    } catch (e) {
+      flash((e as Error).message);
+    }
+  }
   async function savePrice(p: Prod, raw: string) {
     const v = raw.trim() === "" ? null : Number(raw.replace(/[₱,\s]/g, ""));
     if (v !== null && !Number.isFinite(v)) return flash("Not a number");
-    try { await api(`/api/admin/products/${p.id}`, "PATCH", { priceOverride: v }); setProducts((ps) => ps.map((x) => (x.id === p.id ? { ...x, price_override: v } : x))); flash("Price saved ✓"); } catch (e) { flash((e as Error).message); }
+    try {
+      await api(`/api/admin/products/${p.id}`, "PATCH", { priceOverride: v });
+      setProducts(ps =>
+        ps.map(x => (x.id === p.id ? { ...x, price_override: v } : x))
+      );
+      flash("Price saved ✓");
+    } catch (e) {
+      flash((e as Error).message);
+    }
   }
-  async function toggle(p: Prod) { try { await api(`/api/admin/products/${p.id}`, "PATCH", { active: !p.active }); setProducts((ps) => ps.map((x) => (x.id === p.id ? { ...x, active: !p.active } : x))); } catch (e) { flash((e as Error).message); } }
-  async function setStatus(o: Order, status: string) { try { await api(`/api/admin/orders/${o.id}`, "PATCH", { status }); setOrders((os) => os.map((x) => (x.id === o.id ? { ...x, status } : x))); flash(`${o.reference} → ${status.replace("_", " ")}`); } catch (e) { flash((e as Error).message); } }
+  async function toggle(p: Prod) {
+    try {
+      await api(`/api/admin/products/${p.id}`, "PATCH", { active: !p.active });
+      setProducts(ps =>
+        ps.map(x => (x.id === p.id ? { ...x, active: !p.active } : x))
+      );
+    } catch (e) {
+      flash((e as Error).message);
+    }
+  }
+  async function setStatus(o: Order, status: string) {
+    try {
+      await api(`/api/admin/orders/${o.id}`, "PATCH", { status });
+      setOrders(os => os.map(x => (x.id === o.id ? { ...x, status } : x)));
+      flash(`${o.reference} → ${status.replace("_", " ")}`);
+    } catch (e) {
+      flash((e as Error).message);
+    }
+  }
 
-  return <div className={props.view ? "" : "wrap"} style={{ padding: props.view ? 0 : "34px 20px" }}>
-    {!props.view && <><div className="eyebrow">Admin control panel</div><h1>NEAS Store Admin</h1></>}
-    <div style={{ display: props.view ? "none" : "flex", gap: 8, margin: "16px 0", flexWrap: "wrap" }}>
-      {([["orders", `Orders (${pending} awaiting payment)`], ["products", "Products & prices"], ["customers", `Customers (${props.customers.length})`]] as const).map(([k, l]) => <button key={k} type="button" className={"btn " + (tab === k ? "btn-primary" : "btn-ghost")} onClick={() => setTab(k)}>{l}</button>)}
-      {msg && <span className="ok" role="status" style={{ alignSelf: "center" }}>{msg}</span>}
+  return (
+    <div
+      className={props.view ? "" : "wrap"}
+      style={{ padding: props.view ? 0 : "34px 20px" }}
+    >
+      {!props.view && (
+        <>
+          <div className="eyebrow">Admin control panel</div>
+          <h1>NEAS Store Admin</h1>
+        </>
+      )}
+      <div
+        style={{
+          display: props.view ? "none" : "flex",
+          gap: 8,
+          margin: "16px 0",
+          flexWrap: "wrap",
+        }}
+      >
+        {(
+          [
+            ["orders", `Orders (${pending} awaiting payment)`],
+            ["products", "Products & prices"],
+            ["customers", `Customers (${props.customers.length})`],
+          ] as const
+        ).map(([k, l]) => (
+          <button
+            key={k}
+            type="button"
+            className={"btn " + (tab === k ? "btn-primary" : "btn-ghost")}
+            onClick={() => setTab(k)}
+          >
+            {l}
+          </button>
+        ))}
+        {msg && (
+          <span className="ok" role="status" style={{ alignSelf: "center" }}>
+            {msg}
+          </span>
+        )}
+      </div>
+      {props.view && msg && (
+        <div className="admin-toast" role="status">
+          {msg}
+        </div>
+      )}
+
+      {tab === "orders" && (
+        <div className="card" style={{ overflowX: "auto" }}>
+          {!orders.length ? (
+            <p className="muted">No orders yet.</p>
+          ) : (
+            <table className="t">
+              <thead>
+                <tr>
+                  <th>Reference</th>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Items</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map(o => (
+                  <tr key={o.id}>
+                    <td>
+                      <b>{o.reference}</b>
+                    </td>
+                    <td>{new Date(o.created_at).toLocaleString("en-PH")}</td>
+                    <td style={{ fontSize: 13 }}>
+                      <b>{o.customer}</b>
+                      <br />
+                      {o.email}
+                      <br />
+                      <span className="muted">{o.delivery}</span>
+                      {o.notes && (
+                        <>
+                          <br />
+                          <i>{o.notes}</i>
+                        </>
+                      )}
+                    </td>
+                    <td style={{ fontSize: 13 }}>
+                      {o.items.map((i, k) => (
+                        <div key={k}>
+                          {i.quantity} × {i.name} @ {peso(i.unit_price)}
+                        </div>
+                      ))}
+                    </td>
+                    <td>
+                      <b>{peso(o.total)}</b>
+                    </td>
+                    <td>
+                      <select
+                        className="input"
+                        value={o.status}
+                        onChange={e => setStatus(o, e.target.value)}
+                        aria-label={"Status of " + o.reference}
+                      >
+                        {STATUSES.map(([v, l]) => (
+                          <option key={v} value={v}>
+                            {l}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {tab === "products" && (
+        <div className="card" style={{ overflowX: "auto" }}>
+          <PhotoBackup
+            products={products}
+            onRestored={(id, image) =>
+              setProducts(ps =>
+                ps.map(x => (x.id === id ? { ...x, image } : x))
+              )
+            }
+          />
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              flexWrap: "wrap",
+              marginBottom: 14,
+              background: "#fff7ed",
+              border: "1px solid #fed7aa",
+              borderRadius: 10,
+              padding: 12,
+            }}
+          >
+            <b>Markup on dealer price</b>
+            <input
+              className="input"
+              type="number"
+              min={0}
+              max={500}
+              value={markup}
+              onChange={e => setMarkup(Number(e.target.value))}
+              style={{ width: 90 }}
+              aria-label="Markup percent"
+            />{" "}
+            %
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={saveMarkup}
+            >
+              Save markup
+            </button>
+            <span className="muted" style={{ fontSize: 13 }}>
+              Applies to every item without its own price. Prices round up to
+              the nearest ₱5.
+            </span>
+          </div>
+          <div
+            style={{
+              border: "1px solid var(--line)",
+              borderRadius: 10,
+              padding: 12,
+              marginBottom: 14,
+            }}
+          >
+            <b>Markup for ALL products</b>
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+                alignItems: "center",
+                marginTop: 8,
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Set ${markup}% on every product and remove all category markups and custom prices?`
+                    )
+                  )
+                    bulk(
+                      {
+                        action: "allMarkup",
+                        markupPercent: markup,
+                        applyToAll: true,
+                      },
+                      "All products now use " + markup + "% ✓"
+                    );
+                }}
+              >
+                Apply {markup}% to every product (reset custom prices)
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => {
+                  if (confirm("Remove every custom price?"))
+                    bulk(
+                      { action: "clearOverrides" },
+                      "Custom prices cleared ✓"
+                    );
+                }}
+              >
+                Clear all custom prices
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() =>
+                  bulk(
+                    { action: "showAll", active: true },
+                    "All products shown ✓"
+                  )
+                }
+              >
+                Show all products
+              </button>
+            </div>
+            <b style={{ display: "block", marginTop: 14 }}>
+              Markup by category
+            </b>
+            <p className="muted" style={{ fontSize: 12, margin: "4px 0 8px" }}>
+              Leave blank to use the main markup ({markup}%).
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))",
+                gap: 8,
+              }}
+            >
+              {cats.map(c => (
+                <label
+                  key={c}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    fontSize: 13,
+                    background: "#f8fafc",
+                    borderRadius: 8,
+                    padding: "6px 10px",
+                  }}
+                >
+                  {c}
+                  <span>
+                    <input
+                      className="input"
+                      style={{ width: 70, padding: 6 }}
+                      type="number"
+                      min={0}
+                      max={500}
+                      placeholder={String(markup)}
+                      defaultValue={catMk[c] ?? ""}
+                      onBlur={e => {
+                        if (e.target.value !== String(catMk[c] ?? ""))
+                          saveCatMarkup(c, e.target.value);
+                      }}
+                      aria-label={"Markup for " + c}
+                    />{" "}
+                    %
+                  </span>
+                </label>
+              ))}
+            </div>
+            <b style={{ display: "block", marginTop: 14 }}>
+              Update dealer prices (supplier price change)
+            </b>
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+                alignItems: "center",
+                marginTop: 8,
+              }}
+            >
+              <select
+                className="input"
+                value={bulkCat}
+                onChange={e => setBulkCat(e.target.value)}
+                aria-label="Category to adjust"
+              >
+                <option value="">All categories</option>
+                {cats.map(c => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+              <input
+                className="input"
+                style={{ width: 90 }}
+                type="number"
+                placeholder="e.g. 5"
+                value={bulkPct}
+                onChange={e => setBulkPct(e.target.value)}
+                aria-label="Percent change"
+              />{" "}
+              %
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!bulkPct}
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Change dealer prices of ${bulkCat || "ALL categories"} by ${bulkPct}%?`
+                    )
+                  )
+                    bulk(
+                      {
+                        action: "adjustAll",
+                        percent: Number(bulkPct),
+                        category: bulkCat || undefined,
+                      },
+                      "Dealer prices updated ✓"
+                    );
+                }}
+              >
+                Apply change
+              </button>
+              <span className="muted" style={{ fontSize: 12 }}>
+                Use a negative number to lower prices.
+              </span>
+            </div>
+          </div>
+          <input
+            className="input"
+            placeholder="Filter products…"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            style={{ width: "100%", marginBottom: 10 }}
+          />
+          <table className="t">
+            <thead>
+              <tr>
+                <th>Photo</th>
+                <th>Item</th>
+                <th>Details &amp; specs</th>
+                <th>Dealer</th>
+                <th>Selling price</th>
+                <th>Shown</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products
+                .filter(
+                  p =>
+                    !q ||
+                    (p.name + p.code + p.category)
+                      .toLowerCase()
+                      .includes(q.toLowerCase())
+                )
+                .map(p => (
+                  <tr key={p.id} style={{ opacity: p.active ? 1 : 0.5 }}>
+                    <td>
+                      <ImageCell
+                        key={p.id + "|" + p.image}
+                        id={p.id}
+                        name={p.name}
+                        initial={p.image}
+                      />
+                    </td>
+                    <td>
+                      <ItemCell
+                        p={p}
+                        flash={flash}
+                        onSaved={patch =>
+                          setProducts(ps =>
+                            ps.map(x =>
+                              x.id === p.id ? { ...x, ...patch } : x
+                            )
+                          )
+                        }
+                      />
+                    </td>
+                    <td style={{ minWidth: 300 }}>
+                      <DetailsEditor p={p} />
+                    </td>
+                    <td>
+                      <DealerCell
+                        p={p}
+                        flash={flash}
+                        onSaved={patch =>
+                          setProducts(ps =>
+                            ps.map(x =>
+                              x.id === p.id ? { ...x, ...patch } : x
+                            )
+                          )
+                        }
+                      />
+                    </td>
+                    <td style={{ minWidth: 120 }}>
+                      <input
+                        className="input"
+                        style={{ width: 120, fontWeight: 700 }}
+                        inputMode="decimal"
+                        placeholder={String(
+                          sell(p.dealer_price, null, mkFor(p.category))
+                        )}
+                        defaultValue={p.price_override ?? ""}
+                        onBlur={e => {
+                          const v = e.target.value
+                            .trim()
+                            .replace(/[₱,\s]/g, "");
+                          if (v !== String(p.price_override ?? ""))
+                            savePrice(p, v);
+                        }}
+                        aria-label={"Selling price for " + p.name}
+                      />
+                      <div className="muted" style={{ fontSize: 11 }}>
+                        {p.price_override != null ? (
+                          <>
+                            custom · auto{" "}
+                            {peso(
+                              sell(p.dealer_price, null, mkFor(p.category))
+                            )}
+                          </>
+                        ) : (
+                          <>auto: dealer + markup</>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={p.active}
+                        onChange={() => toggle(p)}
+                        aria-label={"Show " + p.name + " in store"}
+                      />
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {tab === "customers" && (
+        <div className="card" style={{ overflowX: "auto" }}>
+          {!props.customers.length ? (
+            <p className="muted">No customer accounts yet.</p>
+          ) : (
+            <table className="t">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Mobile</th>
+                  <th>Joined</th>
+                  <th>Orders</th>
+                  <th>Password</th>
+                </tr>
+              </thead>
+              <tbody>
+                {props.customers.map(c => (
+                  <tr key={c.id}>
+                    <td>{c.name}</td>
+                    <td>{c.email}</td>
+                    <td>{c.phone}</td>
+                    <td>
+                      {new Date(c.created_at).toLocaleDateString("en-PH")}
+                    </td>
+                    <td>{c.orders}</td>
+                    <td>
+                      <ResetLinkButton
+                        id={c.id}
+                        name={c.name}
+                        phone={c.phone}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
-    {props.view && msg && <div className="admin-toast" role="status">{msg}</div>}
-
-    {tab === "orders" && <div className="card" style={{ overflowX: "auto" }}>
-      {!orders.length ? <p className="muted">No orders yet.</p> : <table className="t"><thead><tr><th>Reference</th><th>Date</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th></tr></thead><tbody>
-        {orders.map((o) => <tr key={o.id}><td><b>{o.reference}</b></td><td>{new Date(o.created_at).toLocaleString("en-PH")}</td>
-          <td style={{ fontSize: 13 }}><b>{o.customer}</b><br />{o.email}<br /><span className="muted">{o.delivery}</span>{o.notes && <><br /><i>{o.notes}</i></>}</td>
-          <td style={{ fontSize: 13 }}>{o.items.map((i, k) => <div key={k}>{i.quantity} × {i.name} @ {peso(i.unit_price)}</div>)}</td>
-          <td><b>{peso(o.total)}</b></td>
-          <td><select className="input" value={o.status} onChange={(e) => setStatus(o, e.target.value)} aria-label={"Status of " + o.reference}>{STATUSES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td></tr>)}
-      </tbody></table>}
-    </div>}
-
-    {tab === "products" && <div className="card" style={{ overflowX: "auto" }}>
-      <PhotoBackup products={products} onRestored={(id, image) => setProducts((ps) => ps.map((x) => (x.id === id ? { ...x, image } : x)))} />
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 14, background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 10, padding: 12 }}>
-        <b>Markup on dealer price</b>
-        <input className="input" type="number" min={0} max={500} value={markup} onChange={(e) => setMarkup(Number(e.target.value))} style={{ width: 90 }} aria-label="Markup percent" /> %
-        <button type="button" className="btn btn-primary" onClick={saveMarkup}>Save markup</button>
-        <span className="muted" style={{ fontSize: 13 }}>Applies to every item without its own price. Prices round up to the nearest ₱5.</span>
-      </div>
-      <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12, marginBottom: 14 }}>
-        <b>Markup for ALL products</b>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
-          <button type="button" className="btn btn-ghost" onClick={() => { if (confirm(`Set ${markup}% on every product and remove all category markups and custom prices?`)) bulk({ action: "allMarkup", markupPercent: markup, applyToAll: true }, "All products now use " + markup + "% ✓"); }}>Apply {markup}% to every product (reset custom prices)</button>
-          <button type="button" className="btn btn-ghost" onClick={() => { if (confirm("Remove every custom price?")) bulk({ action: "clearOverrides" }, "Custom prices cleared ✓"); }}>Clear all custom prices</button>
-          <button type="button" className="btn btn-ghost" onClick={() => bulk({ action: "showAll", active: true }, "All products shown ✓")}>Show all products</button>
-        </div>
-        <b style={{ display: "block", marginTop: 14 }}>Markup by category</b>
-        <p className="muted" style={{ fontSize: 12, margin: "4px 0 8px" }}>Leave blank to use the main markup ({markup}%).</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))", gap: 8 }}>
-          {cats.map((c) => <label key={c} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontSize: 13, background: "#f8fafc", borderRadius: 8, padding: "6px 10px" }}>{c}<span><input className="input" style={{ width: 70, padding: 6 }} type="number" min={0} max={500} placeholder={String(markup)} defaultValue={catMk[c] ?? ""} onBlur={(e) => { if (e.target.value !== String(catMk[c] ?? "")) saveCatMarkup(c, e.target.value); }} aria-label={"Markup for " + c} /> %</span></label>)}
-        </div>
-        <b style={{ display: "block", marginTop: 14 }}>Update dealer prices (supplier price change)</b>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
-          <select className="input" value={bulkCat} onChange={(e) => setBulkCat(e.target.value)} aria-label="Category to adjust"><option value="">All categories</option>{cats.map((c) => <option key={c}>{c}</option>)}</select>
-          <input className="input" style={{ width: 90 }} type="number" placeholder="e.g. 5" value={bulkPct} onChange={(e) => setBulkPct(e.target.value)} aria-label="Percent change" /> %
-          <button type="button" className="btn btn-primary" disabled={!bulkPct} onClick={() => { if (confirm(`Change dealer prices of ${bulkCat || "ALL categories"} by ${bulkPct}%?`)) bulk({ action: "adjustAll", percent: Number(bulkPct), category: bulkCat || undefined }, "Dealer prices updated ✓"); }}>Apply change</button>
-          <span className="muted" style={{ fontSize: 12 }}>Use a negative number to lower prices.</span>
-        </div>
-      </div>
-      <input className="input" placeholder="Filter products…" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: "100%", marginBottom: 10 }} />
-      <table className="t"><thead><tr><th>Photo</th><th>Item</th><th>Details &amp; specs</th><th>Dealer</th><th>Selling price</th><th>Shown</th></tr></thead><tbody>
-        {products.filter((p) => !q || (p.name + p.code + p.category).toLowerCase().includes(q.toLowerCase())).map((p) => <tr key={p.id} style={{ opacity: p.active ? 1 : 0.5 }}>
-          <td><ImageCell key={p.id + "|" + p.image} id={p.id} name={p.name} initial={p.image} /></td>
-          <td><ItemCell p={p} flash={flash} onSaved={(patch) => setProducts((ps) => ps.map((x) => (x.id === p.id ? { ...x, ...patch } : x)))} /></td>
-          <td style={{ minWidth: 300 }}><DetailsEditor p={p} /></td>
-          <td><DealerCell p={p} flash={flash} onSaved={(patch) => setProducts((ps) => ps.map((x) => (x.id === p.id ? { ...x, ...patch } : x)))} /></td>
-          <td style={{ minWidth: 120 }}><input className="input" style={{ width: 120, fontWeight: 700 }} inputMode="decimal" placeholder={String(sell(p.dealer_price, null, mkFor(p.category)))} defaultValue={p.price_override ?? ""} onBlur={(e) => { const v = e.target.value.trim().replace(/[₱,\s]/g, ""); if (v !== String(p.price_override ?? "")) savePrice(p, v); }} aria-label={"Selling price for " + p.name} />
-            <div className="muted" style={{ fontSize: 11 }}>{p.price_override != null ? <>custom · auto {peso(sell(p.dealer_price, null, mkFor(p.category)))}</> : <>auto: dealer + markup</>}</div></td>
-          <td><input type="checkbox" checked={p.active} onChange={() => toggle(p)} aria-label={"Show " + p.name + " in store"} /></td></tr>)}
-      </tbody></table>
-    </div>}
-
-    {tab === "customers" && <div className="card" style={{ overflowX: "auto" }}>
-      {!props.customers.length ? <p className="muted">No customer accounts yet.</p> : <table className="t"><thead><tr><th>Name</th><th>Email</th><th>Mobile</th><th>Joined</th><th>Orders</th><th>Password</th></tr></thead><tbody>
-        {props.customers.map((c) => <tr key={c.id}><td>{c.name}</td><td>{c.email}</td><td>{c.phone}</td><td>{new Date(c.created_at).toLocaleDateString("en-PH")}</td><td>{c.orders}</td><td><ResetLinkButton id={c.id} name={c.name} phone={c.phone} /></td></tr>)}
-      </tbody></table>}
-    </div>}
-  </div>;
+  );
 }
 
 function DetailsEditor({ p }: { p: Prod }) {
   const [open, setOpen] = useState(false);
-  const [d, setD] = useState({ description: p.description, features: p.features, specsUrl: p.specs_url });
+  const [d, setD] = useState({
+    description: p.description,
+    features: p.features,
+    specsUrl: p.specs_url,
+  });
   const [msg, setMsg] = useState("");
   async function save() {
     setMsg("Saving…");
-    const r = await fetch(`/api/admin/products/${p.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(d) });
-    setMsg(r.ok ? "Saved ✓" : ((await r.json().catch(() => ({}))).error || "Save failed"));
+    const r = await fetch(`/api/admin/products/${p.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(d),
+    });
+    setMsg(
+      r.ok
+        ? "Saved ✓"
+        : (await r.json().catch(() => ({}))).error || "Save failed"
+    );
   }
   const filled = !!(d.description || d.features || d.specsUrl);
-  return <div>
-    <button type="button" className="btn btn-ghost" style={{ padding: "3px 10px", fontSize: 12 }} onClick={() => setOpen(!open)}>{open ? "Close details" : (filled ? "✎ Edit details" : "+ Description & specs")}</button>
-    {!open && filled && <div className="muted" style={{ fontSize: 12, marginTop: 4, maxWidth: 300 }}>{d.description && <div>📝 {d.description.slice(0, 70)}{d.description.length > 70 ? "…" : ""}</div>}{d.features && <div>✔ {d.features.split("\n").filter((l) => l.trim()).length} technical features</div>}{d.specsUrl && <div>📄 Specs link set</div>}</div>}
-    {open && <div style={{ display: "grid", gap: 6, marginTop: 6, minWidth: 280 }}>
-      <label className="field" style={{ fontSize: 12 }}>Description<textarea rows={3} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder={p.name} /></label>
-      <label className="field" style={{ fontSize: 12 }}>Technical features (one per line)<textarea rows={5} value={d.features} onChange={(e) => setD({ ...d, features: e.target.value })} placeholder={"EN 361 / EN 813 certified\nWeight: 1.9 kg\nSizes: S-M"} /></label>
-      <label className="field" style={{ fontSize: 12 }}>Technical specs link (PDF / datasheet)<input type="url" value={d.specsUrl} onChange={(e) => setD({ ...d, specsUrl: e.target.value })} placeholder="https://…" /></label>
-      <div><button type="button" className="btn btn-primary" style={{ padding: "5px 12px", fontSize: 12 }} onClick={save}>Save details</button> <span className="muted" style={{ fontSize: 12 }}>{msg}</span></div>
-    </div>}
-  </div>;
+  return (
+    <div>
+      <button
+        type="button"
+        className="btn btn-ghost"
+        style={{ padding: "3px 10px", fontSize: 12 }}
+        onClick={() => setOpen(!open)}
+      >
+        {open
+          ? "Close details"
+          : filled
+            ? "✎ Edit details"
+            : "+ Description & specs"}
+      </button>
+      {!open && filled && (
+        <div
+          className="muted"
+          style={{ fontSize: 12, marginTop: 4, maxWidth: 300 }}
+        >
+          {d.description && (
+            <div>
+              📝 {d.description.slice(0, 70)}
+              {d.description.length > 70 ? "…" : ""}
+            </div>
+          )}
+          {d.features && (
+            <div>
+              ✔ {d.features.split("\n").filter(l => l.trim()).length} technical
+              features
+            </div>
+          )}
+          {d.specsUrl && <div>📄 Specs link set</div>}
+        </div>
+      )}
+      {open && (
+        <div style={{ display: "grid", gap: 6, marginTop: 6, minWidth: 280 }}>
+          <label className="field" style={{ fontSize: 12 }}>
+            Description
+            <textarea
+              rows={3}
+              value={d.description}
+              onChange={e => setD({ ...d, description: e.target.value })}
+              placeholder={p.name}
+            />
+          </label>
+          <label className="field" style={{ fontSize: 12 }}>
+            Technical features (one per line)
+            <textarea
+              rows={5}
+              value={d.features}
+              onChange={e => setD({ ...d, features: e.target.value })}
+              placeholder={
+                "EN 361 / EN 813 certified\nWeight: 1.9 kg\nSizes: S-M"
+              }
+            />
+          </label>
+          <label className="field" style={{ fontSize: 12 }}>
+            Technical specs link (PDF / datasheet)
+            <input
+              type="url"
+              value={d.specsUrl}
+              onChange={e => setD({ ...d, specsUrl: e.target.value })}
+              placeholder="https://…"
+            />
+          </label>
+          <div>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ padding: "5px 12px", fontSize: 12 }}
+              onClick={save}
+            >
+              Save details
+            </button>{" "}
+            <span className="muted" style={{ fontSize: 12 }}>
+              {msg}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-function ResetLinkButton({ id, name, phone }: { id: number; name: string; phone: string }) {
-  const [link, setLink] = useState(""); const [msg, setMsg] = useState("");
+function ResetLinkButton({
+  id,
+  name,
+  phone,
+}: {
+  id: number;
+  name: string;
+  phone: string;
+}) {
+  const [link, setLink] = useState("");
+  const [msg, setMsg] = useState("");
   async function make() {
-    if (!confirm(`Create a password reset link for ${name}? It works once, for 24 hours.`)) return;
+    if (
+      !confirm(
+        `Create a password reset link for ${name}? It works once, for 24 hours.`
+      )
+    )
+      return;
     setMsg("Creating…");
-    const r = await fetch(`/api/admin/users/${id}/reset-link`, { method: "POST" });
+    const r = await fetch(`/api/admin/users/${id}/reset-link`, {
+      method: "POST",
+    });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) { setMsg(j.error || "Failed"); return; }
-    setLink(j.link); setMsg(j.emailed ? "Emailed ✓ — or send:" : "Send this link:");
+    if (!r.ok) {
+      setMsg(j.error || "Failed");
+      return;
+    }
+    setLink(j.link);
+    setMsg(j.emailed ? "Emailed ✓ — or send:" : "Send this link:");
     navigator.clipboard?.writeText(j.link).catch(() => {});
   }
   const wa = phone ? phone.replace(/[^0-9]/g, "").replace(/^0/, "63") : "";
-  return <div style={{ display: "grid", gap: 4, minWidth: 170 }}>
-    {!link && <button type="button" className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} onClick={make}>Reset link</button>}
-    {msg && <span className="muted" style={{ fontSize: 11 }}>{msg}</span>}
-    {link && <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-      <button type="button" className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => navigator.clipboard?.writeText(link)}>Copy</button>
-      <a className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} target="_blank" rel="noopener" href={`https://wa.me/${wa}?text=${encodeURIComponent(`Hi ${name}, here is your NEAS password reset link (valid 24 hours): ${link}`)}`}>WhatsApp</a>
-    </div>}
-  </div>;
+  return (
+    <div style={{ display: "grid", gap: 4, minWidth: 170 }}>
+      {!link && (
+        <button
+          type="button"
+          className="btn btn-ghost"
+          style={{ padding: "4px 10px", fontSize: 12 }}
+          onClick={make}
+        >
+          Reset link
+        </button>
+      )}
+      {msg && (
+        <span className="muted" style={{ fontSize: 11 }}>
+          {msg}
+        </span>
+      )}
+      {link && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ padding: "4px 10px", fontSize: 12 }}
+            onClick={() => navigator.clipboard?.writeText(link)}
+          >
+            Copy
+          </button>
+          <a
+            className="btn btn-ghost"
+            style={{ padding: "4px 10px", fontSize: 12 }}
+            target="_blank"
+            rel="noopener"
+            href={`https://wa.me/${wa}?text=${encodeURIComponent(`Hi ${name}, here is your NEAS password reset link (valid 24 hours): ${link}`)}`}
+          >
+            WhatsApp
+          </a>
+        </div>
+      )}
+    </div>
+  );
 }
