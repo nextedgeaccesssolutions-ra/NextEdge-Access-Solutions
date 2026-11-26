@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import ImageCell from "./ImageCell";
+import PhotoBackup from "./PhotoBackup";
 
 type Prod = { id: string; category: string; code: string; name: string; dealer_price: number; price_override: number | null; active: boolean; price: number; image: string; description: string; features: string; specs_url: string; name_sheet: string; code_sheet: string; category_sheet: string; name_override: string | null; code_override: string | null; category_override: string | null; dealer_price_sheet: number | null; dealer_override: number | null };
 type Order = { id: number; reference: string; status: string; total: number; created_at: string; email: string; customer: string; delivery: string; notes: string; items: { name: string; code: string; quantity: number; unit_price: number }[] };
@@ -114,6 +115,7 @@ export default function AdminClient(props: { markup: number; categoryMarkup: Rec
     </div>}
 
     {tab === "products" && <div className="card" style={{ overflowX: "auto" }}>
+      <PhotoBackup products={products} onRestored={(id, image) => setProducts((ps) => ps.map((x) => (x.id === id ? { ...x, image } : x)))} />
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 14, background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 10, padding: 12 }}>
         <b>Markup on dealer price</b>
         <input className="input" type="number" min={0} max={500} value={markup} onChange={(e) => setMarkup(Number(e.target.value))} style={{ width: 90 }} aria-label="Markup percent" /> %
@@ -143,7 +145,7 @@ export default function AdminClient(props: { markup: number; categoryMarkup: Rec
       <input className="input" placeholder="Filter products…" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: "100%", marginBottom: 10 }} />
       <table className="t"><thead><tr><th>Photo</th><th>Item</th><th>Details &amp; specs</th><th>Dealer</th><th>Selling price</th><th>Shown</th></tr></thead><tbody>
         {products.filter((p) => !q || (p.name + p.code + p.category).toLowerCase().includes(q.toLowerCase())).map((p) => <tr key={p.id} style={{ opacity: p.active ? 1 : 0.5 }}>
-          <td><ImageCell id={p.id} name={p.name} initial={p.image} /></td>
+          <td><ImageCell key={p.id + "|" + p.image} id={p.id} name={p.name} initial={p.image} /></td>
           <td><ItemCell p={p} flash={flash} onSaved={(patch) => setProducts((ps) => ps.map((x) => (x.id === p.id ? { ...x, ...patch } : x)))} /></td>
           <td style={{ minWidth: 300 }}><DetailsEditor p={p} /></td>
           <td><DealerCell p={p} flash={flash} onSaved={(patch) => setProducts((ps) => ps.map((x) => (x.id === p.id ? { ...x, ...patch } : x)))} /></td>
