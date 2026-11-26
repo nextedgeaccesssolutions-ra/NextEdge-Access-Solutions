@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getSetting } from "@/lib/settings";
+import { getSetting, type ExtraClient } from "@/lib/settings";
 
 // Client photos are changed through the admin database settings; render on each request
 // so published image URLs are not frozen into a static build.
@@ -60,6 +60,7 @@ const sectors = [
 
 export default async function OurClientsPage() {
   const photos = await getSetting<Record<string, string>>("site_photos", {});
+  const extraClients = await getSetting<ExtraClient[]>("extra_clients", []);
   return (
     <main className="neas-clients">
       <style>{`
@@ -141,6 +142,24 @@ export default async function OurClientsPage() {
                   <div className="client-sector">{client.sector}</div>
                   <h3>{client.name}</h3>
                   <p>{client.description}</p>
+                </div>
+              </article>
+            ))}
+            {extraClients.map((client) => (
+              <article className="client-card" key={client.id}>
+                <div className={"client-photo" + (client.photo ? " fit" : "")}>
+                  {client.photo ? (
+                    <img src={client.photo} alt={client.name + " photo"} loading="lazy" />
+                  ) : (
+                    <div className="photo-placeholder" aria-hidden="true">
+                      {client.name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="client-body">
+                  {client.sector && <div className="client-sector">{client.sector}</div>}
+                  <h3>{client.name}</h3>
+                  {client.description && <p>{client.description}</p>}
                 </div>
               </article>
             ))}

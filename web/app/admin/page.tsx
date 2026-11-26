@@ -15,6 +15,7 @@ import {
   type Seo,
   type Social,
   type Business,
+  type ExtraClient,
 } from "@/lib/settings";
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -47,6 +48,7 @@ export default async function Admin() {
     business,
     sitePhotos,
     sheetCfg,
+    extraClients,
   ] = await Promise.all([
     listProducts(true),
     getMarkup(),
@@ -65,6 +67,7 @@ export default async function Admin() {
       lastSync: "",
       lastResult: "",
     }),
+    getSetting<ExtraClient[]>("extra_clients", []),
   ]);
   const awaiting = orders.filter(o => o.status === "awaiting_payment").length;
   const AC = (v: "orders" | "products" | "customers") => (
@@ -121,6 +124,7 @@ export default async function Admin() {
             social={social}
             business={business}
             sitePhotos={sitePhotos}
+            extraClients={extraClients}
           />
         ),
         analytics: <GoogleAnalytics />,
