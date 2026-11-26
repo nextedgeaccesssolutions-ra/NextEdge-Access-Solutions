@@ -32,6 +32,9 @@ export default function ScrollReveal() {
         opacity: 1;
         transform: none;
       }
+      @media (prefers-reduced-motion: reduce) {
+        .reveal, .reveal-left, .reveal-right { opacity: 1; transform: none; transition: none; }
+      }
     `;
     document.head.appendChild(style);
 
@@ -47,7 +50,11 @@ export default function ScrollReveal() {
           }
         });
       },
-      { threshold: 0.12 }
+      // threshold 0: reveal as soon as any part enters the screen. A ratio such as 0.12
+      // can never be reached by an element taller than ~8 screens (the privacy policy),
+      // which then stayed invisible for good. The negative bottom margin keeps the
+      // fade-in for normal sections, which still appear just inside the viewport.
+      { threshold: 0, rootMargin: "0px 0px -8% 0px" }
     );
     els.forEach((el) => io.observe(el));
     return () => { io.disconnect(); document.head.removeChild(style); };
