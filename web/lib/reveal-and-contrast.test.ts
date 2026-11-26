@@ -54,7 +54,9 @@ describe("text contrast on orange", () => {
     const at = html.indexOf('<styleid="a11y-contrast">');
     expect(at).toBeGreaterThan(-1);
     const block = html.slice(at);
-    expect(block).toContain("#neas-client-showcase-title{color:#fff!important}");
+    expect(block).toContain(
+      "#neas-client-showcase-title{color:#fff!important}"
+    );
     expect(block).toContain(".stat-num{color:var(--accent-ink)}");
     // The overrides must come after every other style rule to take effect.
     expect(html.lastIndexOf("<style")).toBe(at);
