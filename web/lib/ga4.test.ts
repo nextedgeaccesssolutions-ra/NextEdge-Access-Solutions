@@ -63,7 +63,9 @@ describe("Search Console diagnostics", () => {
         28,
         fetcher
       )
-    ).rejects.toThrow(/accessNotConfigured.*Enable the Google Search Console API/i);
+    ).rejects.toThrow(
+      /accessNotConfigured.*Enable the Google Search Console API/i
+    );
   });
 });
 

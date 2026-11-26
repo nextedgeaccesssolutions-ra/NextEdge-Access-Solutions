@@ -471,8 +471,10 @@ export async function searchConsoleSummary(
       };
     };
     if (!res.ok) {
-      const reason = payload.error?.errors?.[0]?.reason || payload.error?.status || "";
-      const detail = payload.error?.message || payload.error?.errors?.[0]?.message || "";
+      const reason =
+        payload.error?.errors?.[0]?.reason || payload.error?.status || "";
+      const detail =
+        payload.error?.message || payload.error?.errors?.[0]?.message || "";
       if (res.status === 403) {
         const apiDisabled =
           reason === "accessNotConfigured" ||
