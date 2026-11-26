@@ -38,11 +38,13 @@ export default function ScrollReveal() {
     `;
     document.head.appendChild(style);
 
-    const els = document.querySelectorAll<HTMLElement>(".reveal, .reveal-left, .reveal-right");
+    const els = document.querySelectorAll<HTMLElement>(
+      ".reveal, .reveal-left, .reveal-right"
+    );
     if (!els.length) return;
 
     const io = new IntersectionObserver(
-      (entries) => {
+      entries => {
         entries.forEach((entry, i) => {
           if (entry.isIntersecting) {
             setTimeout(() => entry.target.classList.add("visible"), i * 60);
@@ -56,8 +58,11 @@ export default function ScrollReveal() {
       // fade-in for normal sections, which still appear just inside the viewport.
       { threshold: 0, rootMargin: "0px 0px -8% 0px" }
     );
-    els.forEach((el) => io.observe(el));
-    return () => { io.disconnect(); document.head.removeChild(style); };
+    els.forEach(el => io.observe(el));
+    return () => {
+      io.disconnect();
+      document.head.removeChild(style);
+    };
   }, []);
 
   return null;
