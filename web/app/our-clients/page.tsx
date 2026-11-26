@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getSetting, type ExtraClient } from "@/lib/settings";
+import { getSetting, getSettingList, type ExtraClient } from "@/lib/settings";
 
 // Client photos are changed through the admin database settings; render on each request
 // so published image URLs are not frozen into a static build.
@@ -60,8 +60,8 @@ const sectors = [
 
 export default async function OurClientsPage() {
   const photos = await getSetting<Record<string, string>>("site_photos", {});
-  const extraClients = await getSetting<ExtraClient[]>("extra_clients", []);
-  const hiddenClients = await getSetting<string[]>("hidden_clients", []);
+  const extraClients = await getSettingList<ExtraClient>("extra_clients");
+  const hiddenClients = await getSettingList<string>("hidden_clients");
   return (
     <main className="neas-clients">
       <style>{`

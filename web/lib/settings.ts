@@ -59,6 +59,17 @@ export async function getStringSetting(key: string, fallback: string): Promise<s
     return fallback;
   }
 }
+/** Read a setting stored as a JSON array (getSetting would turn it into an object). */
+export async function getSettingList<T>(key: string): Promise<T[]> {
+  try {
+    const rows = await sql`select value from settings where key = ${key}`;
+    if (!rows[0]) return [];
+    const v = JSON.parse(rows[0].value);
+    return Array.isArray(v) ? (v as T[]) : [];
+  } catch {
+    return [];
+  }
+}
 export async function setSetting(key: string, value: unknown) {
   await sql`insert into settings (key, value) values (${key}, ${JSON.stringify(value)}) on conflict (key) do update set value = excluded.value`;
 }

@@ -8,6 +8,7 @@ import GoogleAnalytics from "./GoogleAnalytics";
 import AdminShell from "./AdminShell";
 import {
   getSetting,
+  getSettingList,
   getCategoryMarkup,
   DEFAULT_SEO,
   DEFAULT_SOCIAL,
@@ -68,8 +69,8 @@ export default async function Admin() {
       lastSync: "",
       lastResult: "",
     }),
-    getSetting<ExtraClient[]>("extra_clients", []),
-    getSetting<string[]>("hidden_clients", []),
+    getSettingList<ExtraClient>("extra_clients"),
+    getSettingList<string>("hidden_clients"),
   ]);
   const awaiting = orders.filter(o => o.status === "awaiting_payment").length;
   const AC = (v: "orders" | "products" | "customers") => (
