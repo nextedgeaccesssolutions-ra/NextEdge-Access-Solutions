@@ -4,6 +4,7 @@ import { getUser } from "@/lib/auth";
 import { BANK } from "@/lib/http";
 import StoreClient from "./StoreClient";
 import StorePromoBanner from "./StorePromoBanner";
+import { findShopeeListing, shopeeItemUrl } from "@/lib/shopee-listings";
 import catalog from "../../scripts/catalog.json";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export default async function Store() {
     })); }),
     getUser().catch(() => null),
   ]);
-  const pub = dedupePublicProducts(products).map((p) => ({ id: p.id, category: p.category, code: p.code, name: p.name, price: p.price, image: (p as { image?: string }).image ?? "", description: (p as { description?: string }).description ?? "", features: (p as { features?: string }).features ?? "", specs_url: (p as { specs_url?: string }).specs_url ?? "" }));
+  const pub = dedupePublicProducts(products).map((p) => ({ id: p.id, category: p.category, code: p.code, name: p.name, price: p.price, image: (p as { image?: string }).image ?? "", description: (p as { description?: string }).description ?? "", features: (p as { features?: string }).features ?? "", specs_url: (p as { specs_url?: string }).specs_url ?? "", shopee_url: (() => { const l = findShopeeListing(p.name); return l ? shopeeItemUrl(l.itemId) : ""; })() }));
   const origin = "https://www.nextedge-access-solutions.com";
   const itemList = live && pub.length ? {
     "@context": "https://schema.org", "@type": "ItemList", name: "NEAS Online Store",

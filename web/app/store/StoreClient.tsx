@@ -13,6 +13,7 @@ type P = {
   description?: string;
   features?: string;
   specs_url?: string;
+  shopee_url?: string;
 };
 type Bank = {
   accountName: string;
@@ -492,6 +493,21 @@ export default function StoreClient({
                             rel="noopener"
                           >
                             View technical specs ↗
+                          </a>
+                        </td>
+                      </tr>
+                    )}
+                    {modal.p.shopee_url && (
+                      <tr>
+                        <th>Shopee</th>
+                        <td>
+                          <a
+                            href={modal.p.shopee_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "#EE4D2D", fontWeight: 600 }}
+                          >
+                            Buy this on Shopee ↗
                           </a>
                         </td>
                       </tr>
