@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 export type AdminSection =
-  "orders" | "products" | "customers" | "sheet" | "website" | "analytics";
+  "orders" | "products" | "customers" | "sheet" | "shopee" | "website" | "analytics";
 type Item = {
   id: AdminSection;
   label: string;
@@ -31,6 +31,7 @@ export default function AdminShell({
           "products",
           "customers",
           "sheet",
+          "shopee",
           "website",
           "analytics",
         ].includes(s)
@@ -73,6 +74,12 @@ export default function AdminShell({
           label: "Google Sheet updater",
           icon: "📄",
           hint: "Sync prices & photos",
+        },
+        {
+          id: "shopee",
+          label: "Shopee shop",
+          icon: "🛍️",
+          hint: "Connect Shopee · sync prices",
         },
       ],
     },

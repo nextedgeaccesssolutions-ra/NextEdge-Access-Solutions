@@ -4,6 +4,7 @@ import { sql, listProducts, getMarkup } from "@/lib/db";
 import AdminClient from "./AdminClient";
 import SettingsPanel from "./SettingsPanel";
 import SheetSync from "./SheetSync";
+import ShopeePanel from "./ShopeePanel";
 import GoogleAnalytics from "./GoogleAnalytics";
 import AdminShell from "./AdminShell";
 import {
@@ -121,6 +122,7 @@ export default async function Admin() {
         products: AC("products"),
         customers: AC("customers"),
         sheet: <SheetSync initial={sheetCfg} />,
+        shopee: <ShopeePanel />,
         website: (
           <SettingsPanel
             seo={seo}
