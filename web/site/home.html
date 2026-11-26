@@ -643,7 +643,7 @@ body{background:var(--bg);color:var(--fg)}
       <p class="section-lead">Comprehensive rope access and height safety solutions for every industry and environment.</p>
     </div>
     <div class="services-grid">
-      <div class="service-card reveal" onclick="openModal('rope-access')" role="button" tabindex="0">
+      <div class="service-card reveal" onclick="openModal('rope-access')">
         <div class="service-photo" style="background-image:url('/img/ce6c22d9bace.webp')"></div>
         <div class="service-body">
           <div class="service-tag">Rope Access</div>
@@ -652,7 +652,7 @@ body{background:var(--bg);color:var(--fg)}
           <a class="service-more" href="/services/rope-access" onclick="event.stopPropagation()">See full service &amp; get a quote →</a>
         </div>
       </div>
-      <div class="service-card reveal" onclick="openModal('ndt-inspection')" role="button" tabindex="0">
+      <div class="service-card reveal" onclick="openModal('ndt-inspection')">
         <div class="service-photo" style="background-image:url('/img/877206fcf5ba.webp')"></div>
         <div class="service-body">
           <div class="service-tag">Inspection</div>
@@ -661,7 +661,7 @@ body{background:var(--bg);color:var(--fg)}
           <a class="service-more" href="/services/ndt-inspection" onclick="event.stopPropagation()">See full service &amp; get a quote →</a>
         </div>
       </div>
-      <div class="service-card reveal" onclick="openModal('coatings')" role="button" tabindex="0">
+      <div class="service-card reveal" onclick="openModal('coatings')">
         <div class="service-photo" style="background-image:url('/img/6447ca2a761e.webp')"></div>
         <div class="service-body">
           <div class="service-tag">Coatings</div>
@@ -670,7 +670,7 @@ body{background:var(--bg);color:var(--fg)}
           <a class="service-more" href="/services/coatings" onclick="event.stopPropagation()">See full service &amp; get a quote →</a>
         </div>
       </div>
-            <div class="service-card reveal" onclick="openModal('metmast-telecom')" role="button" tabindex="0">
+            <div class="service-card reveal" onclick="openModal('metmast-telecom')">
         <div class="service-photo" style="background-image:url('/img/0cc8f91dab71.webp')"></div>
         <div class="service-body">
           <div class="service-tag">Met Mast &amp; Telecom</div>
@@ -679,7 +679,7 @@ body{background:var(--bg);color:var(--fg)}
           <a class="service-more" href="/services/metmast-telecom" onclick="event.stopPropagation()">See full service &amp; get a quote →</a>
         </div>
       </div>
-      <div class="service-card reveal" onclick="openModal('training')" role="button" tabindex="0">
+      <div class="service-card reveal" onclick="openModal('training')">
         <div class="service-photo" style="background-image:url('/img/390f5ed3244c.jpg')"></div>
         <div class="service-body">
           <div class="service-tag">Training &amp; PPE</div>
@@ -688,7 +688,7 @@ body{background:var(--bg);color:var(--fg)}
           <a class="service-more" href="/services/training" onclick="event.stopPropagation()">See full service &amp; get a quote →</a>
         </div>
       </div>
-      <div class="service-card reveal" onclick="openModal('wind-turbine')" role="button" tabindex="0">
+      <div class="service-card reveal" onclick="openModal('wind-turbine')">
         <div class="service-photo" style="background-image:url('/img/0ce37cb33507.webp')"></div>
         <div class="service-body">
           <div class="service-tag">Wind Energy</div>
@@ -984,7 +984,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       carouselTrack.appendChild(div);
     });
   }
-  const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');obs.unobserve(e.target);}});},{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
+  const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');obs.unobserve(e.target);}});},{threshold:0,rootMargin:'0px 0px -40px 0px'});
   document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
 });
 
@@ -1326,4 +1326,22 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){
 })();
 </script>
 
+<style id="a11y-contrast">
+/* WCAG AA contrast (4.5:1). Orange stays the brand fill; text on it is dark, and
+   orange used as text on light backgrounds is a deeper shade. */
+:root{--accent-ink:#c2410c;--on-accent:#1c1917}
+.stat-num{color:var(--accent-ink)}
+.nav-cta,.topbar{color:var(--on-accent)}
+.footer-emergency p{color:var(--accent-ink)}
+.footer-emergency>div{color:#475569!important}
+.em-btn.em-call{color:var(--on-accent)!important}
+.em-btn.em-wa{background:#15803d}
+.em-btn.em-vb{background:#5b4bd6}
+/* The sitewide h2 colour rule made this title navy on navy (invisible). */
+#neas-client-showcase-title{color:#fff!important}
+/* The logo subtitle sits on the dark translucent header: a lighter orange reads there. */
+.nav-logo-text>span{color:#fb923c}
+/* Links inside a line of text need more than colour to stand out. */
+footer a[href*="policy"],footer a[href*="cookie"],.site-footer a[href*="policy"],.site-footer a[href*="cookie"]{text-decoration:underline}
+</style>
 </body></html>
