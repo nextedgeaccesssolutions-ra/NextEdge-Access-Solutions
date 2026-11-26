@@ -48,6 +48,7 @@ export default async function Store() {
     <p className="muted reveal" style={{ maxWidth: 680 }}>Genuine Skylotec, Singing Rock and Trestec equipment. Order online and pay by bank transfer. We confirm stock and delivery once payment is received.</p>
     <p className="reveal" style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "4px 0 18px" }}>
       <a className="btn btn-primary" href="https://api.whatsapp.com/send?phone=639914265886&text=Hi%20NEAS%2C%20I%27d%20like%20to%20ask%20about%20equipment%20from%20your%20store." target="_blank" rel="noopener noreferrer">WhatsApp for stock &amp; bulk prices</a>
+      <a className="btn" href="https://shopee.ph/nextedgeaccesssolutionsneas" target="_blank" rel="noopener noreferrer" aria-label="Buy on Shopee (opens our Shopee shop in a new tab)" style={{ background: "#EE4D2D", borderColor: "#EE4D2D", color: "#fff" }}>Buy on Shopee</a>
       <a className="btn" href="tel:+639914265886">Call +63 991 426 5886</a>
       <a className="btn" href="mailto:sales@nextedge-access-solutions.com?subject=Store%20inquiry">Email sales</a>
     </p>
