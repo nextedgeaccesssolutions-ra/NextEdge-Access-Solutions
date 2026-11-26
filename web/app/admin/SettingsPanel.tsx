@@ -330,9 +330,9 @@ export default function SettingsPanel(props: {
                     style={{
                       width: "100%",
                       height: 150,
-                      objectFit: "cover",
+                      objectFit: key.startsWith("client") ? "contain" : "cover",
                       borderRadius: 8,
-                      background: "#eef2f4",
+                      background: key.startsWith("client") ? "#fff" : "#eef2f4",
                       border: "1px solid var(--line)",
                     }}
                   />

@@ -82,6 +82,7 @@ export default async function OurClientsPage() {
         .neas-clients .client-card:hover{transform:translateY(-5px);border-color:rgba(215,173,104,.48);box-shadow:0 24px 48px rgba(0,0,0,.25)}
         .neas-clients .client-photo{height:210px;position:relative;background:radial-gradient(circle at 75% 15%,rgba(215,173,104,.24),transparent 35%),linear-gradient(135deg,#173747,#0c1b27);display:grid;place-items:center;overflow:hidden}
         .neas-clients .client-photo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .45s ease}
+        .neas-clients .client-photo.fit{background:#fff}.neas-clients .client-photo.fit img{object-fit:contain;padding:14px;box-sizing:border-box}
         .neas-clients .client-card:hover .client-photo img{transform:scale(1.035)}
         .neas-clients .image-caption{position:absolute;inset:auto 0 0;padding:22px 14px 10px;background:linear-gradient(transparent,rgba(4,13,20,.82));color:#f3e4c8;font-size:10px;line-height:1.45;font-weight:700;letter-spacing:.035em}
         .neas-clients .photo-placeholder{width:76px;height:76px;border-radius:22px;border:1px solid rgba(215,173,104,.45);background:rgba(215,173,104,.12);display:grid;place-items:center;color:#f0d29c;font-weight:900;font-size:25px;letter-spacing:.04em}
@@ -124,7 +125,7 @@ export default async function OurClientsPage() {
           <div className="client-grid">
             {clients.map((client) => (
               <article className="client-card" key={client.name}>
-                <div className="client-photo">
+                <div className={"client-photo" + (photos[client.photoKey] ? " fit" : "")}>
                   {(() => {
                     const hasApprovedPhoto = Boolean(photos[client.photoKey]);
                     const imageSrc = hasApprovedPhoto ? photos[client.photoKey] : client.fallbackImage;
