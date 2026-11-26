@@ -40,6 +40,10 @@ export async function PUT(req: Request) {
     }
     await setSetting("site_photos", out);
   }
+  if (Array.isArray(b.hiddenClients)) {
+    const allowedClients = ["clientTriconti", "clientAtimonan", "clientPhilsurv"];
+    await setSetting("hidden_clients", allowedClients.filter((k) => b.hiddenClients.includes(k)));
+  }
   if (b.extraClients !== undefined) {
     const list = cleanExtraClients(b.extraClients);
     if (!list) return bad("Each client needs a name, and photos must be an uploaded image or HTTPS URL.");

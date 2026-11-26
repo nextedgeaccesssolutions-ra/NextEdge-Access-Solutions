@@ -61,6 +61,7 @@ const sectors = [
 export default async function OurClientsPage() {
   const photos = await getSetting<Record<string, string>>("site_photos", {});
   const extraClients = await getSetting<ExtraClient[]>("extra_clients", []);
+  const hiddenClients = await getSetting<string[]>("hidden_clients", []);
   return (
     <main className="neas-clients">
       <style>{`
@@ -124,7 +125,7 @@ export default async function OurClientsPage() {
             </div>
           </div>
           <div className="client-grid">
-            {clients.map((client) => (
+            {clients.filter((client) => !hiddenClients.includes(client.photoKey)).map((client) => (
               <article className="client-card" key={client.name}>
                 <div className={"client-photo" + (photos[client.photoKey] ? " fit" : "")}>
                   {(() => {

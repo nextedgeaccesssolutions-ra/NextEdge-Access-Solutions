@@ -49,6 +49,7 @@ export default async function Admin() {
     sitePhotos,
     sheetCfg,
     extraClients,
+    hiddenClients,
   ] = await Promise.all([
     listProducts(true),
     getMarkup(),
@@ -68,6 +69,7 @@ export default async function Admin() {
       lastResult: "",
     }),
     getSetting<ExtraClient[]>("extra_clients", []),
+    getSetting<string[]>("hidden_clients", []),
   ]);
   const awaiting = orders.filter(o => o.status === "awaiting_payment").length;
   const AC = (v: "orders" | "products" | "customers") => (
@@ -125,6 +127,7 @@ export default async function Admin() {
             business={business}
             sitePhotos={sitePhotos}
             extraClients={extraClients}
+            hiddenClients={hiddenClients}
           />
         ),
         analytics: <GoogleAnalytics />,

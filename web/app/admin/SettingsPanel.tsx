@@ -96,6 +96,7 @@ export default function SettingsPanel(props: {
   business: Business;
   sitePhotos: Record<string, string>;
   extraClients?: ExtraClient[];
+  hiddenClients?: string[];
 }) {
   const [tab, setTab] = useState<Tab>("seo");
   const [seo, setSeo] = useState(props.seo);
@@ -115,6 +116,7 @@ export default function SettingsPanel(props: {
   const [clients, setClients] = useState<ExtraClient[]>(props.extraClients ?? []);
   const updateClient = (i: number, patch: Partial<ExtraClient>) =>
     setClients(cur => cur.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+  const [hidden, setHidden] = useState<string[]>(props.hiddenClients ?? []);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -321,6 +323,26 @@ export default function SettingsPanel(props: {
                 }}
               >
                 <b>{label}</b>
+                {key.startsWith("client") && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ float: "right", padding: "2px 10px", fontSize: 12, color: hidden.includes(key) ? undefined : "#b42318" }}
+                    disabled={busy}
+                    onClick={() => {
+                      const isHidden = hidden.includes(key);
+                      if (!isHidden && !confirm("Remove " + label.replace(/ photo$/, "") + " from the Our Clients page?")) return;
+                      const next = isHidden ? hidden.filter(k => k !== key) : [...hidden, key];
+                      setHidden(next);
+                      save({ hiddenClients: next });
+                    }}
+                  >
+                    {hidden.includes(key) ? "Restore client" : "Delete client"}
+                  </button>
+                )}
+                {key.startsWith("client") && hidden.includes(key) && (
+                  <div style={{ fontSize: 12, color: "#b42318", marginTop: 4 }}>Hidden from the website</div>
+                )}
                 <p
                   className="muted"
                   style={{ fontSize: 12, margin: "3px 0 10px" }}
