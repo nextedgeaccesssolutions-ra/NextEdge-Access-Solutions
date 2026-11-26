@@ -456,19 +456,7 @@ export async function searchConsoleSummary(
       cache: "no-store",
       signal: AbortSignal.timeout(15000),
     });
-    if (res.status === 403)
-      throw new Ga4Error(
-        "permission",
-        "The service account needs access to this Search Console property and the Search Console API must be enabled."
-      );
-    if (res.status === 404)
-      throw new Ga4Error(
-        "api",
-        "Search Console property not found. Check GSC_SITE_URL and the exact verified property URL."
-      );
-    if (!res.ok)
-      throw new Ga4Error("api", `Search Console returned HTTP ${res.status}.`);
-    return (await res.json()) as {
+    const payload = (await res.json().catch(() => ({}))) as {
       rows?: {
         keys?: string[];
         clicks?: number;
@@ -476,7 +464,38 @@ export async function searchConsoleSummary(
         ctr?: number;
         position?: number;
       }[];
+      error?: {
+        message?: string;
+        status?: string;
+        errors?: { reason?: string; message?: string }[];
+      };
     };
+    if (!res.ok) {
+      const reason = payload.error?.errors?.[0]?.reason || payload.error?.status || "";
+      const detail = payload.error?.message || payload.error?.errors?.[0]?.message || "";
+      if (res.status === 403) {
+        const apiDisabled =
+          reason === "accessNotConfigured" ||
+          /has not been used|is disabled|not enabled/i.test(detail);
+        const action = apiDisabled
+          ? "Enable the Google Search Console API in the Google Cloud project used by this service account."
+          : "Grant this service account access to the exact Search Console property configured in GSC_SITE_URL.";
+        throw new Ga4Error(
+          "permission",
+          `Search Console HTTP 403${reason ? ` (${reason})` : ""}: ${detail || "Google denied the request."} ${action}`
+        );
+      }
+      if (res.status === 404)
+        throw new Ga4Error(
+          "api",
+          `Search Console property not found: ${detail || "Check GSC_SITE_URL and the exact verified property URL."}`
+        );
+      throw new Ga4Error(
+        "api",
+        `Search Console returned HTTP ${res.status}${reason ? ` (${reason})` : ""}: ${detail || "Google API request failed."}`
+      );
+    }
+    return payload;
   };
   const [totals, queries, pages, daily] = await Promise.all([
     query(start, end),
