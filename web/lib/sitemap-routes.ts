@@ -14,7 +14,11 @@ export function getStaticSitemapEntries(origin: string, now: Date) {
     { url: `${origin}/our-clients`, lastModified: now, priority: 0.8 },
     // Each service landing page is its own self-canonical page and the main
     // target for commercial searches, so it must be discoverable here.
-    ...SERVICE_PAGES.map((p) => ({ url: `${origin}/services/${p.id}`, lastModified: now, priority: 0.9 })),
+    ...SERVICE_PAGES.map(p => ({
+      url: `${origin}/services/${p.id}`,
+      lastModified: now,
+      priority: 0.9,
+    })),
     { url: `${origin}/privacy-policy`, lastModified: now, priority: 0.3 },
   ];
 }

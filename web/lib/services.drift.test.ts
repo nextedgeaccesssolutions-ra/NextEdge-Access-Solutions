@@ -3,15 +3,26 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SERVICE_META, getServiceMeta } from "./services";
 
-const html = readFileSync(fileURLToPath(new URL("../site/home.html", import.meta.url)), "utf8");
+const html = readFileSync(
+  fileURLToPath(new URL("../site/home.html", import.meta.url)),
+  "utf8"
+);
 
 /** Pulls the inline `const SERVICES={...}` object out of the static homepage. */
-function parseInlineServices(): Record<string, { title: string; desc: string }> {
+function parseInlineServices(): Record<
+  string,
+  { title: string; desc: string }
+> {
   const start = html.indexOf("const SERVICES={");
-  expect(start, "inline SERVICES object not found in home.html").toBeGreaterThan(-1);
+  expect(
+    start,
+    "inline SERVICES object not found in home.html"
+  ).toBeGreaterThan(-1);
   const block = html.slice(start, html.indexOf("\n};", start));
   const out: Record<string, { title: string; desc: string }> = {};
-  for (const m of block.matchAll(/'([a-z-]+)':\{tag:'[^']*',title:'([^']*)',desc:'([^']*)'/g)) {
+  for (const m of block.matchAll(
+    /'([a-z-]+)':\{tag:'[^']*',title:'([^']*)',desc:'([^']*)'/g
+  )) {
     out[m[1]] = { title: m[2], desc: m[3] };
   }
   return out;
@@ -20,7 +31,9 @@ function parseInlineServices(): Record<string, { title: string; desc: string }> 
 /** Pulls each service card's id and background image out of the markup. */
 function parseCardImages(): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const m of html.matchAll(/openModal\('([a-z-]+)'\)[\s\S]{0,400}?background-image:url\('([^']+)'\)/g)) {
+  for (const m of html.matchAll(
+    /openModal\('([a-z-]+)'\)[\s\S]{0,400}?background-image:url\('([^']+)'\)/g
+  )) {
     out[m[1]] ??= m[2];
   }
   return out;
@@ -36,16 +49,23 @@ describe("service metadata stays in step with the static homepage", () => {
   });
 
   it("covers exactly the services the homepage defines", () => {
-    expect(Object.keys(SERVICE_META).sort()).toEqual(Object.keys(inline).sort());
+    expect(Object.keys(SERVICE_META).sort()).toEqual(
+      Object.keys(inline).sort()
+    );
   });
 
   it("has a card image for every service", () => {
-    expect(Object.keys(images).sort()).toEqual(Object.keys(SERVICE_META).sort());
+    expect(Object.keys(images).sort()).toEqual(
+      Object.keys(SERVICE_META).sort()
+    );
   });
 
   for (const [id, meta] of Object.entries(SERVICE_META)) {
     it(`matches the homepage copy for ${id}`, () => {
-      expect(inline[id], `${id} is missing from the inline SERVICES object`).toBeDefined();
+      expect(
+        inline[id],
+        `${id} is missing from the inline SERVICES object`
+      ).toBeDefined();
       expect(meta.title).toBe(inline[id].title);
       expect(meta.desc).toBe(inline[id].desc);
       // Same photo; the homepage may serve a WebP copy while share previews keep the JPEG.
@@ -57,7 +77,9 @@ describe("service metadata stays in step with the static homepage", () => {
 
 describe("getServiceMeta", () => {
   it("resolves a known service", () => {
-    expect(getServiceMeta("ndt-inspection")?.title).toBe("NDT & Industrial Inspection");
+    expect(getServiceMeta("ndt-inspection")?.title).toBe(
+      "NDT & Industrial Inspection"
+    );
   });
 
   it("returns null for unknown, empty and missing values", () => {

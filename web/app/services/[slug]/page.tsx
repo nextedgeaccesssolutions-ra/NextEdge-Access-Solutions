@@ -12,10 +12,14 @@ const WHATSAPP = "639914265886";
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return SERVICE_PAGES.map((p) => ({ slug: p.id }));
+  return SERVICE_PAGES.map(p => ({ slug: p.id }));
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
   const page = getServicePage((await params).slug);
   if (!page) return {};
   const path = `/services/${page.id}`;
@@ -24,8 +28,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: { absolute: page.title },
     description: page.metaDescription,
     alternates: { canonical: path },
-    openGraph: { title: page.title, description: page.metaDescription, url: path, type: "website", images: [{ url: image }] },
-    twitter: { card: "summary_large_image", title: page.title, description: page.metaDescription, images: [image] },
+    openGraph: {
+      title: page.title,
+      description: page.metaDescription,
+      url: path,
+      type: "website",
+      images: [{ url: image }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: page.title,
+      description: page.metaDescription,
+      images: [image],
+    },
   };
 }
 
@@ -48,7 +63,8 @@ function jsonLd(page: NonNullable<ReturnType<typeof getServicePage>>) {
         email: "sales@nextedge-access-solutions.com",
         address: {
           "@type": "PostalAddress",
-          streetAddress: "B15 Lot 6 Marilao Grand Villas, Barangay Loma de Gato",
+          streetAddress:
+            "B15 Lot 6 Marilao Grand Villas, Barangay Loma de Gato",
           addressLocality: "Marilao",
           addressRegion: "Bulacan",
           addressCountry: "PH",
@@ -57,49 +73,95 @@ function jsonLd(page: NonNullable<ReturnType<typeof getServicePage>>) {
       hasOfferCatalog: {
         "@type": "OfferCatalog",
         name: page.enquiryLabel,
-        itemListElement: page.scope.map((s) => ({ "@type": "Offer", itemOffered: { "@type": "Service", name: s } })),
+        itemListElement: page.scope.map(s => ({
+          "@type": "Offer",
+          itemOffered: { "@type": "Service", name: s },
+        })),
       },
     },
     {
       "@context": "https://schema.org",
       "@type": "FAQPage",
-      mainEntity: page.faqs.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+      mainEntity: page.faqs.map(f => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
     },
     {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Home", item: `${ORIGIN}/` },
-        { "@type": "ListItem", position: 2, name: "Services", item: `${ORIGIN}/services` },
-        { "@type": "ListItem", position: 3, name: page.enquiryLabel, item: url },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Services",
+          item: `${ORIGIN}/services`,
+        },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: page.enquiryLabel,
+          item: url,
+        },
       ],
     },
   ];
 }
 
-export default async function ServicePageView({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ServicePageView({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const page = getServicePage((await params).slug);
   if (!page) notFound();
   const image = SERVICE_META[page.id].image;
-  const others = SERVICE_PAGES.filter((p) => p.id !== page.id);
-  const waText = encodeURIComponent(`Hello NEAS, I'd like a quote for ${page.enquiryLabel}.`);
+  const others = SERVICE_PAGES.filter(p => p.id !== page.id);
+  const waText = encodeURIComponent(
+    `Hello NEAS, I'd like a quote for ${page.enquiryLabel}.`
+  );
 
   return (
     <main className="neas-svc">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd(page)).replace(/</g, "\\u003c") }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd(page)).replace(/</g, "\\u003c"),
+        }}
+      />
 
-      <section className="hero" style={{ backgroundImage: `linear-gradient(100deg,rgba(7,29,41,.96) 0%,rgba(7,29,41,.88) 48%,rgba(7,29,41,.55) 100%),url(${image})` }}>
+      <section
+        className="hero"
+        style={{
+          backgroundImage: `linear-gradient(100deg,rgba(7,29,41,.96) 0%,rgba(7,29,41,.88) 48%,rgba(7,29,41,.55) 100%),url(${image})`,
+        }}
+      >
         <div className="wrap">
           <nav className="crumbs" aria-label="Breadcrumb">
-            <Link href="/">Home</Link> <span aria-hidden="true">/</span> <Link href="/services">Services</Link> <span aria-hidden="true">/</span> <span>{page.enquiryLabel}</span>
+            <Link href="/">Home</Link> <span aria-hidden="true">/</span>{" "}
+            <Link href="/services">Services</Link>{" "}
+            <span aria-hidden="true">/</span> <span>{page.enquiryLabel}</span>
           </nav>
           <div className="eyebrow">{page.eyebrow}</div>
           <h1>{page.h1}</h1>
           <p className="lead">{page.intro}</p>
           <div className="ctas">
-            <a className="btn primary" href="#quote">Request a quotation</a>
-            <a className="btn" href={`tel:${PHONE}`}>Call (+63) 991 426 5886</a>
-            <a className="btn" href={`https://wa.me/${WHATSAPP}?text=${waText}`} target="_blank" rel="noopener">WhatsApp</a>
+            <a className="btn primary" href="#quote">
+              Request a quotation
+            </a>
+            <a className="btn" href={`tel:${PHONE}`}>
+              Call (+63) 991 426 5886
+            </a>
+            <a
+              className="btn"
+              href={`https://wa.me/${WHATSAPP}?text=${waText}`}
+              target="_blank"
+              rel="noopener"
+            >
+              WhatsApp
+            </a>
           </div>
         </div>
       </section>
@@ -108,13 +170,25 @@ export default async function ServicePageView({ params }: { params: Promise<{ sl
         <div className="wrap grid2">
           <div>
             <h2>What we do</h2>
-            <ul className="ticks">{page.scope.map((s) => <li key={s}>{s}</li>)}</ul>
+            <ul className="ticks">
+              {page.scope.map(s => (
+                <li key={s}>{s}</li>
+              ))}
+            </ul>
           </div>
           <div>
             <h2>Who we work with</h2>
-            <ul className="ticks">{page.industries.map((s) => <li key={s}>{s}</li>)}</ul>
+            <ul className="ticks">
+              {page.industries.map(s => (
+                <li key={s}>{s}</li>
+              ))}
+            </ul>
             <h2 className="mt">Why NEAS</h2>
-            <p>IRATA-certified (No. 2/2322), with ARAA, SRAA and OPITO certification and more than 20 years of combined experience on projects in the Philippines, Dubai, Qatar and Saudi Arabia.</p>
+            <p>
+              IRATA-certified (No. 2/2322), with ARAA, SRAA and OPITO
+              certification and more than 20 years of combined experience on
+              projects in the Philippines, Dubai, Qatar and Saudi Arabia.
+            </p>
           </div>
         </div>
       </section>
@@ -122,7 +196,11 @@ export default async function ServicePageView({ params }: { params: Promise<{ sl
       <section className="band alt">
         <div className="wrap">
           <h2>Relevant experience</h2>
-          <ul className="chips">{page.experience.map((s) => <li key={s}>{s}</li>)}</ul>
+          <ul className="chips">
+            {page.experience.map(s => (
+              <li key={s}>{s}</li>
+            ))}
+          </ul>
           {page.testimonial && (
             <blockquote>
               <p>&ldquo;{page.testimonial.quote}&rdquo;</p>
@@ -136,13 +214,26 @@ export default async function ServicePageView({ params }: { params: Promise<{ sl
         <div className="wrap grid2">
           <div>
             <h2>Get a quotation</h2>
-            <p>Tell us the location, the structure or asset, and what needs doing. The team replies by email with next steps and a quotation.</p>
-            <p className="contact">
-              <a href={`tel:${PHONE}`}>(+63) 991 426 5886</a><br />
-              <a href="tel:+639957708144">(+63) 995 770 8144</a><br />
-              <a href="mailto:sales@nextedge-access-solutions.com">sales@nextedge-access-solutions.com</a>
+            <p>
+              Tell us the location, the structure or asset, and what needs
+              doing. The team replies by email with next steps and a quotation.
             </p>
-            {page.id === "training" && <p><Link className="inline" href="/store">Browse certified PPE in the NEAS store →</Link></p>}
+            <p className="contact">
+              <a href={`tel:${PHONE}`}>(+63) 991 426 5886</a>
+              <br />
+              <a href="tel:+639957708144">(+63) 995 770 8144</a>
+              <br />
+              <a href="mailto:sales@nextedge-access-solutions.com">
+                sales@nextedge-access-solutions.com
+              </a>
+            </p>
+            {page.id === "training" && (
+              <p>
+                <Link className="inline" href="/store">
+                  Browse certified PPE in the NEAS store →
+                </Link>
+              </p>
+            )}
           </div>
           <ServiceQuoteForm service={page.enquiryLabel} />
         </div>
@@ -152,7 +243,7 @@ export default async function ServicePageView({ params }: { params: Promise<{ sl
         <div className="wrap">
           <h2>Frequently asked questions</h2>
           <div className="faqs">
-            {page.faqs.map((f) => (
+            {page.faqs.map(f => (
               <details key={f.q}>
                 <summary>{f.q}</summary>
                 <p>{f.a}</p>
@@ -166,10 +257,14 @@ export default async function ServicePageView({ params }: { params: Promise<{ sl
         <div className="wrap">
           <h2>Other NEAS services</h2>
           <ul className="others">
-            {others.map((o) => (
-              <li key={o.id}><Link href={`/services/${o.id}`}>{o.enquiryLabel} →</Link></li>
+            {others.map(o => (
+              <li key={o.id}>
+                <Link href={`/services/${o.id}`}>{o.enquiryLabel} →</Link>
+              </li>
             ))}
-            <li><Link href="/store">Certified PPE store →</Link></li>
+            <li>
+              <Link href="/store">Certified PPE store →</Link>
+            </li>
           </ul>
         </div>
       </section>

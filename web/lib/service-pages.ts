@@ -58,7 +58,12 @@ export const SERVICE_PAGES: ServicePage[] = [
       "Facade LED installation and window tinting",
       "Residential gutter, roof and window cleaning",
     ],
-    industries: ["High-rise commercial buildings", "Condominiums and residential towers", "Hotels and malls", "Curtainwall and facade contractors"],
+    industries: [
+      "High-rise commercial buildings",
+      "Condominiums and residential towers",
+      "Hotels and malls",
+      "Curtainwall and facade contractors",
+    ],
     experience: [
       "Burj Khalifa, Dubai",
       "King Abdullah Financial District (KAFD), Saudi Arabia",
@@ -102,7 +107,11 @@ export const SERVICE_PAGES: ServicePage[] = [
       "Anchor bolt installation",
       "Lidar services",
     ],
-    industries: ["Wind farm owners and operators", "Wind energy developers", "Turbine O&M contractors"],
+    industries: [
+      "Wind farm owners and operators",
+      "Wind energy developers",
+      "Turbine O&M contractors",
+    ],
     experience: [
       "Wind turbine inspection, repair and maintenance in the Philippines",
       "Wind-sector client relationships with Triconti ECC Renewables and Atimonan Windkraft",
@@ -113,7 +122,10 @@ export const SERVICE_PAGES: ServicePage[] = [
         q: "Do you need a crane to repair turbine blades?",
         a: "Not for most inspection and repair work. Technicians descend from the nacelle on ropes and work directly on the blade, which avoids mobilising a large crane.",
       },
-      { q: "Are your technicians certified for work at height?", a: CREDENTIALS },
+      {
+        q: "Are your technicians certified for work at height?",
+        a: CREDENTIALS,
+      },
       {
         q: "Do you install aerodynamic add-ons such as Gurney flaps?",
         a: "Yes. NEAS installs G90 Gurney flaps (Anakata) on turbine blades, as well as lifeline systems and anchor bolts.",
@@ -141,7 +153,11 @@ export const SERVICE_PAGES: ServicePage[] = [
       "Annual and quarterly tower maintenance",
       "Met mast and telecom consultancy",
     ],
-    industries: ["Wind energy developers", "Geodetic and survey firms", "Telecom operators and tower companies"],
+    industries: [
+      "Wind energy developers",
+      "Geodetic and survey firms",
+      "Telecom operators and tower companies",
+    ],
     experience: [
       "Met mast tower erections in the Philippines",
       "Telecom tower installations in the Philippines",
@@ -179,7 +195,12 @@ export const SERVICE_PAGES: ServicePage[] = [
       "Pipe repair",
       "Lifting operations and standby rescue",
     ],
-    industries: ["Oil and gas, offshore and onshore", "Power plants", "Petrochemical and industrial plants", "Marine assets"],
+    industries: [
+      "Oil and gas, offshore and onshore",
+      "Power plants",
+      "Petrochemical and industrial plants",
+      "Marine assets",
+    ],
     experience: ["Offshore projects in Dubai and Qatar", "RasGas, Qatar"],
     faqs: [
       {
@@ -211,14 +232,24 @@ export const SERVICE_PAGES: ServicePage[] = [
       "Waterproofing",
       "Concrete repair",
     ],
-    industries: ["Industrial plants", "Offshore platforms", "Commercial buildings"],
-    experience: ["Offshore projects in Dubai and Qatar", "International high-rise projects in the Middle East"],
+    industries: [
+      "Industrial plants",
+      "Offshore platforms",
+      "Commercial buildings",
+    ],
+    experience: [
+      "Offshore projects in Dubai and Qatar",
+      "International high-rise projects in the Middle East",
+    ],
     faqs: [
       {
         q: "Can you paint or coat a structure without scaffolding?",
         a: "Yes. Rope access technicians reach the surface directly, which suits tall structures, tanks, towers and facades where scaffolding is slow or costly.",
       },
-      { q: "Are your painters certified?", a: "Yes. Among the team's individual certifications are painter certifications, alongside IRATA rope access, OPITO offshore and industrial safety training." },
+      {
+        q: "Are your painters certified?",
+        a: "Yes. Among the team's individual certifications are painter certifications, alongside IRATA rope access, OPITO offshore and industrial safety training.",
+      },
       { q: "How is coating work priced?", a: PRICING_ANSWER },
     ],
     enquiryLabel: "Blasting, Painting & Coatings",
@@ -241,7 +272,12 @@ export const SERVICE_PAGES: ServicePage[] = [
       "Rope access, met mast and telecom consultancy",
       "Certified PPE from Skylotec, Singing Rock, Cousin Trestec, SMC, Climbing Technology, FallProtec, Harken and KStrong",
     ],
-    industries: ["Construction and facade contractors", "Wind, telecom and tower companies", "Industrial and offshore employers", "Individual technicians"],
+    industries: [
+      "Construction and facade contractors",
+      "Wind, telecom and tower companies",
+      "Industrial and offshore employers",
+      "Individual technicians",
+    ],
     experience: [
       "Partnership with IRMAP (Integrated Risk Management Association of the Philippines)",
       "Training accreditations in rope access, offshore and onshore safety, first aid and health and safety",
@@ -264,12 +300,15 @@ export const SERVICE_PAGES: ServicePage[] = [
         q: "Do you sell the PPE as well?",
         a: "Yes. Certified height-safety and rope access PPE is available in the NEAS online store, with harnesses, helmets, ropes, descenders, ascenders, connectors, lanyards and more.",
       },
-      { q: "How much does training cost?", a: "Course fees depend on the course, level and group size. Send your details through the form on this page and the team will reply with the schedule and fees." },
+      {
+        q: "How much does training cost?",
+        a: "Course fees depend on the course, level and group size. Send your details through the form on this page and the team will reply with the schedule and fees.",
+      },
     ],
     enquiryLabel: "Training, Consultancy & PPE",
   },
 ];
 
 export function getServicePage(id: string): ServicePage | null {
-  return SERVICE_PAGES.find((p) => p.id === id) ?? null;
+  return SERVICE_PAGES.find(p => p.id === id) ?? null;
 }
