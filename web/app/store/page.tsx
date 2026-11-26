@@ -50,7 +50,7 @@ export default async function Store() {
       <a className="btn btn-primary" href="https://api.whatsapp.com/send?phone=639914265886&text=Hi%20NEAS%2C%20I%27d%20like%20to%20ask%20about%20equipment%20from%20your%20store." target="_blank" rel="noopener noreferrer">WhatsApp for stock &amp; bulk prices</a>
       <a className="btn" href="https://shopee.ph/nextedgeaccesssolutionsneas" target="_blank" rel="noopener noreferrer" aria-label="Buy on Shopee (opens our Shopee shop in a new tab)" style={{ background: "#EE4D2D", borderColor: "#EE4D2D", color: "#fff" }}>Buy on Shopee</a>
       <a className="btn" href="tel:+639914265886">Call +63 991 426 5886</a>
-      <a className="btn" href="mailto:sales@nextedge-access-solutions.com?subject=Store%20inquiry">Email sales</a>
+      <a className="btn" href="mailto:info.nextedgeaccesssolutions@gmail.com?subject=Inquiry">Email us</a>
     </p>
     <StoreClient linkable={live} products={pub} user={user ? { name: user.name, phone: user.phone, email: user.email } : null} bank={BANK} />
     <section aria-labelledby="store-guide" style={{ maxWidth: 900, margin: "56px auto 20px", lineHeight: 1.75 }}>

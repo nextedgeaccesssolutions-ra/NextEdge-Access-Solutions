@@ -126,7 +126,7 @@ async function callTool(name: string, args: Record<string, unknown>) {
       contacts: {
         phone_whatsapp: "+63 991 426 5886",
         alternate_phone: "+63 995 770 8144",
-        sales_email: "sales@nextedge-access-solutions.com",
+        sales_email: "info.nextedgeaccesssolutions@gmail.com",
       },
       limitations: "Formal pricing, availability, certification claims and project commitments require confirmation by NEAS personnel.",
     });

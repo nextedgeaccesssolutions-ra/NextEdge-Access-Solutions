@@ -689,7 +689,7 @@ export default function StoreClient({
                   </li>
                   <li>
                     Email your deposit slip to
-                    sales@nextedge-access-solutions.com or Viber +63 991 426
+                    info.nextedgeaccesssolutions@gmail.com or Viber +63 991 426
                     5886.
                   </li>
                   <li>
