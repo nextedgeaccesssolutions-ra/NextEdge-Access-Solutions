@@ -256,9 +256,17 @@
   border-radius: 10px;
   overflow: hidden;
 }
+.sp-img {
+  position: relative;
+}
+/* Pin the photo inside the square (minus the 6px padding). A plain
+   height:100% does not resolve inside the aspect-ratio box, so tall photos
+   grew past it and were clipped at the bottom. */
 .sp-img img {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 6px;
+  width: calc(100% - 12px);
+  height: calc(100% - 12px);
   object-fit: contain;
   display: block;
 }
