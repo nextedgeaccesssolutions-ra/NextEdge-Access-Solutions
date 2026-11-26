@@ -127,7 +127,14 @@ jobs:
             if [ "${CODE}" != "200" ]; then note "FAIL GET ${path} expected=200 got=${CODE}"; fi
           done
 
-          curl -sL "${PROBE_PRODUCT}" -o /tmp/product.html || true
+          # Probe a product that currently exists: product IDs change when the catalog is reloaded,
+          # so take the first product link from /store and fall back to PROBE_PRODUCT.
+          FIRST=$(curl -sL "${PROD_URL}/store" | grep -oE '/store/p/[A-Za-z0-9_-]+' | head -1 || true)
+          PRODUCT_URL="${PROBE_PRODUCT}"
+          if [ -n "${FIRST}" ]; then PRODUCT_URL="${PROD_URL}${FIRST}"; fi
+          echo "Probing ${PRODUCT_URL}"
+          PCODE=$(curl -sL -o /tmp/product.html -w "%{http_code}" "${PRODUCT_URL}" || echo "000")
+          if [ "${PCODE}" != "200" ]; then note "FAIL product page ${PRODUCT_URL} expected=200 got=${PCODE}"; fi
           if grep -q '"seller"' /tmp/product.html; then
             echo "seller markup present"
           else
