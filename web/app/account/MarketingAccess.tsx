@@ -29,7 +29,7 @@ export default function MarketingAccess({ status, until, renewing, fee }: { stat
       : st === "requested" || sent ? <p><b>Request received.</b> We'll check your ₱{fee} payment and switch on your access, usually within one business day.</p>
       : <>
         {st === "approved" && <p style={{ color: "#b45309" }}>Your access ended on {until ? new Date(until).toLocaleDateString("en-PH", { dateStyle: "long" }) : "—"}. Pay ₱{fee} to renew; your posts and connected accounts are kept.</p>}
-        {st === "rejected" && <p style={{ color: "#b91c1c" }}>Your last request couldn't be confirmed. Check the reference and send it again, or email sales@nextedge-access-solutions.com.</p>}
+        {st === "rejected" && <p style={{ color: "#b91c1c" }}>Your last request couldn't be confirmed. Check the reference and send it again, or email info.nextedgeaccesssolutions@gmail.com.</p>}
         {form}
       </>}
   </div>;

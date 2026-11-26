@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   ].join("");
 
   const sent = await sendMail(
-    "sales@nextedge-access-solutions.com",
+    "info.nextedgeaccesssolutions@gmail.com",
     subject,
     html,
     "website_inquiry",

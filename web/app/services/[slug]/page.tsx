@@ -60,7 +60,7 @@ function jsonLd(page: NonNullable<ReturnType<typeof getServicePage>>) {
         name: "NextEdge Access Solutions (NEAS) OPC",
         url: ORIGIN,
         telephone: "+63 991 426 5886",
-        email: "sales@nextedge-access-solutions.com",
+        email: "info.nextedgeaccesssolutions@gmail.com",
         address: {
           "@type": "PostalAddress",
           streetAddress:
@@ -223,8 +223,8 @@ export default async function ServicePageView({
               <br />
               <a href="tel:+639957708144">(+63) 995 770 8144</a>
               <br />
-              <a href="mailto:sales@nextedge-access-solutions.com">
-                sales@nextedge-access-solutions.com
+              <a href="mailto:info.nextedgeaccesssolutions@gmail.com">
+                info.nextedgeaccesssolutions@gmail.com
               </a>
             </p>
             {page.id === "training" && (
