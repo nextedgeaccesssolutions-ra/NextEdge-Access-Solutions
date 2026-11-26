@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { SHOPEE_LISTINGS, shopeeItemUrl } from "@/lib/shopee-listings";
 
 type Status = {
   configured: boolean; connected: boolean; shopId: number; shopName: string; connectedAt: string;
@@ -53,12 +54,20 @@ export default function ShopeePanel() {
     <h2 style={{ marginTop: 4 }}>Shopee shop</h2>
     <div className="card" style={{ maxWidth: 980 }}>
       {!s ? <p className="muted">Loading…</p> : !s.configured ? <>
-        <p><b>Step 1 — Shopee Open Platform keys are not set.</b></p>
-        <ol className="muted" style={{ fontSize: 14, lineHeight: 1.7 }}>
-          <li>Sign in at <a href="https://open.shopee.com" target="_blank" rel="noopener noreferrer">open.shopee.com</a> with your Shopee seller account and create an app (type: Seller In-house System).</li>
-          <li>Set its redirect URL domain to <code>www.nextedge-access-solutions.com</code>.</li>
-          <li>In Vercel → Project → Settings → Environment Variables add <code>SHOPEE_PARTNER_ID</code> and <code>SHOPEE_PARTNER_KEY</code> (Production), then redeploy.</li>
-        </ol>
+        <p><b>Linked mode — Shopee API not available to this shop yet.</b></p>
+        <p className="muted" style={{ fontSize: 14, lineHeight: 1.6 }}>
+          Shopee only gives API access (Seller In-house System) to Mall sellers, Managed Sellers, or shops with 600+ orders in the last 30 days.
+          Until then, the store links each matching product to its Shopee listing (&ldquo;Buy this on Shopee&rdquo;), using the list below.
+          Prices are not synced automatically — compare and edit them in <i>Products &amp; prices</i>.
+          To update this list, edit <code>web/lib/shopee-listings.ts</code>.
+        </p>
+        <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
+          <thead><tr><th align="left">Shopee listing ({SHOPEE_LISTINGS.length})</th><th align="right">Shopee price</th></tr></thead>
+          <tbody>{SHOPEE_LISTINGS.map(l => <tr key={l.itemId} style={{ borderTop: "1px solid #eee" }}>
+            <td><a href={shopeeItemUrl(l.itemId)} target="_blank" rel="noopener noreferrer">{l.name}</a></td>
+            <td align="right">{l.price == null ? "Variants" : peso(l.price)}</td>
+          </tr>)}</tbody>
+        </table>
       </> : !s.connected ? <>
         <p>Keys are set. Connect your Shopee shop — you will sign in to Shopee Seller Centre and approve access.</p>
         <a className="btn btn-primary" href="/api/admin/shopee/connect">Connect Shopee shop</a>
