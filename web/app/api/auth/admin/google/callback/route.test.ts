@@ -36,33 +36,79 @@ describe("admin Google sign-in", () => {
 
   it("start: sends Google the trimmed client id", async () => {
     const { GET } = await import("../route");
-    const res = await GET(new Request(`${ORIGIN}/api/auth/admin/google`, { headers: { "x-forwarded-for": "198.51.100.1" } }));
+    const res = await GET(
+      new Request(`${ORIGIN}/api/auth/admin/google`, {
+        headers: { "x-forwarded-for": "198.51.100.1" },
+      })
+    );
     const auth = new URL(res.headers.get("location")!);
     expect(auth.hostname).toBe("accounts.google.com");
-    expect(auth.searchParams.get("client_id")).toBe("client-123.apps.googleusercontent.com");
-    expect(auth.searchParams.get("redirect_uri")).toBe(`${ORIGIN}/api/auth/admin/google/callback`);
+    expect(auth.searchParams.get("client_id")).toBe(
+      "client-123.apps.googleusercontent.com"
+    );
+    expect(auth.searchParams.get("redirect_uri")).toBe(
+      `${ORIGIN}/api/auth/admin/google/callback`
+    );
   });
 
   it("callback: exchanges the code with trimmed credentials", async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400 }));
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ error: "invalid_grant" }), {
+          status: 400,
+        })
+    );
     vi.stubGlobal("fetch", fetchMock);
-    jar.set("neas_admin_google_oauth", JSON.stringify({ state: "s1", nonce: "n1", verifier: "v1" }));
+    jar.set(
+      "neas_admin_google_oauth",
+      JSON.stringify({ state: "s1", nonce: "n1", verifier: "v1" })
+    );
     const { GET } = await import("./route");
-    await GET(new Request(`${ORIGIN}/api/auth/admin/google/callback?code=c1&state=s1`, { headers: { "x-forwarded-for": "198.51.100.2" } }));
-    const body = new URLSearchParams(String((fetchMock.mock.calls[0] as unknown[])[1] && ((fetchMock.mock.calls[0] as unknown[])[1] as RequestInit).body));
+    await GET(
+      new Request(`${ORIGIN}/api/auth/admin/google/callback?code=c1&state=s1`, {
+        headers: { "x-forwarded-for": "198.51.100.2" },
+      })
+    );
+    const body = new URLSearchParams(
+      String(
+        (fetchMock.mock.calls[0] as unknown[])[1] &&
+          ((fetchMock.mock.calls[0] as unknown[])[1] as RequestInit).body
+      )
+    );
     expect(body.get("client_id")).toBe("client-123.apps.googleusercontent.com");
     expect(body.get("client_secret")).toBe("secret-xyz");
-    expect(body.get("redirect_uri")).toBe(`${ORIGIN}/api/auth/admin/google/callback`);
+    expect(body.get("redirect_uri")).toBe(
+      `${ORIGIN}/api/auth/admin/google/callback`
+    );
   });
 
   it("callback: logs Google's reason when the token exchange is rejected", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "invalid_client", error_description: "Unauthorized" }), { status: 401 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: "invalid_client",
+              error_description: "Unauthorized",
+            }),
+            { status: 401 }
+          )
+      )
+    );
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    jar.set("neas_admin_google_oauth", JSON.stringify({ state: "s1", nonce: "n1", verifier: "v1" }));
+    jar.set(
+      "neas_admin_google_oauth",
+      JSON.stringify({ state: "s1", nonce: "n1", verifier: "v1" })
+    );
     const { GET } = await import("./route");
-    const res = await GET(new Request(`${ORIGIN}/api/auth/admin/google/callback?code=c1&state=s1`, { headers: { "x-forwarded-for": "198.51.100.3" } }));
+    const res = await GET(
+      new Request(`${ORIGIN}/api/auth/admin/google/callback?code=c1&state=s1`, {
+        headers: { "x-forwarded-for": "198.51.100.3" },
+      })
+    );
     expect(res.headers.get("location")).toContain("google_error=verification");
-    const logged = warn.mock.calls.map((c) => String(c[0])).join("\n");
+    const logged = warn.mock.calls.map(c => String(c[0])).join("\n");
     expect(logged).toContain("invalid_client");
     expect(logged).not.toContain("secret-xyz");
     warn.mockRestore();
