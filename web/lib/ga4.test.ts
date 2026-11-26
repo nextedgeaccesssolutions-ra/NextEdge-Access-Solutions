@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateKeyPairSync } from "node:crypto";
-import { ga4Config, ga4Summary, Ga4Error } from "./ga4";
+import { ga4Config, ga4Summary, searchConsoleSummary, Ga4Error } from "./ga4";
 
 const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const pem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
@@ -32,6 +32,38 @@ describe("ga4Config", () => {
     expect(
       ga4Config({ ...env, GA4_CLIENT_EMAIL: "someone@gmail.com" })
     ).toBeNull();
+  });
+});
+
+describe("Search Console diagnostics", () => {
+  it("identifies when the Search Console API is disabled", async () => {
+    const cfg = ga4Config({
+      ...env,
+      GA4_CLIENT_EMAIL: "gsc-diagnostics@neas-site.iam.gserviceaccount.com",
+    })!;
+    const fetcher = (async (url: string) => {
+      if (new URL(url).host === "oauth2.googleapis.com")
+        return json({ access_token: "gsc-token", expires_in: 3600 });
+      return json(
+        {
+          error: {
+            code: 403,
+            status: "PERMISSION_DENIED",
+            message: "Google Search Console API has not been used in project.",
+            errors: [{ reason: "accessNotConfigured" }],
+          },
+        },
+        403
+      );
+    }) as typeof fetch;
+    await expect(
+      searchConsoleSummary(
+        cfg,
+        "https://www.nextedge-access-solutions.com/",
+        28,
+        fetcher
+      )
+    ).rejects.toThrow(/accessNotConfigured.*Enable the Google Search Console API/i);
   });
 });
 
