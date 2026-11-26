@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// The repo-root test runner has no `next` package installed; stub the one helper the routes use.
+vi.mock("next/server", () => ({
+  NextResponse: {
+    redirect: (url: URL | string, status = 307) =>
+      new Response(null, { status, headers: { location: String(url) } }),
+  },
+}));
 const jar = new Map<string, string>();
 vi.mock("next/headers", () => ({
   cookies: async () => ({
