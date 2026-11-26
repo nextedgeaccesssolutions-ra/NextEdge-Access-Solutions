@@ -12,8 +12,26 @@ describe("static sitemap destinations", () => {
       `${origin}/`,
       `${origin}/store`,
       `${origin}/our-clients`,
+      `${origin}/services/rope-access`,
+      `${origin}/services/wind-turbine`,
+      `${origin}/services/metmast-telecom`,
+      `${origin}/services/ndt-inspection`,
+      `${origin}/services/coatings`,
+      `${origin}/services/training`,
       `${origin}/privacy-policy`,
     ]);
+  });
+
+  it("lists every service landing page, so none is orphaned from search", async () => {
+    const { SERVICE_PAGES } = await import("./service-pages");
+    for (const page of SERVICE_PAGES) expect(urls).toContain(`${origin}/services/${page.id}`);
+  });
+
+  it("homepage service cards link to every service landing page with a crawlable href", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { SERVICE_PAGES } = await import("./service-pages");
+    const html = readFileSync(new URL("../site/home.html", import.meta.url), "utf8");
+    for (const page of SERVICE_PAGES) expect(html).toContain(`href="/services/${page.id}"`);
   });
 
   it("does not advertise homepage section aliases as separate indexable pages", () => {

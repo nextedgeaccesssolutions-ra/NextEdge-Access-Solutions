@@ -1,4 +1,6 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#07131d;color:#e8edf5}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.sp-img{all:unset;cursor:pointer;display:block;aspect-ratio:4/3;background:#fff;border-radius:10px;overflow:hidden;margin-bottom:4px}.sp-img img{width:100%;height:100%;object-fit:contain}.sm-img{display:block;max-width:100%;max-height:260px;margin:0 auto 10px;object-fit:contain}.sm-pricerow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.sm-share{border:0;background:#f97316;color:#fff;font-weight:700;border-radius:999px;padding:7px 14px;cursor:pointer}.sm-sharebox{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.sm-sharebox a,.sm-sharebox button{border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;color:#0f172a;text-decoration:none;cursor:pointer}
+a.service-more{text-decoration:none}
+a.service-more:hover,a.service-more:focus-visible{text-decoration:underline}
 </style><link rel="stylesheet" href="/mobile.css"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -34,7 +36,7 @@ button{cursor:pointer;font-family:inherit}
 
 /* HERO */
 .hero{position:relative;min-height:100vh;display:flex;align-items:center;padding-top:64px;overflow:hidden}
-.hero-bg{position:absolute;inset:0;background-image:url('/img/hero-city.jpg');background-size:cover;background-position:center 30%;filter:brightness(0.32) saturate(0.8)}
+.hero-bg{position:absolute;inset:0;background-image:url('/img/hero-city.webp');background-size:cover;background-position:center 30%;filter:brightness(0.32) saturate(0.8)}
 .hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(7,9,15,0.72) 40%,transparent 100%),linear-gradient(to top,rgba(7,9,15,0.85) 0%,transparent 55%)}
 .hero-content{position:relative;z-index:1;max-width:660px;padding-block:80px}
 .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);margin-bottom:20px}
@@ -547,7 +549,7 @@ body{background:var(--bg);color:var(--fg)}
   <div class="container">
     <nav class="nav-inner">
       <a class="nav-logo" href="/home">
-        <img src="/img/83c162b165ae.png" alt="NEAS Logo">
+        <img src="/img/83c162b165ae.webp" alt="NEAS Logo">
         <div class="nav-logo-text">NEXTEDGE<span>Access Solutions. NEAS OPC</span></div>
       </a>
       <ul class="nav-links">
@@ -579,7 +581,7 @@ body{background:var(--bg);color:var(--fg)}
 </header>
 
 <section class="hero" id="hero"><div class="hero-vid-label on">High-Rise Facades</div>
-  <div class="hero-bg"><div class="hero-slides"><div class="hero-slide" data-label="Wind Turbines" style="background-image:url('/img/hero-wind.jpg')"></div><div class="hero-slide" data-label="Offshore Oil Rigs" style="background-image:url('/img/hero-oilrig.jpg')"></div><div class="hero-slide" data-label="Telecom Towers" style="background-image:url('/img/hero-telecom.jpg')"></div><div class="hero-slide" data-label="Met Mast Towers" style="background-image:url('/img/hero-metmast.jpg')"></div><div class="hero-slide" data-label="Bridges" style="background-image:url('/img/hero-bridge.jpg')"></div><div class="hero-slide" data-label="Power Plants" style="background-image:url('/img/hero-power.jpg')"></div></div></div><div class="neas-fog"><i></i><i></i><i></i><i></i></div>
+  <div class="hero-bg"><div class="hero-slides"><div class="hero-slide" data-label="Wind Turbines" style="background-image:url('/img/hero-wind.webp')"></div><div class="hero-slide" data-label="Offshore Oil Rigs" data-bg="/img/hero-oilrig.webp"></div><div class="hero-slide" data-label="Telecom Towers" data-bg="/img/hero-telecom.webp"></div><div class="hero-slide" data-label="Met Mast Towers" data-bg="/img/hero-metmast.webp"></div><div class="hero-slide" data-label="Bridges" data-bg="/img/hero-bridge.webp"></div><div class="hero-slide" data-label="Power Plants" data-bg="/img/hero-power.webp"></div></div></div><div class="neas-fog"><i></i><i></i><i></i><i></i></div>
         <div class="hero-smoke"><span></span></div>
   <div class="container">
     <div class="hero-content">
@@ -627,7 +629,7 @@ body{background:var(--bg);color:var(--fg)}
         </div>
       </div>
       <div class="about-photo reveal">
-        <img src="/img/f6df6d31ae7e.jpg" alt="NEAS technician window buffing high-rise Philippines" loading="lazy">
+        <img src="/img/f6df6d31ae7e.webp" alt="NEAS technician window buffing high-rise Philippines" loading="lazy">
       </div>
     </div>
   </div>
@@ -642,39 +644,39 @@ body{background:var(--bg);color:var(--fg)}
     </div>
     <div class="services-grid">
       <div class="service-card reveal" onclick="openModal('rope-access')" role="button" tabindex="0">
-        <div class="service-photo" style="background-image:url('/img/ce6c22d9bace.jpg')"></div>
+        <div class="service-photo" style="background-image:url('/img/ce6c22d9bace.webp')"></div>
         <div class="service-body">
           <div class="service-tag">Rope Access</div>
           <div class="service-title">Rope Access &amp; Facade Works</div>
           <p class="service-desc">IRATA-certified technicians for inspection, maintenance, cleaning, and repair at height — faster and more cost-effective than scaffolding.</p>
-          <span class="service-more">Learn More →</span>
+          <a class="service-more" href="/services/rope-access" onclick="event.stopPropagation()">See full service &amp; get a quote →</a>
         </div>
       </div>
       <div class="service-card reveal" onclick="openModal('ndt-inspection')" role="button" tabindex="0">
-        <div class="service-photo" style="background-image:url('/img/877206fcf5ba.jpg')"></div>
+        <div class="service-photo" style="background-image:url('/img/877206fcf5ba.webp')"></div>
         <div class="service-body">
           <div class="service-tag">Inspection</div>
           <div class="service-title">NDT &amp; Industrial Inspection</div>
           <p class="service-desc">Non-destructive testing via rope access for offshore, onshore, marine, and industrial assets — visual, UT, MT and more.</p>
-          <span class="service-more">Learn More →</span>
+          <a class="service-more" href="/services/ndt-inspection" onclick="event.stopPropagation()">See full service &amp; get a quote →</a>
         </div>
       </div>
       <div class="service-card reveal" onclick="openModal('coatings')" role="button" tabindex="0">
-        <div class="service-photo" style="background-image:url('/img/6447ca2a761e.jpg')"></div>
+        <div class="service-photo" style="background-image:url('/img/6447ca2a761e.webp')"></div>
         <div class="service-body">
           <div class="service-tag">Coatings</div>
           <div class="service-title">Blasting, Painting &amp; Coatings</div>
           <p class="service-desc">Surface preparation, protective coatings, and repainting for offshore structures, industrial facilities, and commercial buildings.</p>
-          <span class="service-more">Learn More →</span>
+          <a class="service-more" href="/services/coatings" onclick="event.stopPropagation()">See full service &amp; get a quote →</a>
         </div>
       </div>
             <div class="service-card reveal" onclick="openModal('metmast-telecom')" role="button" tabindex="0">
-        <div class="service-photo" style="background-image:url('/img/0cc8f91dab71.jpg')"></div>
+        <div class="service-photo" style="background-image:url('/img/0cc8f91dab71.webp')"></div>
         <div class="service-body">
           <div class="service-tag">Met Mast &amp; Telecom</div>
           <div class="service-title">Met Mast &amp; Telecom Tower Services</div>
           <p class="service-desc">Met Mast erection, commissioning, Lidar installation and annual maintenance. Plus cell site inspection, antenna installation, and telecom tower services.</p>
-          <span class="service-more">Learn More →</span>
+          <a class="service-more" href="/services/metmast-telecom" onclick="event.stopPropagation()">See full service &amp; get a quote →</a>
         </div>
       </div>
       <div class="service-card reveal" onclick="openModal('training')" role="button" tabindex="0">
@@ -683,16 +685,16 @@ body{background:var(--bg);color:var(--fg)}
           <div class="service-tag">Training &amp; PPE</div>
           <div class="service-title">Training, Consultancy &amp; PPE Supply</div>
           <p class="service-desc">Professional courses in rope access, WAH, rescue, telecom, and wind energy. Certified PPE supply for safe operations at height.</p>
-          <span class="service-more">Learn More →</span>
+          <a class="service-more" href="/services/training" onclick="event.stopPropagation()">See full service &amp; get a quote →</a>
         </div>
       </div>
       <div class="service-card reveal" onclick="openModal('wind-turbine')" role="button" tabindex="0">
-        <div class="service-photo" style="background-image:url('/img/0ce37cb33507.jpg')"></div>
+        <div class="service-photo" style="background-image:url('/img/0ce37cb33507.webp')"></div>
         <div class="service-body">
           <div class="service-tag">Wind Energy</div>
           <div class="service-title">Wind Turbine Services</div>
           <p class="service-desc">Rope access inspection, blade repair, and maintenance for wind turbines and renewable energy assets.</p>
-          <span class="service-more">Learn More →</span>
+          <a class="service-more" href="/services/wind-turbine" onclick="event.stopPropagation()">See full service &amp; get a quote →</a>
         </div>
       </div>
     </div>
@@ -718,16 +720,16 @@ body{background:var(--bg);color:var(--fg)}
       <p class="section-lead">Strategic partnerships with globally recognised organisations committed to rope access safety, innovation, and excellence.</p>
     </div>
     <div class="partners-grid">
-      <div class="partner-card reveal"><img src="/img/e5400f46df84.jpg" alt="HRWPA" style="width:80px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">HRWPA</div><div class="partner-type">Accreditation Body</div></div>
-      <div class="partner-card reveal" style="background:#fff"><img src="/img/2ba2e3092947.png" alt="SKYLOTEC" style="width:130px;height:60px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name" style="color:#222">SKYLOTEC</div><div class="partner-type">Equipment Partner</div></div>
-      <div class="partner-card reveal"><img src="/img/c10dc6c9ea4f.png" alt="GREENTECK" style="width:80px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">GREENTECK</div><div class="partner-type">Waterproofing Partner</div></div>
-      <div class="partner-card reveal"><img src="/img/65c0abc206b1.png" alt="PROFEC" style="width:auto;max-width:150px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">PROFEC</div><div class="partner-type">Wind Energy Partner</div></div>
-      <div class="partner-card reveal"><img src="/img/361a036c26bc.png" alt="FALLPROTEC" style="width:auto;max-width:150px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">FALLPROTEC</div><div class="partner-type">Safety Partner</div></div>
-      <div class="partner-card reveal"><img src="/img/irmap-logo.png" alt="IRMAP – Integrated Risk Management Association of the Philippines" style="width:84px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">IRMAP</div><div class="partner-type">Industry Partner</div></div>
-      <div class="partner-card reveal"><img src="/img/a189a2d9bfa1.png" alt="KSTRONG" style="width:auto;max-width:150px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">KSTRONG</div><div class="partner-type">Equipment Partner</div></div>
+      <div class="partner-card reveal"><img src="/img/e5400f46df84.webp" alt="HRWPA" style="width:80px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">HRWPA</div><div class="partner-type">Accreditation Body</div></div>
+      <div class="partner-card reveal" style="background:#fff"><img src="/img/2ba2e3092947.webp" alt="SKYLOTEC" style="width:130px;height:60px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name" style="color:#222">SKYLOTEC</div><div class="partner-type">Equipment Partner</div></div>
+      <div class="partner-card reveal"><img src="/img/c10dc6c9ea4f.webp" alt="GREENTECK" style="width:80px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">GREENTECK</div><div class="partner-type">Waterproofing Partner</div></div>
+      <div class="partner-card reveal"><img src="/img/65c0abc206b1.webp" alt="PROFEC" style="width:auto;max-width:150px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">PROFEC</div><div class="partner-type">Wind Energy Partner</div></div>
+      <div class="partner-card reveal"><img src="/img/361a036c26bc.webp" alt="FALLPROTEC" style="width:auto;max-width:150px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">FALLPROTEC</div><div class="partner-type">Safety Partner</div></div>
+      <div class="partner-card reveal"><img src="/img/irmap-logo.webp" alt="IRMAP – Integrated Risk Management Association of the Philippines" style="width:84px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">IRMAP</div><div class="partner-type">Industry Partner</div></div>
+      <div class="partner-card reveal"><img src="/img/a189a2d9bfa1.webp" alt="KSTRONG" style="width:auto;max-width:150px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">KSTRONG</div><div class="partner-type">Equipment Partner</div></div>
       <div class="partner-card reveal"><img src="/img/e4d734b5ae00.svg" alt="JIALONG" style="width:auto;max-width:150px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">JIALONG</div><div class="partner-type">Supply Partner</div></div>
-      <div class="partner-card reveal"><img src="/img/c72e747264d8.png" alt="HARKEN" style="width:auto;max-width:150px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">HARKEN</div><div class="partner-type">Equipment Partner</div></div>
-      <div class="partner-card reveal"><img src="/img/2fe2e35babde.png" alt="COUSIN" style="width:auto;max-width:150px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">COUSIN</div><div class="partner-type">Rope Partner</div></div>
+      <div class="partner-card reveal"><img src="/img/c72e747264d8.webp" alt="HARKEN" style="width:auto;max-width:150px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">HARKEN</div><div class="partner-type">Equipment Partner</div></div>
+      <div class="partner-card reveal"><img src="/img/2fe2e35babde.webp" alt="COUSIN" style="width:auto;max-width:150px;height:80px;object-fit:contain;margin:0 auto 8px;display:block"><div class="partner-name">COUSIN</div><div class="partner-type">Rope Partner</div></div>
     </div>
   </div>
 
@@ -887,7 +889,7 @@ body{background:var(--bg);color:var(--fg)}
   <div class="container">
     <div class="footer-inner">
       <div class="footer-brand">
-        <img src="/img/83c162b165ae.png" alt="NEAS">
+        <img src="/img/83c162b165ae.webp" alt="NEAS">
         <div style="font-size:13px;font-weight:700;color:#fff;margin-top:8px">NEXTEDGE ACCESS SOLUTIONS</div>
         <p>IRATA-certified rope access specialists with 20+ years of combined international experience, serving Asia since 2025. Safe · Reliable · Professional.</p>
       </div>
@@ -957,7 +959,7 @@ body{background:var(--bg);color:var(--fg)}
 </div>
 
 <script>
-const GALLERY_DATA = [{"src":"/img/5dda560dd098.jpg","label":"NEAS Photo 1"},{"src":"/img/8cb6cfbb3fa2.jpg","label":"NEAS Photo 2"},{"src":"/img/6961c4c8a095.jpg","label":"NEAS Photo 3"},{"src":"/img/a1b519cad9f4.jpg","label":"NEAS Photo 4"},{"src":"/img/fa09b21c4c41.jpg","label":"NEAS Photo 5"},{"src":"/img/13ba6f6eb4e9.jpg","label":"NEAS Photo 6"},{"src":"/img/c566a6ad994a.jpg","label":"NEAS Photo 7"},{"src":"/img/dd5b246ebf3f.jpg","label":"NEAS Photo 8"},{"src":"/img/8893478b3efc.jpg","label":"NEAS Photo 9"},{"src":"/img/db4b7667f3c9.jpg","label":"NEAS Photo 10"},{"src":"/img/a7330f027b26.jpg","label":"NEAS Photo 11"},{"src":"/img/bf05bd806f51.jpg","label":"NEAS Photo 12"}];
+const GALLERY_DATA = [{"src":"/img/5dda560dd098.webp","label":"NEAS Photo 1"},{"src":"/img/8cb6cfbb3fa2.jpg","label":"NEAS Photo 2"},{"src":"/img/6961c4c8a095.jpg","label":"NEAS Photo 3"},{"src":"/img/a1b519cad9f4.webp","label":"NEAS Photo 4"},{"src":"/img/fa09b21c4c41.jpg","label":"NEAS Photo 5"},{"src":"/img/13ba6f6eb4e9.jpg","label":"NEAS Photo 6"},{"src":"/img/c566a6ad994a.jpg","label":"NEAS Photo 7"},{"src":"/img/dd5b246ebf3f.jpg","label":"NEAS Photo 8"},{"src":"/img/8893478b3efc.webp","label":"NEAS Photo 9"},{"src":"/img/db4b7667f3c9.jpg","label":"NEAS Photo 10"},{"src":"/img/a7330f027b26.webp","label":"NEAS Photo 11"},{"src":"/img/bf05bd806f51.jpg","label":"NEAS Photo 12"}];
 
 document.addEventListener('DOMContentLoaded',()=>{
   const grid=document.getElementById('galleryGrid');
@@ -1090,6 +1092,9 @@ async function submitForm(e){
 (function(){
 var s=[].slice.call(document.querySelectorAll('.hero-slide')),lab=document.querySelector('.hero-vid-label'),i=-1;
 if(!s.length)return;
+// Later slides download after the page has loaded, so the first view is not held up by six photos.
+function lazyBg(){s.forEach(function(el){if(el.dataset.bg){el.style.backgroundImage="url('"+el.dataset.bg+"')";delete el.dataset.bg;}});}
+if(document.readyState==='complete')lazyBg();else window.addEventListener('load',lazyBg);
 function next(){
   if(i>=0)s[i].classList.remove('on');
   i=(i+1)%(s.length+1);

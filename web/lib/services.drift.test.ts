@@ -48,7 +48,9 @@ describe("service metadata stays in step with the static homepage", () => {
       expect(inline[id], `${id} is missing from the inline SERVICES object`).toBeDefined();
       expect(meta.title).toBe(inline[id].title);
       expect(meta.desc).toBe(inline[id].desc);
-      expect(meta.image).toBe(images[id]);
+      // Same photo; the homepage may serve a WebP copy while share previews keep the JPEG.
+      const base = (u: string) => u.replace(/\.(jpe?g|png|webp)$/i, "");
+      expect(base(meta.image)).toBe(base(images[id]));
     });
   }
 });

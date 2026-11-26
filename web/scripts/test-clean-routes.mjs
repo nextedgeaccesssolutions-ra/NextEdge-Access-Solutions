@@ -31,7 +31,10 @@ for (const route of ["/", "/store", "/our-clients", "/privacy-policy"]) {
   assert.ok(sitemap.includes("${origin}" + route), "sitemap route helper is missing " + route);
 }
 for (const obsolete of ["/about", "/services", "/partners", "/contact"]) {
-  assert.ok(!sitemap.includes("${origin}" + obsolete), "obsolete route remains in sitemap: " + obsolete);
+  // Match the bare section route only (closing quote/backtick right after it), so
+  // real sub-pages such as /services/rope-access are still allowed.
+  const bare = new RegExp("\\$\\{origin\\}" + obsolete.replace("/", "\\/") + "[`'\"]");
+  assert.ok(!bare.test(sitemap), "obsolete route remains in sitemap: " + obsolete);
 }
 
 assert.ok(storePage.includes('canonical: "https://www.nextedge-access-solutions.com/store"'), "store canonical URL must remain /store");
