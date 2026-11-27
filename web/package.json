@@ -24,7 +24,8 @@
     "test:hero-carousel": "node --experimental-strip-types --test scripts/test-hero-carousel.mjs",
     "test:homepage-carousel": "node --experimental-strip-types --test scripts/test-homepage-carousel.mjs",
     "test:solar-service": "node --experimental-strip-types --test scripts/test-solar-service.mjs",
-    "test:service-page-validation": "node --experimental-strip-types --test scripts/test-service-page-validation.mjs"
+    "test:service-page-validation": "node --experimental-strip-types --test scripts/test-service-page-validation.mjs",
+    "test:homepage-renderer": "node --experimental-strip-types --test scripts/test-homepage-renderer.mjs"
   },
   "dependencies": {
     "@vercel/speed-insights": "^2.1.0",
