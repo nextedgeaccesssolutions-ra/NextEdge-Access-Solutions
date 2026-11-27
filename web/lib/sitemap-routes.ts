@@ -2,13 +2,14 @@ import { SERVICE_PAGES } from "./service-pages";
 
 /**
  * Public routes that represent distinct, self-canonical pages.
- * The services directory and each service detail page are separate,
- * crawlable destinations. Legacy /about, /partners and /contact URLs
+ * The About page, services directory and each service detail page are
+ * separate, crawlable destinations. Legacy partners and contact URLs
  * remain section views and are intentionally omitted.
  */
 export function getStaticSitemapEntries(origin: string, now: Date) {
   return [
     { url: `${origin}/`, lastModified: now, priority: 1 },
+    { url: `${origin}/about`, lastModified: now, priority: 0.85 },
     { url: `${origin}/services`, lastModified: now, priority: 0.95 },
     { url: `${origin}/store`, lastModified: now, priority: 0.9 },
     { url: `${origin}/our-clients`, lastModified: now, priority: 0.8 },
