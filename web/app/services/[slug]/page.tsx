@@ -23,7 +23,7 @@ export async function generateMetadata({
   const page = getServicePage((await params).slug);
   if (!page) return {};
   const path = `/services/${page.id}`;
-  const image = SERVICE_META[page.id].image;
+  const image = getServiceImage(page);
   return {
     title: { absolute: page.title },
     description: page.metaDescription,
@@ -42,6 +42,13 @@ export async function generateMetadata({
       images: [image],
     },
   };
+}
+
+function getServiceImage(page: NonNullable<ReturnType<typeof getServicePage>>) {
+  const fallbackId = page.id in SERVICE_META
+    ? (page.id as keyof typeof SERVICE_META)
+    : "wind-turbine";
+  return page.image ?? SERVICE_META[fallbackId].image;
 }
 
 function jsonLd(page: NonNullable<ReturnType<typeof getServicePage>>) {
@@ -117,7 +124,7 @@ export default async function ServicePageView({
 }) {
   const page = getServicePage((await params).slug);
   if (!page) notFound();
-  const image = SERVICE_META[page.id].image;
+  const image = page.image ?? SERVICE_META[page.id]?.image ?? SERVICE_META["wind-turbine"].image;
   const others = SERVICE_PAGES.filter(p => p.id !== page.id);
   const waText = encodeURIComponent(
     `Hello NEAS, I'd like a quote for ${page.enquiryLabel}.`
