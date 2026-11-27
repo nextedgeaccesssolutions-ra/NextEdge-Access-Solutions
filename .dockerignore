@@ -1,7 +1,7 @@
 .git
 .github
 
-# Dependencies and generated output
+# Dependencies and generated build/test output.
 **/node_modules
 **/.next
 **/dist
@@ -9,16 +9,19 @@
 **/test-results
 **/playwright-report
 
-# Local development files
+# Local development files.
 .vscode
 .idea
 
-# Environment files: exclude secrets, allow documented example
+# Environment files: exclude secrets, allow documented examples only.
 **/.env
 **/.env.*
+!.env.example
 !**/.env.example
+!.env.docker.example
+!**/.env.docker.example
 
-# Private credentials, certificates, logs, and metadata
+# Private credentials, certificates, logs, and local metadata.
 **/*.pem
 **/*.key
 **/*.crt
