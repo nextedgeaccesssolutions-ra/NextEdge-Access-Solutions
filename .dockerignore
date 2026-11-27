@@ -1,13 +1,26 @@
 .git
-node_modules
+.github
+
+# Dependencies and generated build/test output.
 **/node_modules
-dist
 **/.next
+**/dist
 **/coverage
 **/test-results
 **/playwright-report
-.env
-.env.*
+
+# Environment files: exclude secrets, allow documented examples only.
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
 !.env.docker.example
-*.log
-.DS_Store
+!**/.env.docker.example
+
+# Private credentials, certificates, logs, and local metadata.
+**/*.pem
+**/*.key
+**/*.crt
+**/*.log
+**/.DS_Store
+**/.manus-logs
