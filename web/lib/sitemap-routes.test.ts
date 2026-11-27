@@ -21,6 +21,7 @@ describe("static sitemap destinations", () => {
       `${origin}/services/training`,
       `${origin}/services/renewable-energy`,
       `${origin}/services/offshore-onshore`,
+      `${origin}/services/solar-energy-industrial`,
       `${origin}/privacy-policy`,
     ]);
   });
