@@ -117,7 +117,7 @@ export default async function ServicePageView({
 }) {
   const page = getServicePage((await params).slug);
   if (!page) notFound();
-  const image = SERVICE_META[page.id].image;
+  const image = SERVICE_META[page.id]?.image ?? SERVICE_META["wind-turbine"].image;
   const others = SERVICE_PAGES.filter(p => p.id !== page.id);
   const waText = encodeURIComponent(
     `Hello NEAS, I'd like a quote for ${page.enquiryLabel}.`
