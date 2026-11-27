@@ -52,7 +52,7 @@ function getServiceImage(page: ServicePage) {
   return page.image ?? SERVICE_META[fallbackId].image;
 }
 
-function jsonLd(page: NonNullable<ReturnType<typeof getServicePage>>) {
+function jsonLd(page: ServicePage) {
   const url = `${ORIGIN}/services/${page.id}`;
   return [
     {
