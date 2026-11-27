@@ -109,8 +109,12 @@ export default function StoreClient({
   }, [products]);
   useEffect(() => {
     try {
-      setCart(JSON.parse(localStorage.getItem("neasCart") || "{}"));
+      const savedCart = JSON.parse(localStorage.getItem("neasCart") || "{}");
+      setCart(savedCart);
       setWish(JSON.parse(localStorage.getItem("neasWish") || "{}"));
+      if (new URLSearchParams(location.search).get("checkout") === "1" && Object.keys(savedCart).length) {
+        setModal({ kind: "checkout" });
+      }
     } catch {}
   }, []);
   useEffect(() => {
@@ -403,7 +407,10 @@ export default function StoreClient({
           <div>
             🛒 <b>{count}</b> item(s) · <b>{peso(total)}</b>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a href="/cart" className="ghost" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+              View cart
+            </a>
             <button type="button" className="ghost" onClick={() => setCart({})}>
               Clear
             </button>
