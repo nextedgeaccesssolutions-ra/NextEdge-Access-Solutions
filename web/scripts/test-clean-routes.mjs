@@ -6,6 +6,7 @@ const homepage = read("../site/home.html");
 const homepageRenderer = read("../lib/homepage.ts");
 const routeHandler = read("../app/[slug]/route.ts");
 const sitemap = read("../lib/sitemap-routes.ts");
+const servicesDirectory = read("../app/services/page.tsx");
 const storePage = read("../app/store/page.tsx");
 
 const legacyRoutes = {
@@ -23,17 +24,19 @@ for (const [fragment, destination] of Object.entries(legacyRoutes)) {
   assert.ok(!homepage.includes('href="#' + fragment + '"'), "legacy href remains for #" + fragment);
 }
 
-for (const slug of ["home", "about", "services", "partners", "contact"]) {
+for (const slug of ["home", "about", "partners", "contact"]) {
   assert.ok(routeHandler.includes(slug + ": {"), "Next.js route handler is missing /" + slug);
 }
+assert.ok(!routeHandler.includes('services: {'), "legacy dynamic section route must not shadow the services directory");
+assert.ok(servicesDirectory.includes('canonical: "/services"'), "services directory must declare its own canonical URL");
+assert.ok(servicesDirectory.includes('href={`/services/${service.id}`}'), "services directory must link to each detail page");
+assert.ok(servicesDirectory.includes("SERVICE_PAGES"), "services directory must use the maintained service catalog");
 
-for (const route of ["/", "/store", "/our-clients", "/privacy-policy"]) {
+for (const route of ["/", "/services", "/store", "/our-clients", "/privacy-policy"]) {
   assert.ok(sitemap.includes("${origin}" + route), "sitemap route helper is missing " + route);
 }
-for (const obsolete of ["/about", "/services", "/partners", "/contact"]) {
-  // Match the bare section route only (closing quote/backtick right after it), so
-  // real sub-pages such as /services/rope-access are still allowed.
-  const bare = new RegExp("\\$\\{origin\\}" + obsolete.replace("/", "\\/") + "[`'\"]");
+for (const obsolete of ["/about", "/partners", "/contact"]) {
+  const bare = new RegExp("\\$\\{origin\\}" + obsolete.replace("/", "\\/") + "[`'\\"]");
   assert.ok(!bare.test(sitemap), "obsolete route remains in sitemap: " + obsolete);
 }
 
