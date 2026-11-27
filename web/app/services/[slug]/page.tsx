@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ServiceQuoteForm from "@/components/ServiceQuoteForm";
 import { SERVICE_META } from "@/lib/services";
-import { SERVICE_PAGES, getServicePage } from "@/lib/service-pages";
+import { SERVICE_PAGES } from "@/lib/service-pages";
+import { getManagedServicePage } from "@/lib/managed-service-pages";
 
 const ORIGIN = "https://www.nextedge-access-solutions.com";
 const PHONE = "+639914265886";
@@ -20,7 +21,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const page = getServicePage((await params).slug);
+  const page = await getManagedServicePage((await params).slug);
   if (!page) return {};
   const path = `/services/${page.id}`;
   const image = getServiceImage(page);
