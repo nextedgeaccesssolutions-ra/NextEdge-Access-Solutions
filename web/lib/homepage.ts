@@ -1,7 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { getSetting, getSettingList, DEFAULT_SEO, DEFAULT_SOCIAL, DEFAULT_BUSINESS, type Seo, type Social, type Business } from "./settings";
-import { getHeroSlides, type HeroCarouselSlide } from "./hero-carousel";
+import { getSetting, DEFAULT_SEO, DEFAULT_SOCIAL, DEFAULT_BUSINESS, type Seo, type Social, type Business } from "./settings";
 import { getServiceMeta } from "./services";
 import { addAccessibleLabelsToSideSocialAnchors, appendAfterSideSocialAnchor, replaceSideSocialAnchor, safeHttpsUrl, safeImageUrl } from "./html-safety";
 
@@ -22,18 +21,11 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
   let html = cached;
   // The static homepage is served through a route handler; declare Philippine English explicitly.
   html = html.replace(/<html(?:\s[^>]*)?>/i, '<html lang="en-PH">');
-  const [seo, social, biz, sitePhotos, savedHeroSlides] = await Promise.all([
-    getSetting<Seo>("seo", DEFAULT_SEO), getSetting<Social>("social", DEFAULT_SOCIAL), getSetting<Business>("business", DEFAULT_BUSINESS), getSetting<Record<string, string>>("site_photos", {}), getSettingList<HeroCarouselSlide>("hero_carousel"),
+  const [seo, social, biz, sitePhotos] = await Promise.all([
+    getSetting<Seo>("seo", DEFAULT_SEO), getSetting<Social>("social", DEFAULT_SOCIAL), getSetting<Business>("business", DEFAULT_BUSINESS), getSetting<Record<string, string>>("site_photos", {}),
   ]);
-  const heroSlides = getHeroSlides(savedHeroSlides, sitePhotos.hero).filter(slide => slide.enabled);
   const canonical = safeHttpsUrl(seo.canonical) ?? DEFAULT_SEO.canonical;
   const origin = new URL(canonical).origin;
-  // Render the admin-managed hero carousel, retaining the original hero as the fallback.
-  const heroMarkup = heroSlides.map((slide, index) =>
-    `<div class="hero-slide${index === 0 ? " on" : ""}" data-label="${esc(slide.label)}" data-title="${esc(slide.title)}" data-description="${esc(slide.description)}" data-cta-label="${esc(slide.ctaLabel)}" data-cta-url="${esc(slide.ctaUrl)}"><img class="hero-slide-image" src="${esc(slide.image)}" alt="${esc(slide.alt)}" loading="${index === 0 ? "eager" : "lazy"}" decoding="async"></div>`
-  ).join("");
-  html = html.replace(/<div class="hero-bg"><div class="hero-slides">[\s\S]*?<\/div><\/div><div class="hero-carousel-controls"/, `<div class="hero-bg"><div class="hero-slides">${heroMarkup}</div></div><div class="hero-carousel-controls"`);
-  // Keep the legacy hero image setting available for existing website-photo workflows.
   // Apply administrator-managed homepage photos while preserving the built-in defaults.
   const photoSources: Record<string, string> = {
     "/img/hero-city.jpg": safeImageUrl(sitePhotos.hero, "/img/hero-city.jpg"),
@@ -89,8 +81,7 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
     `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>`,
   ].filter(Boolean).join("\n");
   html = html.replace(/<title>[\s\S]*?<\/title>\s*/, "").replace(/<meta name="description"[^>]*>\s*/, "");
-  const homepageRefreshCss = await readFile(path.join(process.cwd(), "site", "homepage-refresh.css"), "utf8");
-  html = html.replace("</head>", head + "\n<style id=\"neas-homepage-refresh\">" + homepageRefreshCss + "</style>\n</head>");
+  html = html.replace("</head>", head + "\n</head>");
   // The static homepage bypasses the React layout, so inject its consent interface here.
   const cookieConsent = await readFile(path.join(process.cwd(), "site", "cookie-consent.html"), "utf8");
   // The placeholders are always substituted, including with "" - left in place they would
@@ -104,8 +95,28 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
   // redirect must run in the browser. Keep query parameters and replace history.
   const legacyRedirect = `<script>(function(){var routes={hero:"/home",about:"/about",services:"/services",store:"/store",partners:"/partners",contact:"/contact"};function normalize(){var key=window.location.hash.slice(1).toLowerCase();var target=routes[key];if(!target)return;if(window.location.pathname!==target){window.location.replace(target+window.location.search);return;}window.history.replaceState(null,"",target+window.location.search);}window.addEventListener("hashchange",normalize);normalize();})();</script>`;
   html = html.replace("</body>", legacyRedirect + "</body>");
-  // The homepage already contains its canonical client preview in home.html.
-  // Do not inject a second copy; keep the managed client records as the single source.
+  // Public client showcase: render on the homepage for all visitors, with no account requirement.
+  const clientShowcase = `
+    <section id="neas-client-showcase" aria-labelledby="neas-client-showcase-title" style="padding:76px 20px;background:#0b1722;color:#eef4f8;border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08)">
+      <div style="max-width:1120px;margin:0 auto">
+        <div style="color:#d5ad69;text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:800">Partnerships · Performance · Trust</div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-top:12px">
+          <div><h2 id="neas-client-showcase-title" style="font-size:clamp(28px,4vw,42px);line-height:1.15;color:#fff;margin:0 0 12px">Our Clients</h2><p style="max-width:680px;color:#b9c7d0;line-height:1.7;margin:0">We value the organizations and industry partners who place their trust in NEAS for specialist access and technical services.</p></div>
+          <a href="/our-clients" style="display:inline-flex;align-items:center;padding:12px 18px;border-radius:8px;background:#c49a5a;color:#10202b;text-decoration:none;font-weight:800">View Our Clients ↗</a>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-top:30px">
+          <a href="/our-clients" style="display:block;padding:24px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:#122633;color:#fff;text-decoration:none"><span style="display:block;color:#d5ad69;font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase">Wind Energy</span><strong style="display:block;font-size:20px;margin-top:10px">Triconti ECC</strong></a>
+          <a href="/our-clients" style="display:block;padding:24px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:#122633;color:#fff;text-decoration:none"><span style="display:block;color:#d5ad69;font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase">Wind Energy</span><strong style="display:block;font-size:20px;margin-top:10px">Atimonan Windkraft</strong></a>
+          <a href="/our-clients" style="display:block;padding:24px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:#122633;color:#fff;text-decoration:none"><span style="display:block;color:#d5ad69;font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase">Geodetic Surveying &amp; Engineering</span><strong style="display:block;font-size:20px;margin-top:10px">Philsurv Geodetic Engineer</strong></a>
+        </div>
+      </div>
+    </section>
+  `;
+  if (!html.includes('id="neas-client-showcase"')) {
+    const contactSection = html.indexOf('<section class="contact"');
+    if (contactSection >= 0) html = html.slice(0, contactSection) + clientShowcase + html.slice(contactSection);
+    else html = html.replace('<footer class="site-footer">', clientShowcase + '<footer class="site-footer">');
+  }
   // social links in the side panel
   const map: [string, string][] = [["Facebook", social.facebook], ["LinkedIn", social.linkedin], ["YouTube", social.youtube], ["Instagram", social.instagram], ["TikTok", social.tiktok]];
   for (const [title, url] of map) html = replaceSideSocialAnchor(html, title, url);
