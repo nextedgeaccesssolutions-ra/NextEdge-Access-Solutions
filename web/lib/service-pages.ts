@@ -13,6 +13,7 @@ import { SERVICE_META } from "./services";
 
 export type ServicePage = {
   id: string;
+  image?: string;
   /** Page <title> and H1: leads with the search phrase buyers use. */
   title: string;
   h1: string;
@@ -309,6 +310,7 @@ export const SERVICE_PAGES: ServicePage[] = [
   },
   {
     id: "renewable-energy",
+    image: SERVICE_META["wind-turbine"].image,
     title: "Renewable Energy Project Services Philippines | NEAS",
     h1: "Renewable Energy Project Support in the Philippines",
     metaDescription:
@@ -355,6 +357,7 @@ export const SERVICE_PAGES: ServicePage[] = [
   },
   {
     id: "offshore-onshore",
+    image: SERVICE_META["ndt-inspection"].image,
     title: "Offshore & Onshore Industrial Services Philippines | NEAS",
     h1: "Offshore and Onshore Industrial Services",
     metaDescription:
