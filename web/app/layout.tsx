@@ -5,12 +5,13 @@ import ScrollReveal from "@/components/ScrollReveal";
 import CookieConsent from "@/components/CookieConsent";
 import AnalyticsLoader from "@/components/AnalyticsLoader";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { organizationSchema } from "@/lib/organization-schema";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.nextedge-access-solutions.com"),
   title: { default: "NextEdge Access Solutions (NEAS) — Rope Access & Height Safety Philippines", template: "%s | NEAS Philippines" },
-  description: "NEAS is a Philippine company providing certified rope access services, IRATA/SPRAT training, NDT inspections, and height-safety equipment. Based in Cebu, serving clients across the Philippines.",
-  keywords: ["rope access Philippines", "IRATA training Philippines", "height safety equipment", "rope access Cebu", "SPRAT training", "NDT inspection Philippines", "work at height", "PPE Philippines"],
+  description: "NEAS is a Philippine company providing certified rope access services, IRATA/SPRAT training, NDT inspections, and height-safety equipment. Based in Marilao, Bulacan, serving industrial and renewable-energy clients across the Philippines.",
+  keywords: ["rope access Philippines", "IRATA training Philippines", "height safety equipment", "rope access Bulacan", "SPRAT training", "NDT inspection Philippines", "work at height", "PPE Philippines"],
   authors: [{ name: "NextEdge Access Solutions (NEAS) OPC" }],
   icons: { icon: "/favicon.png" },
   openGraph: {
@@ -33,7 +34,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-PH">
-      <head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" /></head>
+      <head>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema).replace(/</g, "\\u003c") }} />
+      </head>
       <body>
         <Header />
         <main>{children}</main>
