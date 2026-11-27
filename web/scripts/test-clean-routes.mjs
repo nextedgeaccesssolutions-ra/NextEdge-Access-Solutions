@@ -27,17 +27,16 @@ for (const [fragment, destination] of Object.entries(legacyRoutes)) {
 for (const slug of ["home", "about", "partners", "contact"]) {
   assert.ok(routeHandler.includes(slug + ": {"), "Next.js route handler is missing /" + slug);
 }
-assert.ok(!routeHandler.includes('services: {'), "legacy dynamic section route must not shadow the services directory");
+assert.ok(!routeHandler.includes("services: {"), "legacy dynamic section route must not shadow the services directory");
 assert.ok(servicesDirectory.includes('canonical: "/services"'), "services directory must declare its own canonical URL");
-assert.ok(servicesDirectory.includes('href={`/services/${service.id}`}'), "services directory must link to each detail page");
+assert.ok(servicesDirectory.includes("href={`/services/${service.id}`}"), "services directory must link to each detail page");
 assert.ok(servicesDirectory.includes("SERVICE_PAGES"), "services directory must use the maintained service catalog");
 
 for (const route of ["/", "/services", "/store", "/our-clients", "/privacy-policy"]) {
   assert.ok(sitemap.includes("${origin}" + route), "sitemap route helper is missing " + route);
 }
 for (const obsolete of ["/about", "/partners", "/contact"]) {
-  const bare = new RegExp("\\$\\{origin\\}" + obsolete.replace("/", "\\/") + "[`'\\"]");
-  assert.ok(!bare.test(sitemap), "obsolete route remains in sitemap: " + obsolete);
+  assert.ok(!sitemap.includes("`${origin}" + obsolete + "`"), "obsolete route remains in sitemap: " + obsolete);
 }
 
 assert.ok(storePage.includes('canonical: "https://www.nextedge-access-solutions.com/store"'), "store canonical URL must remain /store");
