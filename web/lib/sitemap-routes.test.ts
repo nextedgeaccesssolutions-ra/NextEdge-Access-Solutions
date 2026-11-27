@@ -12,6 +12,7 @@ describe("static sitemap destinations", () => {
       `${origin}/`,
       `${origin}/store`,
       `${origin}/our-clients`,
+      `${origin}/locations/marilao-bulacan`,
       `${origin}/services/rope-access`,
       `${origin}/services/wind-turbine`,
       `${origin}/services/metmast-telecom`,
@@ -26,6 +27,10 @@ describe("static sitemap destinations", () => {
     const { SERVICE_PAGES } = await import("./service-pages");
     for (const page of SERVICE_PAGES)
       expect(urls).toContain(`${origin}/services/${page.id}`);
+  });
+
+  it("includes the local Marilao page as a crawlable destination", () => {
+    expect(urls).toContain(`${origin}/locations/marilao-bulacan`);
   });
 
   it("homepage service cards link to every service landing page with a crawlable href", async () => {
