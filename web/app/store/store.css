@@ -322,3 +322,47 @@
     font-size: 11px;
   }
 }
+
+
+/* NEAS store layout correction: keep the cart summary fixed and readable. */
+.cartbar {
+  position: fixed;
+  inset: auto 16px max(12px, env(safe-area-inset-bottom));
+  width: auto;
+  max-width: 1180px;
+  margin-inline: auto;
+  z-index: 49;
+  box-sizing: border-box;
+}
+@media (max-width: 700px) {
+  .cartbar {
+    inset-inline: 8px;
+    padding: 10px 12px;
+    gap: 9px;
+    border-radius: 12px;
+    font-size: 13px;
+  }
+  .cartbar > div:last-child {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px !important;
+  }
+  .cartbar .ghost,
+  .cartbar .go {
+    min-width: 0;
+    justify-content: center;
+    padding: 9px 6px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 390px) {
+  .cartbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .cartbar > div:first-child {
+    text-align: center;
+  }
+}
