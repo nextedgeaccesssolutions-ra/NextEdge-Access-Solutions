@@ -32,7 +32,7 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
   const heroMarkup = heroSlides.map((slide, index) =>
     `<div class="hero-slide${index === 0 ? " on" : ""}" data-label="${esc(slide.label)}" data-title="${esc(slide.title)}" data-description="${esc(slide.description)}" data-cta-label="${esc(slide.ctaLabel)}" data-cta-url="${esc(slide.ctaUrl)}" aria-label="${esc(slide.alt)}" role="img" style="background-image:url(&quot;${esc(slide.image)}&quot;)"></div>`
   ).join("");
-  html = html.replace(/<div class="hero-slides">[\\s\\S]*?<\\/div>/, `<div class="hero-slides">${heroMarkup}</div>`);
+  html = html.replace(/<div class="hero-slides">[\s\S]*?<\/div>/, `<div class="hero-slides">${heroMarkup}</div>`);
   // Keep the legacy hero image setting available for existing website-photo workflows.
   // Apply administrator-managed homepage photos while preserving the built-in defaults.
   const photoSources: Record<string, string> = {
