@@ -307,9 +307,6 @@ export const SERVICE_PAGES: ServicePage[] = [
     ],
     enquiryLabel: "Training, Consultancy & PPE",
   },
-];
-
-
   {
     id: "renewable-energy",
     title: "Renewable Energy Project Services Philippines | NEAS",
@@ -402,6 +399,7 @@ export const SERVICE_PAGES: ServicePage[] = [
     ],
     enquiryLabel: "Offshore & Onshore Industrial Services",
   },
+];
 
 export function getServicePage(id: string): ServicePage | null {
   return SERVICE_PAGES.find(p => p.id === id) ?? null;
