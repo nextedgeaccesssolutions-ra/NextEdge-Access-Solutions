@@ -26,7 +26,8 @@ const serviceCount = (servicePages.match(/\bid:\s*"/g) || []).length;
 const descriptionCount = (servicePages.match(/metaDescription:/g) || []).length;
 const headingCount = (servicePages.match(/\bh1:/g) || []).length;
 assert.ok(serviceCount >= 6, "service landing-page coverage unexpectedly shrank");
-assert.equal(descriptionCount, serviceCount, "every service page must define a meta description");
-assert.equal(headingCount, serviceCount, "every service page must define one H1 source field");
+// The source type declaration contributes one occurrence to each field count.
+assert.equal(descriptionCount, serviceCount + 1, "every service page must define a meta description");
+assert.equal(headingCount, serviceCount + 1, "every service page must define one H1 source field");
 
 console.log("NEAS SEO contract passed: canonical host, verified location, robots, sitemap and service-page metadata.");
