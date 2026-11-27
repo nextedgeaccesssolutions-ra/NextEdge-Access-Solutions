@@ -40,6 +40,25 @@ test("all 23 specialists resolve through explicit skills and authority mappings"
   }
 });
 
+test("all 23 specialists fail closed when disabled or observe-only", () => {
+  for (const specialist of SPECIALIST_IDS) {
+    const baseline = resolveAiwSpecialistPermission(specialist, null);
+    assert.ok(baseline.workforceAgentId, `${specialist} must resolve to an authority ID`);
+
+    const disabled = resolveAiwSpecialistPermission(specialist, {
+      updatedAt: "2026-11-28T00:00:00.000Z",
+      agents: [{ id: baseline.workforceAgentId, enabled: false, authority: "execute_approved" }],
+    });
+    assert.equal(disabled.allowed, false, `${specialist} must fail closed when disabled`);
+
+    const observeOnly = resolveAiwSpecialistPermission(specialist, {
+      updatedAt: "2026-11-28T00:00:00.000Z",
+      agents: [{ id: baseline.workforceAgentId, enabled: true, authority: "observe" }],
+    });
+    assert.equal(observeOnly.allowed, false, `${specialist} must fail closed when observe-only`);
+  }
+});
+
 test("unknown specialists do not silently inherit the executive skill", () => {
   assert.throws(
     () => getAiwSkill("NOT_A_SPECIALIST"),
