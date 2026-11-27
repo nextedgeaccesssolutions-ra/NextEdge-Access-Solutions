@@ -402,6 +402,60 @@ export const SERVICE_PAGES: ServicePage[] = [
     ],
     enquiryLabel: "Offshore & Onshore Industrial Services",
   },
+  {
+    id: "solar-energy-industrial",
+    image: "/img/hero-power.webp",
+    title: "Solar Energy & Industrial Services Philippines | NEAS",
+    h1: "Solar Energy & Industrial Services",
+    metaDescription: "NEAS supports solar energy and industrial projects in the Philippines with specialist access, project support, inspection, maintenance and industrial services.",
+    eyebrow: "Solar PV · Renewable Energy · Industrial Support",
+    intro: "NEAS provides specialist access and industrial field support for solar energy and power infrastructure projects. We work with project owners, EPC contractors and operations teams to scope practical support for site access, inspection, maintenance and industrial work packages.",
+    scope: [
+      "Solar PV project and site support",
+      "Solar farm and rooftop PV inspection assistance",
+      "Solar module and structure cleaning support",
+      "Access planning and rope access for difficult-to-reach areas",
+      "Structural inspection and condition assessment",
+      "Industrial NDT and inspection support",
+      "Surface preparation, protective coatings and maintenance",
+      "Power infrastructure and electrical project support, subject to applicable licensing and approvals",
+    ],
+    industries: [
+      "Utility-scale solar farms",
+      "Commercial and industrial rooftop solar projects",
+      "Solar EPC and O&M contractors",
+      "Power plants and energy infrastructure operators",
+      "Industrial facilities and maintenance contractors",
+    ],
+    experience: [
+      "NEAS provides specialist rope access, inspection, maintenance and renewable-energy field support capabilities",
+      "Project scope, workforce requirements and applicable technical approvals are confirmed before mobilization",
+    ],
+    faqs: [
+      {
+        q: "What solar energy services does NEAS provide?",
+        a: "NEAS can scope solar project support, site access, inspection assistance, cleaning support, structural inspection and industrial maintenance work packages based on the project's requirements.",
+      },
+      {
+        q: "Can NEAS support solar farm maintenance?",
+        a: "NEAS can discuss inspection, cleaning support and industrial maintenance requirements with solar asset owners and O&M contractors. The exact scope is confirmed after reviewing the site, access conditions and work method.",
+      },
+      {
+        q: "Does NEAS provide industrial rope access?",
+        a: "Yes. NEAS provides rope access services for difficult-to-reach structures and industrial assets, subject to a site-specific access and safety assessment.",
+      },
+      {
+        q: "Can NEAS support renewable energy contractors?",
+        a: "NEAS can coordinate specialist access and industrial field support for renewable energy project owners, EPC contractors and O&M teams.",
+      },
+      {
+        q: "Does NEAS undertake electrical installation and commissioning?",
+        a: "Electrical work is subject to applicable Philippine licensing, competent personnel, project approvals and the agreed scope. Share your requirements so NEAS can confirm the appropriate delivery arrangement.",
+      },
+      { q: "How can clients request a project quotation?", a: PRICING_ANSWER },
+    ],
+    enquiryLabel: "Solar Energy & Industrial Services",
+  },
 ];
 
 export function getServicePage(id: string): ServicePage | null {

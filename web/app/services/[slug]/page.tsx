@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ServiceQuoteForm from "@/components/ServiceQuoteForm";
 import { SERVICE_META } from "@/lib/services";
-import { SERVICE_PAGES, getServicePage } from "@/lib/service-pages";
+import { SERVICE_PAGES, type ServicePage } from "@/lib/service-pages";
+import { getManagedServicePage } from "@/lib/managed-service-pages";
 
 const ORIGIN = "https://www.nextedge-access-solutions.com";
 const PHONE = "+639914265886";
@@ -20,7 +21,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const page = getServicePage((await params).slug);
+  const page = await getManagedServicePage((await params).slug);
   if (!page) return {};
   const path = `/services/${page.id}`;
   const image = getServiceImage(page);
@@ -44,14 +45,14 @@ export async function generateMetadata({
   };
 }
 
-function getServiceImage(page: NonNullable<ReturnType<typeof getServicePage>>) {
+function getServiceImage(page: ServicePage) {
   const fallbackId = page.id in SERVICE_META
     ? (page.id as keyof typeof SERVICE_META)
     : "wind-turbine";
   return page.image ?? SERVICE_META[fallbackId].image;
 }
 
-function jsonLd(page: NonNullable<ReturnType<typeof getServicePage>>) {
+function jsonLd(page: ServicePage) {
   const url = `${ORIGIN}/services/${page.id}`;
   return [
     {
@@ -122,7 +123,7 @@ export default async function ServicePageView({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const page = getServicePage((await params).slug);
+  const page = await getManagedServicePage((await params).slug);
   if (!page) notFound();
   const image = page.image ?? SERVICE_META[page.id]?.image ?? SERVICE_META["wind-turbine"].image;
   const others = SERVICE_PAGES.filter(p => p.id !== page.id);

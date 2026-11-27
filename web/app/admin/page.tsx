@@ -3,6 +3,8 @@ import { getUser } from "@/lib/auth";
 import { sql, listProducts, getMarkup } from "@/lib/db";
 import AdminClient from "./AdminClient";
 import SettingsPanel from "./SettingsPanel";
+import HeroCarouselManager from "./HeroCarouselManager";
+import SolarServiceManager from "./SolarServiceManager";
 import SheetSync from "./SheetSync";
 import SheetWriteback from "./SheetWriteback";
 import ShopeePanel from "./ShopeePanel";
@@ -21,6 +23,8 @@ import {
   type ExtraClient,
 } from "@/lib/settings";
 import { getWebsiteCatalogSyncStatus } from "@/lib/sheet-writeback";
+import { DEFAULT_HERO_SLIDES, sanitizeHeroSlides, type HeroCarouselSlide } from "@/lib/hero-carousel";
+import { getManagedServicePage } from "@/lib/managed-service-pages";
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Admin Panel — NEAS",
@@ -42,7 +46,7 @@ export default async function Admin() {
     );
   const [
     products, markup, orders, items, customers, catMarkup, seo, social, business,
-    sitePhotos, sheetCfg, sheetWritebackStatus, extraClients, hiddenClients,
+    sitePhotos, heroSlidesStored, solarServicePage, sheetCfg, sheetWritebackStatus, extraClients, hiddenClients,
   ] = await Promise.all([
     listProducts(true),
     getMarkup(),
@@ -54,6 +58,8 @@ export default async function Admin() {
     getSetting<Social>("social", DEFAULT_SOCIAL),
     getSetting<Business>("business", DEFAULT_BUSINESS),
     getSetting<Record<string, string>>("site_photos", {}),
+    getSettingList<HeroCarouselSlide>("hero_carousel"),
+    getManagedServicePage("solar-energy-industrial"),
     getSetting("sheet", {
       url: "https://docs.google.com/spreadsheets/d/1fl4TGP5Jl-yvVrN2hheb7DMzLVPVKbpfRQEPgC30Vik/edit?gid=1469242798#gid=1469242798",
       priceSource: "markup" as "markup" | "sheet",
@@ -66,6 +72,7 @@ export default async function Admin() {
     getSettingList<string>("hidden_clients"),
   ]);
   const awaiting = orders.filter(o => o.status === "awaiting_payment").length;
+  const heroSlides = sanitizeHeroSlides(heroSlidesStored) ?? DEFAULT_HERO_SLIDES;
   const AC = (v: "orders" | "products" | "customers") => (
     <AdminClient
       view={v}
@@ -125,6 +132,8 @@ export default async function Admin() {
           />
         ),
         analytics: <GoogleAnalytics />,
+        hero: <HeroCarouselManager initial={heroSlides} />,
+        solar: solarServicePage ? <SolarServiceManager initial={solarServicePage} /> : <p>Solar service page defaults are unavailable.</p>,
       }}
     />
   );

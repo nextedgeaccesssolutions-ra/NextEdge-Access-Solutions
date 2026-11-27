@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 export type AdminSection =
-  "orders" | "products" | "customers" | "sheet" | "shopee" | "website" | "analytics";
+  "orders" | "products" | "customers" | "sheet" | "shopee" | "website" | "analytics" | "hero" | "solar";
 type Item = {
   id: AdminSection;
   label: string;
@@ -34,6 +34,8 @@ export default function AdminShell({
           "shopee",
           "website",
           "analytics",
+          "hero",
+          "solar",
         ].includes(s)
       )
         setSec(s);
@@ -97,6 +99,18 @@ export default function AdminShell({
           label: "Website Analytics",
           icon: "📊",
           hint: "GA4 traffic, live visitors, conversions and Search Console SEO",
+        },
+        {
+          id: "hero",
+          label: "Homepage Carousel",
+          icon: "🖼️",
+          hint: "Manage hero slides, images, CTAs and rotation",
+        },
+        {
+          id: "solar",
+          label: "Solar Service Page",
+          icon: "☀️",
+          hint: "Edit solar service content and SEO",
         },
       ],
     },

@@ -1,6 +1,8 @@
 import { requireAdmin } from "@/lib/admin";
 import { setSetting, cleanText, cleanUrl, DEFAULT_SEO, DEFAULT_SOCIAL, DEFAULT_BUSINESS, cleanExtraClients } from "@/lib/settings";
 import { bad, ok } from "@/lib/http";
+import { sanitizeHeroSlides } from "@/lib/hero-carousel";
+import { sanitizeSolarServicePage } from "@/lib/service-page-validation";
 
 export async function PUT(req: Request) {
   if (!(await requireAdmin())) return bad("Admin access required.", 403);
@@ -22,6 +24,16 @@ export async function PUT(req: Request) {
       gaMeasurementId: ga,
       robotsIndex: s.robotsIndex !== false,
     });
+  }
+  if (b.heroCarousel !== undefined) {
+    const slides = sanitizeHeroSlides(b.heroCarousel);
+    if (!slides) return bad("Carousel must contain 1–8 valid slides and at least one enabled slide.");
+    await setSetting("hero_carousel", slides);
+  }
+  if (b.solarServicePage !== undefined) {
+    const page = sanitizeSolarServicePage(b.solarServicePage);
+    if (!page) return bad("Solar service page content is invalid. Check the SEO fields, image URL, lists and FAQs.");
+    await setSetting("service_page_solar_energy_industrial", page);
   }
   if (b.social) {
     const out: Record<string, string> = {};
