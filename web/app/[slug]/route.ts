@@ -7,12 +7,6 @@ const publicPages = {
     description: "NextEdge Access Solutions provides rope access, work-at-height, inspection, maintenance, training, and PPE solutions across the Philippines.",
     canonicalPath: "/",
   },
-  about: {
-    section: "about",
-    title: "About NEAS | NextEdge Access Solutions",
-    description: "Learn about NextEdge Access Solutions and our approach to safe, reliable rope access and industrial services.",
-    canonicalPath: "/about",
-  },
   partners: {
     section: "partners",
     title: "NEAS Partners | NextEdge Access Solutions",
