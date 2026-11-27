@@ -4,6 +4,7 @@ import { sql, listProducts, getMarkup } from "@/lib/db";
 import AdminClient from "./AdminClient";
 import SettingsPanel from "./SettingsPanel";
 import SheetSync from "./SheetSync";
+import SheetWriteback from "./SheetWriteback";
 import ShopeePanel from "./ShopeePanel";
 import GoogleAnalytics from "./GoogleAnalytics";
 import AdminShell from "./AdminShell";
@@ -19,6 +20,7 @@ import {
   type Business,
   type ExtraClient,
 } from "@/lib/settings";
+import { getWebsiteCatalogSyncStatus } from "@/lib/sheet-writeback";
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Admin Panel — NEAS",
@@ -39,19 +41,8 @@ export default async function Admin() {
       </div>
     );
   const [
-    products,
-    markup,
-    orders,
-    items,
-    customers,
-    catMarkup,
-    seo,
-    social,
-    business,
-    sitePhotos,
-    sheetCfg,
-    extraClients,
-    hiddenClients,
+    products, markup, orders, items, customers, catMarkup, seo, social, business,
+    sitePhotos, sheetCfg, sheetWritebackStatus, extraClients, hiddenClients,
   ] = await Promise.all([
     listProducts(true),
     getMarkup(),
@@ -70,6 +61,7 @@ export default async function Admin() {
       lastSync: "",
       lastResult: "",
     }),
+    getWebsiteCatalogSyncStatus(),
     getSettingList<ExtraClient>("extra_clients"),
     getSettingList<string>("hidden_clients"),
   ]);
@@ -112,16 +104,15 @@ export default async function Admin() {
   return (
     <AdminShell
       adminName={user.name}
-      counts={{
-        awaiting,
-        customers: customers.length,
-        products: products.length,
-      }}
+      counts={{ awaiting, customers: customers.length, products: products.length }}
       sections={{
         orders: AC("orders"),
         products: AC("products"),
         customers: AC("customers"),
-        sheet: <SheetSync initial={sheetCfg} />,
+        sheet: <>
+          <SheetSync initial={sheetCfg} />
+          <SheetWriteback initial={sheetWritebackStatus} />
+        </>,
         shopee: <ShopeePanel />,
         website: (
           <SettingsPanel
