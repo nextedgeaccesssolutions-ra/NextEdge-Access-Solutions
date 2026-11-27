@@ -11,6 +11,8 @@ test("solar energy industrial service has a canonical slug, SEO metadata and quo
   assert.match(pages, /id: "solar-energy-industrial"/);
   assert.match(pages, /Solar Energy & Industrial Services Philippines/);
   assert.match(pages, /metaDescription:/);
+  assert.match(pages, /scope: \\[/);
+  assert.match(pages, /faqs: \\[/);
   assert.match(pages, /enquiryLabel: "Solar Energy & Industrial Services"/);
 });
 
