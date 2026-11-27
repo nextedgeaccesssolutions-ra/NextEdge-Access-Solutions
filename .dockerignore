@@ -9,10 +9,6 @@
 **/test-results
 **/playwright-report
 
-# Local development files.
-.vscode
-.idea
-
 # Environment files: exclude secrets, allow documented examples only.
 **/.env
 **/.env.*
