@@ -1,5 +1,7 @@
 "use client";
 import "./store.css";
+import "./floating-store.css";
+import FloatingStoreControls from "./FloatingStoreControls";
 import { useEffect, useMemo, useState } from "react";
 import ShareBar from "@/components/ShareBar";
 
@@ -155,6 +157,7 @@ export default function StoreClient({
     });
   const checkout = (persist?: Record<string, number>) => {
     const selected = persist ?? cart;
+    if (persist) setCart(persist);
     const value = Object.entries(selected).reduce(
       (sum, [id, quantity]) => sum + (byId.get(id)?.price ?? 0) * quantity,
       0
@@ -271,7 +274,7 @@ export default function StoreClient({
         {list.map(p => {
           const n = qty[p.id] || 1;
           return (
-            <article key={p.id} className="sp">
+            <article key={p.id} className="sp" data-product-id={p.id}>
               <div className="sp-top">
                 <span className="eyebrow" style={{ fontSize: 10 }}>
                   {p.category}
@@ -385,6 +388,16 @@ export default function StoreClient({
           );
         })}
       </div>
+      <FloatingStoreControls
+        products={products}
+        qty={qty}
+        setQty={setQty}
+        add={add}
+        checkout={checkout}
+        onAddToCart={(product, quantity) => trackGa4Event("add_to_cart", {
+          currency: "PHP", value: product.price * quantity, items_count: quantity,
+        })}
+      />
       {count > 0 && (
         <div className="cartbar">
           <div>
