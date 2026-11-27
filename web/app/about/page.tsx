@@ -85,7 +85,7 @@ const structuredData = {
 
 export default function AboutPage() {
   return (
-    <main className="neas-about">
+    <div className="neas-about">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -298,6 +298,6 @@ export default function AboutPage() {
         @media(max-width:650px){.na-wrap{width:min(100% - 28px,1160px)}.na-intro-grid,.na-purpose-grid,.na-approach-grid{grid-template-columns:1fr}.na-photo-frame{min-height:310px}.na-value-grid,.na-cap-grid{grid-template-columns:1fr}.na-proof{grid-template-columns:1fr;gap:13px}.na-approach-image{min-height:260px}.na-cta-inner{align-items:flex-start;flex-direction:column}}
         @media(prefers-reduced-motion:reduce){.na-button,.na-cap-image img{transition:none}.na-button:hover{transform:none}}
       `}</style>
-    </main>
+    </div>
   );
 }
