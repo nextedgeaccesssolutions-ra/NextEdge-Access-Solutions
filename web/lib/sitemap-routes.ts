@@ -12,6 +12,7 @@ export function getStaticSitemapEntries(origin: string, now: Date) {
     { url: `${origin}/`, lastModified: now, priority: 1 },
     { url: `${origin}/store`, lastModified: now, priority: 0.9 },
     { url: `${origin}/our-clients`, lastModified: now, priority: 0.8 },
+    { url: `${origin}/locations/marilao-bulacan`, lastModified: now, priority: 0.9 },
     // Each service landing page is its own self-canonical page and the main
     // target for commercial searches, so it must be discoverable here.
     ...SERVICE_PAGES.map(p => ({
