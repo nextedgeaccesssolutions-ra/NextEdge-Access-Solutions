@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ServiceQuoteForm from "@/components/ServiceQuoteForm";
 import { SERVICE_META } from "@/lib/services";
-import { SERVICE_PAGES } from "@/lib/service-pages";
+import { SERVICE_PAGES, type ServicePage } from "@/lib/service-pages";
 import { getManagedServicePage } from "@/lib/managed-service-pages";
 
 const ORIGIN = "https://www.nextedge-access-solutions.com";
@@ -45,7 +45,7 @@ export async function generateMetadata({
   };
 }
 
-function getServiceImage(page: NonNullable<ReturnType<typeof getServicePage>>) {
+function getServiceImage(page: ServicePage) {
   const fallbackId = page.id in SERVICE_META
     ? (page.id as keyof typeof SERVICE_META)
     : "wind-turbine";
@@ -123,7 +123,7 @@ export default async function ServicePageView({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const page = getServicePage((await params).slug);
+  const page = await getManagedServicePage((await params).slug);
   if (!page) notFound();
   const image = page.image ?? SERVICE_META[page.id]?.image ?? SERVICE_META["wind-turbine"].image;
   const others = SERVICE_PAGES.filter(p => p.id !== page.id);
