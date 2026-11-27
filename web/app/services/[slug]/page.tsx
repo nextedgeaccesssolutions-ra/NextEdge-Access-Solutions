@@ -23,7 +23,7 @@ export async function generateMetadata({
   const page = getServicePage((await params).slug);
   if (!page) return {};
   const path = `/services/${page.id}`;
-  const image = SERVICE_META[page.id].image;
+  const image = SERVICE_META[page.id]?.image ?? SERVICE_META["wind-turbine"].image;
   return {
     title: { absolute: page.title },
     description: page.metaDescription,
