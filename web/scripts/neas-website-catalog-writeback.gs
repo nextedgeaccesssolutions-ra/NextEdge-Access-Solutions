@@ -23,6 +23,11 @@ function constantTimeEqual_(a, b) {
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
 }
+// Prevent product text from being interpreted as a spreadsheet formula.
+function safeCell_(value, maxLength) {
+  const text = String(value == null ? "" : value).slice(0, maxLength);
+  return /^[=+@\\-\\t\\r]/.test(text) ? "'" + text : text;
+}
 function doPost(e) {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return json_({ ok: false, error: "A catalog sync is already running. Retry shortly." });
@@ -40,17 +45,17 @@ function doPost(e) {
     const rows = body.rows.map(function (r) {
       if (!r || typeof r.productId !== "string" || !r.productId || typeof r.name !== "string" || !r.name) throw new Error("Every product requires a Product ID and Product Name.");
       return [
-        String(r.productId).slice(0, 120), String(r.sku || "").slice(0, 100),
-        String(r.name).slice(0, 200), String(r.category || "").slice(0, 120),
+        safeCell_(r.productId, 120), safeCell_(r.sku || "", 100),
+        safeCell_(r.name, 200), safeCell_(r.category || "", 120),
         Number(r.dealerPrice) || 0, Number(r.sellingPrice) || 0,
-        String(r.imageUrl || "").slice(0, 1000), String(r.description || "").slice(0, 5000),
-        String(r.technicalSpecifications || "").slice(0, 5000), String(r.specsUrl || "").slice(0, 1000),
-        Boolean(r.active), String(r.lastSynced || "")
+        safeCell_(r.imageUrl || "", 1000), safeCell_(r.description || "", 5000),
+        safeCell_(r.technicalSpecifications || "", 5000), safeCell_(r.specsUrl || "", 1000),
+        Boolean(r.active), safeCell_(r.lastSynced || "", 80)
       ];
     });
     const payloadKeys = {};
     rows.forEach(function (r) {
-      const key = r[1] ? "sku:" + r[1].toLowerCase() : "id:" + r[0];
+      const key = r[1] ? "sku:" + String(r[1]).replace(/^'/, "").toLowerCase() : "id:" + String(r[0]).replace(/^'/, "");
       if (payloadKeys[key]) throw new Error("Duplicate SKU/Product ID in website payload: " + key);
       payloadKeys[key] = true;
     });
@@ -71,7 +76,8 @@ function doPost(e) {
     const existing = count ? sheet.getRange(2, 1, count, NEAS_HEADERS.length).getValues() : [];
     const index = {};
     existing.forEach(function (r, i) {
-      const sku = String(r[1] || "").trim(), productId = String(r[0] || "").trim();
+      const sku = String(r[1] || "").replace(/^'/, "").trim();
+      const productId = String(r[0] || "").replace(/^'/, "").trim();
       if (!productId) return;
       const key = sku ? "sku:" + sku.toLowerCase() : "id:" + productId;
       if (index[key] !== undefined) throw new Error("Duplicate key already exists in NEAS Website Catalog: " + key);
@@ -80,7 +86,9 @@ function doPost(e) {
 
     let updated = 0, added = 0;
     rows.forEach(function (r) {
-      const key = r[1] ? "sku:" + r[1].toLowerCase() : "id:" + r[0];
+      const sku = String(r[1]).replace(/^'/, "");
+      const productId = String(r[0]).replace(/^'/, "");
+      const key = sku ? "sku:" + sku.toLowerCase() : "id:" + productId;
       if (index[key] !== undefined) { existing[index[key]] = r; updated++; }
       else { index[key] = existing.length; existing.push(r); added++; }
     });
