@@ -18,6 +18,7 @@
     "test:aiw-readiness": "node --experimental-strip-types --test scripts/test-aiw-readiness.mjs",
     "test:voice-tts-errors": "node --experimental-strip-types --test scripts/test-voice-tts-errors.mjs",
     "test:aiw-gmail-errors": "node --experimental-strip-types --test scripts/test-aiw-gmail-errors.mjs",
+    "test:seo-contract": "node scripts/test-seo-contract.mjs",
     "test:seo-schema": "node --experimental-strip-types --test scripts/test-seo-organization-schema.mjs",
     "prebuild": "node --experimental-strip-types --test scripts/test-seo-organization-schema.mjs"
   },

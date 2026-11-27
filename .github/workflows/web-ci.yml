@@ -79,6 +79,10 @@ jobs:
         run: npm run test:clean-routes
         working-directory: web
 
+      - name: Verify technical SEO contract
+        run: npm run test:seo-contract
+        working-directory: web
+
       - name: Test NEAS organization structured data
         run: npm run test:seo-schema
         working-directory: web
