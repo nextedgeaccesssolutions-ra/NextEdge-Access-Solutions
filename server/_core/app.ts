@@ -46,12 +46,13 @@ export function createApp() {
   app.set("trust proxy", process.env.VERCEL === "1" ? 1 : false);
 
   // Bound API payloads while leaving room for the CMS's validated 8 MB media uploads.
+  registerGiieCmsIntegration(app);
+
   app.use(express.json({ limit: "16mb" }));
   app.use(express.urlencoded({ limit: "1mb", extended: true }));
 
   registerStorageProxy(app);
   registerOAuthRoutes(app);
-  registerGiieCmsIntegration(app);
 
   app.use("/api/trpc/publicSite.submitContact", publicContactRateLimit);
   app.use(
