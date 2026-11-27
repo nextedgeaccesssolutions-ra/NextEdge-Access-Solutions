@@ -1,0 +1,27 @@
+name: NEAS Website Docker Image Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+      - feature/giie-cms-draft-ingestion
+  push:
+    branches:
+      - feature/neas-docker-runtime
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neas-website-docker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Build image without pushing
+        run: docker build --pull --tag neas-website:pr-validation .
