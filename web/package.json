@@ -17,7 +17,8 @@
     "test:aiw-contact-policy": "node --experimental-strip-types --test scripts/test-aiw-contact-policy.mjs",
     "test:aiw-readiness": "node --experimental-strip-types --test scripts/test-aiw-readiness.mjs",
     "test:voice-tts-errors": "node --experimental-strip-types --test scripts/test-voice-tts-errors.mjs",
-    "test:aiw-gmail-errors": "node --experimental-strip-types --test scripts/test-aiw-gmail-errors.mjs"
+    "test:aiw-gmail-errors": "node --experimental-strip-types --test scripts/test-aiw-gmail-errors.mjs",
+    "test:seo-contract": "node scripts/test-seo-contract.mjs"
   },
   "dependencies": {
     "@vercel/speed-insights": "^2.1.0",
