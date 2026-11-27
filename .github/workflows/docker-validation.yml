@@ -1,0 +1,46 @@
+name: Docker validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Dockerfile.api'
+      - 'Dockerfile.web'
+      - 'compose.yaml'
+      - '.dockerignore'
+      - '.env.docker.example'
+      - '.github/workflows/docker-validation.yml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'web/**'
+      - 'server/**'
+      - 'client/**'
+      - 'drizzle/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compose-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose configuration without starting services
+        run: docker compose --env-file .env.docker.example config --quiet
+  docker-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dockerfile: [Dockerfile.api, Dockerfile.web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build website container (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: false
+          tags: neas-website:${{ matrix.dockerfile }}-pr-validation

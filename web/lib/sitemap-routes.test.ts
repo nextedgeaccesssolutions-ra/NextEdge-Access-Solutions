@@ -19,6 +19,8 @@ describe("static sitemap destinations", () => {
       `${origin}/services/ndt-inspection`,
       `${origin}/services/coatings`,
       `${origin}/services/training`,
+      `${origin}/services/renewable-energy`,
+      `${origin}/services/offshore-onshore`,
       `${origin}/privacy-policy`,
     ]);
   });
