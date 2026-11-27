@@ -8,6 +8,7 @@ import { cronToken } from "@/lib/cron-token";
 import { publishPost } from "@/lib/publish";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { autoSyncSheet } from "@/lib/sheet-source";
+import { autoSyncWebsiteCatalog } from "@/lib/sheet-writeback";
 import { createDailyStorePosts, type StoreDailyPostsResult } from "@/lib/store-marketing";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +16,8 @@ export const maxDuration = 60;
 
 const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
-/** Publishes every "scheduled" post whose time has come. Called by Vercel Cron (daily) or a free pinger (every 5–15 min).
- *  Auth: "Authorization: Bearer <token>" or "?token=<token>". */
+/** Publishes due scheduled posts and runs the daily supplier-sheet and website-catalog sync.
+ * Auth: "Authorization: Bearer <token>" or "?token=<token>". */
 async function run(req: Request) {
   const limited = rateLimitRequest(req, "cron-publish", 2, 60_000);
   if (limited) return limited;
@@ -44,8 +45,10 @@ async function run(req: Request) {
     else if ("error" in r) await sql`update mk_posts set status = 'failed', notes = coalesce(notes,'') || ${"\\nAuto-publish: " + r.error} where id = ${p.id}`;
   }
   const sheet = await sheetPromise;
+  // Export only after the supplier import has completed, so the destination reflects the latest catalog.
+  const websiteCatalog = await autoSyncWebsiteCatalog().catch((e) => ({ error: String(e) }));
   await setSetting("mk_cron_last", { at: new Date().toISOString(), published: results.filter((r) => r.ok).length, failed: results.filter((r) => !r.ok).length, store });
-  return ok({ ran: new Date().toISOString(), checked: due.length, results, store, sheet });
+  return ok({ ran: new Date().toISOString(), checked: due.length, results, store, sheet, websiteCatalog });
 }
 export const GET = run;
 export const POST = run;
