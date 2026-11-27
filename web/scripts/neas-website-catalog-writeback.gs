@@ -26,7 +26,8 @@ function constantTimeEqual_(a, b) {
 // Prevent product text from being interpreted as a spreadsheet formula.
 function safeCell_(value, maxLength) {
   const text = String(value == null ? "" : value).slice(0, maxLength);
-  return /^[=+@\\-\\t\\r]/.test(text) ? "'" + text : text;
+  const first = text.charAt(0);
+  return ["=", "+", "-", "@", "\t", "\r"].indexOf(first) >= 0 ? "'" + text : text;
 }
 function doPost(e) {
   const lock = LockService.getScriptLock();
