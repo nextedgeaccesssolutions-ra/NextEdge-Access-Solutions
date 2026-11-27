@@ -8,6 +8,7 @@ import { createContext } from "./context";
 import { publishScheduledPage } from "../scheduled";
 import { allowStoreRequestPreflight, receiveStoreRequest } from "../storeRequests";
 import { rateLimit } from "express-rate-limit";
+import { registerGiieCmsIntegration } from "./giieCmsIntegration";
 
 // Standard Express middleware is recognized by static security analysis.
 // Vercel's edge overwrites X-Forwarded-For; app trust is scoped to one hop.
@@ -50,6 +51,7 @@ export function createApp() {
 
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  registerGiieCmsIntegration(app);
 
   app.use("/api/trpc/publicSite.submitContact", publicContactRateLimit);
   app.use(
