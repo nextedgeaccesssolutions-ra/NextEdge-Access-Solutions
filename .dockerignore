@@ -1,0 +1,13 @@
+.git
+node_modules
+**/node_modules
+dist
+**/.next
+**/coverage
+**/test-results
+**/playwright-report
+.env
+.env.*
+!.env.docker.example
+*.log
+.DS_Store
