@@ -724,6 +724,16 @@ body{background:var(--bg);color:var(--fg)}
         </div>
       </div>
     </div>
+      <div class="service-card reveal" onclick="openModal('solar-energy-industrial')">
+        <div class="service-photo" style="background-image:url('/img/hero-power.webp')"></div>
+        <div class="service-body">
+          <div class="service-tag">Solar &amp; Industrial</div>
+          <div class="service-title">Solar Energy &amp; Industrial Services</div>
+          <p class="service-desc">Specialist access and industrial field support for solar energy, power infrastructure, inspection and maintenance projects.</p>
+          <a class="service-more" href="/services/solar-energy-industrial" onclick="event.stopPropagation()">See full service &amp; get a quote →</a>
+        </div>
+      </div>
+
   </div>
 </section>
 
@@ -1022,6 +1032,7 @@ const SERVICES={
   
   'metmast-telecom':{tag:'Met Mast & Telecom',title:'Met Mast & Telecom Tower Services',desc:'NEAS delivers specialist rope access for Met Mast projects and telecom infrastructure across the Philippines — from civil works and erection to commissioning and annual maintenance.',feats:['Met Mast civil works & erection','Lidar supply & installation','Annual & quarterly Met Mast maintenance','Cell site inspection & antenna install','Telecom tower erection & commissioning','Decommissioning services','Cable management & routing','Site safety assessment']},
   'wind-turbine':{tag:'Wind Energy',title:'Wind Turbine Services',desc:'NEAS provides specialist rope access services for wind turbines across the Philippines — from blade inspection and repair to tower maintenance and decommissioning.',feats:['Blade inspection & crack detection','Blade leading-edge repair','Lightning protection system checks','Tower internal & external inspection','Nacelle & hub access works','WTG decommissioning support','Annual maintenance contracts','Safety system installation']},'training':{tag:'Training & PPE',title:'Training, Consultancy & PPE Supply',desc:'Professional training courses, safety consultancy, and certified PPE supply to ensure your teams work safely and in full compliance with international standards.',feats:['Rope access (IRATA protocol)','Working at Height (WAH)','Rope rescue & confined space','Telecom & Met Mast tower courses','Wind turbine safety training','PPE inspection & certification','Safety consultancy & auditing','Premium certified PPE supply']}
+  'solar-energy-industrial':{tag:'Solar & Industrial',title:'Solar Energy & Industrial Services',desc:'Specialist access and industrial field support for solar energy, power infrastructure, inspection and maintenance projects.',feats:['Solar PV project and site support','Solar farm and rooftop PV inspection assistance','Solar module and structure cleaning support','Access planning and rope access','Structural inspection and condition assessment','Industrial NDT and inspection support','Surface preparation and protective coatings','Power infrastructure support subject to applicable approvals']},
 };
 
 function openModal(id){
