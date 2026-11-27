@@ -321,7 +321,8 @@ body{background:var(--bg);color:var(--fg)}
 </style>
 <style id="hero-slideshow">
 .hero-slides{position:absolute;inset:0}
-.hero-slide{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transform:scale(1.04);transition:opacity 1.4s ease,transform 7s linear}
+.hero-slide{position:absolute;inset:0;overflow:hidden;opacity:0;transform:scale(1.04);transition:opacity 1.4s ease,transform 7s linear}
+.hero-slide-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}
 .hero-slide.on{opacity:1;transform:scale(1.14)}
 .hero-vid-label{position:absolute;right:28px;bottom:120px;z-index:3;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#fff;background:rgba(7,9,15,.6);padding:6px 12px;border-radius:4px;opacity:0;transition:opacity .6s}
 .hero-vid-label.on{opacity:1}
