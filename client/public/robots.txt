@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://www.nextedge-access-solutions.com/sitemap.xml
