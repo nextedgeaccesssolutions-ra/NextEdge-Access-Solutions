@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getSetting, getSettingList, DEFAULT_SEO, DEFAULT_SOCIAL, DEFAULT_BUSINESS, type Seo, type Social, type Business } from "./settings";
-import { DEFAULT_HERO_SLIDES, sanitizeHeroSlides, type HeroCarouselSlide } from "./hero-carousel";
+import { getHeroSlides, type HeroCarouselSlide } from "./hero-carousel";
 import { getServiceMeta } from "./services";
 import { addAccessibleLabelsToSideSocialAnchors, appendAfterSideSocialAnchor, replaceSideSocialAnchor, safeHttpsUrl, safeImageUrl } from "./html-safety";
 
@@ -25,7 +25,7 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
   const [seo, social, biz, sitePhotos, savedHeroSlides] = await Promise.all([
     getSetting<Seo>("seo", DEFAULT_SEO), getSetting<Social>("social", DEFAULT_SOCIAL), getSetting<Business>("business", DEFAULT_BUSINESS), getSetting<Record<string, string>>("site_photos", {}), getSettingList<HeroCarouselSlide>("hero_carousel"),
   ]);
-  const heroSlides = (sanitizeHeroSlides(savedHeroSlides) ?? DEFAULT_HERO_SLIDES).filter(slide => slide.enabled);
+  const heroSlides = getHeroSlides(savedHeroSlides, sitePhotos.hero).filter(slide => slide.enabled);
   const canonical = safeHttpsUrl(seo.canonical) ?? DEFAULT_SEO.canonical;
   const origin = new URL(canonical).origin;
   // Render the admin-managed hero carousel, retaining the original hero as the fallback.
