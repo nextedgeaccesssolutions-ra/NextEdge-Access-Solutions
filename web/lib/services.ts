@@ -39,6 +39,11 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
     desc: "Professional training courses, safety consultancy, and certified PPE supply to ensure your teams work safely and in full compliance with international standards.",
     image: "/img/390f5ed3244c.jpg",
   },
+  "solar-energy-industrial": {
+    title: "Solar Energy & Industrial Services",
+    desc: "Specialist access and industrial field support for solar energy, power infrastructure, inspection and maintenance projects.",
+    image: "/img/hero-power.webp",
+  },
   "wind-turbine": {
     title: "Wind Turbine Services",
     desc: "NEAS provides specialist rope access services for wind turbines across the Philippines — from blade inspection and repair to tower maintenance and decommissioning.",
