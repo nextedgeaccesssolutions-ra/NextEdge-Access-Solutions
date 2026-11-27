@@ -1,0 +1,58 @@
+name: neas-website
+
+services:
+  website-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    image: neas-website-web:local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEBSITE_PORT:-3002}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+
+  website-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: neas-website-api:local
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEBSITE_API_PORT:-3100}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: mysql://neas_local:${MYSQL_PASSWORD:?Set MYSQL_PASSWORD}@mysql:3306/neas_local
+      OWNER_OPEN_ID: ${OWNER_OPEN_ID:-local-docker-owner}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+    networks: [website-internal]
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: neas_local
+      MYSQL_USER: neas_local
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}
+    volumes:
+      - website_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [website-internal]
+
+volumes:
+  website_mysql:
+
+networks:
+  website-internal:
+    name: neas-website-internal
