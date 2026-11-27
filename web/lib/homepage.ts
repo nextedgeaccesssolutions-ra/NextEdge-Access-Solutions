@@ -89,7 +89,76 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
     `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>`,
   ].filter(Boolean).join("\n");
   html = html.replace(/<title>[\s\S]*?<\/title>\s*/, "").replace(/<meta name="description"[^>]*>\s*/, "");
-  html = html.replace("</head>", head + "\n</head>");
+  html = html.replace("</head>", head + "\n<style id=\"neas-homepage-refresh\">\n
+:root{--bg:#071D29!important;--bg2:#0b2735!important;--bg3:#123646!important;--surface:#163b4c!important;--border:rgba(235,192,126,.14)!important;--border2:rgba(235,192,126,.25)!important;--fg:#f3f7f8!important;--fg2:#c1d0d6!important;--fg3:#91a7b1!important;--accent:#CA9332!important;--accent2:#EBC07E!important}
+body{background:#071D29;color:#f3f7f8}
+.topbar{background:#CA9332;color:#071D29;font-weight:800;letter-spacing:.035em}
+.site-header{background:rgba(7,29,41,.94)!important;border-bottom:1px solid rgba(235,192,126,.18)!important}
+.nav-logo-text span{color:#EBC07E}
+.nav-links a{color:#d2dfe3}
+.nav-links a:hover,.nav-links a:focus-visible{color:#EBC07E;background:rgba(235,192,126,.09)}
+.nav-cta,.mm-cta{background:#CA9332!important;color:#071D29!important;font-weight:800}
+.hero{min-height:min(900px,100svh);min-height:max(720px,92svh);padding-top:64px}
+.hero-bg{filter:brightness(.78) saturate(.9)}
+.hero-bg::after{background:linear-gradient(90deg,rgba(7,29,41,.92) 0%,rgba(7,29,41,.68) 52%,rgba(7,29,41,.18) 100%),linear-gradient(0deg,rgba(7,29,41,.86),transparent 58%)!important}
+.hero-content{max-width:760px!important;padding:clamp(26px,4vw,48px)!important;margin-block:32px;background:linear-gradient(135deg,rgba(7,29,41,.88),rgba(7,29,41,.68))!important;border:1px solid rgba(235,192,126,.28)!important;border-radius:18px!important;box-shadow:0 28px 80px rgba(0,0,0,.3),inset 0 1px rgba(255,255,255,.08)!important;-webkit-backdrop-filter:blur(14px) saturate(1.1)!important;backdrop-filter:blur(14px) saturate(1.1)!important}
+.hero-content::before{display:none}
+.hero-eyebrow,.section-eyebrow{color:#EBC07E!important}
+.hero-title{color:#fff!important;font-size:clamp(38px,5.4vw,68px);line-height:1.04;letter-spacing:-.035em}
+.hero-title em{color:#EBC07E!important}
+.hero-sub{color:#d5e0e4!important;font-size:clamp(15px,1.6vw,18px);max-width:620px}
+.btn-primary,.form-submit,.modal-quote{background:#CA9332!important;color:#071D29!important;font-weight:800}
+.btn-primary:hover,.form-submit:hover,.modal-quote:hover{background:#EBC07E!important}
+.hero .btn-outline{background:rgba(255,255,255,.06)!important;color:#fff!important;border:1px solid rgba(255,255,255,.35)!important}
+.hero .btn-whatsapp{background:#123f43;color:#e6fff7;border:1px solid rgba(120,220,190,.42)}
+.hero .btn-whatsapp:hover{background:#18534f}
+.hero-stats-inner{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));overflow:hidden;border:1px solid rgba(235,192,126,.2);border-radius:14px 14px 0 0}
+.hero-stat{background:rgba(7,29,41,.88)!important;border-top:1px solid rgba(235,192,126,.22)!important;border-right:1px solid rgba(235,192,126,.13)!important}
+.stat-num{color:#EBC07E!important}
+.stat-lbl{color:#c5d4d9!important}
+.ticker-wrap{background:#0b2735;border-color:rgba(235,192,126,.13)}
+.ticker-item{color:#c8d6db}
+.ticker-item::before{color:#CA9332}
+section{scroll-margin-top:84px}
+.section-title{color:#f7fafb}
+.section-lead{color:#bdcdd3}
+.about,.team,.gallery{background:#0b2735}
+.services,.partners,.contact{background:#071D29}
+.about-photo{border:1px solid rgba(235,192,126,.22);box-shadow:0 24px 64px rgba(0,0,0,.24)}
+.value-icon{background:rgba(202,147,50,.12);border-color:rgba(202,147,50,.28)}
+.value-text p,.value-text strong{color:#d9e3e7}
+.service-card,.partner-card,.team-card{background:#0b2735;border-color:rgba(235,192,126,.16)}
+.service-card:hover,.partner-card:hover{border-color:rgba(235,192,126,.55);box-shadow:0 18px 48px rgba(0,0,0,.24)}
+.service-tag,.service-more,.partner-abbr{color:#EBC07E}
+.service-title,.partner-name,.team-name{color:#f7fafb}
+.service-desc,.partner-type,.team-role{color:#b9cbd2}
+.delivery-process{padding:clamp(64px,8vw,92px) 0;background:linear-gradient(135deg,#102f40,#071D29);border-top:1px solid rgba(235,192,126,.12);border-bottom:1px solid rgba(235,192,126,.12)}
+.delivery-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:36px}
+.delivery-card{padding:26px;border:1px solid rgba(235,192,126,.2);border-radius:14px;background:rgba(255,255,255,.035)}
+.delivery-card>span{display:inline-flex;width:38px;height:38px;align-items:center;justify-content:center;border-radius:9px;background:rgba(202,147,50,.15);color:#EBC07E;font-weight:900;font-size:12px}
+.delivery-card h3{margin:18px 0 9px;color:#fff;font-size:19px}
+.delivery-card p{color:#bfd0d7;font-size:14px;line-height:1.75}
+.delivery-cta{display:flex;justify-content:space-between;align-items:center;gap:22px;margin-top:26px;padding:22px 24px;border:1px solid rgba(235,192,126,.22);border-radius:12px;background:rgba(7,29,41,.65)}
+.delivery-cta strong{display:block;color:#fff;font-size:16px}
+.delivery-cta p{margin-top:4px;color:#bfd0d7;font-size:13px}
+.clients-preview{background:#0b2735!important}
+.clients-preview a{border-color:rgba(235,192,126,.2)!important}
+.contact-form,.contact-form form{min-width:0}
+.form-field input,.form-field textarea,.form-field select{background:#0b2735;border-color:rgba(235,192,126,.2);color:#f3f7f8}
+.form-field input:focus,.form-field textarea:focus,.form-field select:focus{border-color:#EBC07E;box-shadow:0 0 0 3px rgba(235,192,126,.12)}
+.contact-val a{color:#EBC07E}
+.site-footer{background:#061923;border-top:1px solid rgba(235,192,126,.18)}
+.footer-col ul li a:hover{color:#EBC07E}
+.footer-emergency{background:rgba(202,147,50,.08);border-color:rgba(202,147,50,.25)}
+.footer-emergency p{color:#EBC07E}
+.hero-carousel-controls>button{background:rgba(7,29,41,.88);border-color:rgba(235,192,126,.6)}
+.hero-carousel-dots button[aria-current=true]{background:#EBC07E}
+.nav-toggle span{background:#EBC07E}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #EBC07E;outline-offset:3px}
+@media(max-width:760px){.hero{min-height:820px;min-height:92svh;padding-bottom:150px}.hero-content{margin-top:46px;padding:26px 22px!important}.hero-stats{bottom:0}.hero-stats-inner{grid-template-columns:repeat(2,minmax(0,1fr));border-radius:12px 12px 0 0}.hero-stat{padding:14px 10px}.stat-num{font-size:23px}.stat-lbl{font-size:9px}.hero-carousel-controls{bottom:170px;right:14px}.delivery-grid{grid-template-columns:1fr}.delivery-cta{align-items:flex-start;flex-direction:column}.delivery-cta .btn{width:100%;justify-content:center}.nav-cta{display:none}}
+@media(max-width:600px){.hero{min-height:850px;min-height:100svh}.hero-content{margin-block:24px}.hero-title{font-size:clamp(36px,10vw,48px)}.hero-actions{gap:9px}.hero-actions .btn{width:100%;justify-content:center}.hero-carousel-controls{bottom:170px}.about-grid{gap:30px}.services-grid{gap:14px}.service-body{padding:19px}.partners-grid{gap:10px}.partner-card{padding:15px 10px}.contact-grid{gap:32px}.footer-bottom{gap:12px;align-items:flex-start;flex-direction:column}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.ticker-track{animation:none}.reveal{opacity:1;transform:none;transition:none}.service-card,.partner-card,.gallery-item img{transition:none}}
+\n</style>\n</head>");
   // The static homepage bypasses the React layout, so inject its consent interface here.
   const cookieConsent = await readFile(path.join(process.cwd(), "site", "cookie-consent.html"), "utf8");
   // The placeholders are always substituted, including with "" - left in place they would
@@ -103,28 +172,8 @@ export async function renderHomepage(serviceId?: string | null): Promise<string>
   // redirect must run in the browser. Keep query parameters and replace history.
   const legacyRedirect = `<script>(function(){var routes={hero:"/home",about:"/about",services:"/services",store:"/store",partners:"/partners",contact:"/contact"};function normalize(){var key=window.location.hash.slice(1).toLowerCase();var target=routes[key];if(!target)return;if(window.location.pathname!==target){window.location.replace(target+window.location.search);return;}window.history.replaceState(null,"",target+window.location.search);}window.addEventListener("hashchange",normalize);normalize();})();</script>`;
   html = html.replace("</body>", legacyRedirect + "</body>");
-  // Public client showcase: render on the homepage for all visitors, with no account requirement.
-  const clientShowcase = `
-    <section id="neas-client-showcase" aria-labelledby="neas-client-showcase-title" style="padding:76px 20px;background:#0b1722;color:#eef4f8;border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08)">
-      <div style="max-width:1120px;margin:0 auto">
-        <div style="color:#d5ad69;text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:800">Partnerships · Performance · Trust</div>
-        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-top:12px">
-          <div><h2 id="neas-client-showcase-title" style="font-size:clamp(28px,4vw,42px);line-height:1.15;color:#fff;margin:0 0 12px">Our Clients</h2><p style="max-width:680px;color:#b9c7d0;line-height:1.7;margin:0">We value the organizations and industry partners who place their trust in NEAS for specialist access and technical services.</p></div>
-          <a href="/our-clients" style="display:inline-flex;align-items:center;padding:12px 18px;border-radius:8px;background:#c49a5a;color:#10202b;text-decoration:none;font-weight:800">View Our Clients ↗</a>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-top:30px">
-          <a href="/our-clients" style="display:block;padding:24px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:#122633;color:#fff;text-decoration:none"><span style="display:block;color:#d5ad69;font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase">Wind Energy</span><strong style="display:block;font-size:20px;margin-top:10px">Triconti ECC</strong></a>
-          <a href="/our-clients" style="display:block;padding:24px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:#122633;color:#fff;text-decoration:none"><span style="display:block;color:#d5ad69;font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase">Wind Energy</span><strong style="display:block;font-size:20px;margin-top:10px">Atimonan Windkraft</strong></a>
-          <a href="/our-clients" style="display:block;padding:24px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:#122633;color:#fff;text-decoration:none"><span style="display:block;color:#d5ad69;font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase">Geodetic Surveying &amp; Engineering</span><strong style="display:block;font-size:20px;margin-top:10px">Philsurv Geodetic Engineer</strong></a>
-        </div>
-      </div>
-    </section>
-  `;
-  if (!html.includes('id="neas-client-showcase"')) {
-    const contactSection = html.indexOf('<section class="contact"');
-    if (contactSection >= 0) html = html.slice(0, contactSection) + clientShowcase + html.slice(contactSection);
-    else html = html.replace('<footer class="site-footer">', clientShowcase + '<footer class="site-footer">');
-  }
+  // The homepage already contains its canonical client preview in home.html.
+  // Do not inject a second copy; keep the managed client records as the single source.
   // social links in the side panel
   const map: [string, string][] = [["Facebook", social.facebook], ["LinkedIn", social.linkedin], ["YouTube", social.youtube], ["Instagram", social.instagram], ["TikTok", social.tiktok]];
   for (const [title, url] of map) html = replaceSideSocialAnchor(html, title, url);
