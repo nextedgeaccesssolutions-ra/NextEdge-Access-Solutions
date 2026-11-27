@@ -1,0 +1,50 @@
+name: NEAS GIIE CMS Server Validation
+
+on:
+  push:
+    branches:
+      - feature/giie-cms-draft-ingestion
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neas-giie-cms-server-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-server:
+    name: Express CMS integration, root type-check and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+          run_install: false
+
+      - name: Install root application dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check Express, tRPC and Vite application
+        run: pnpm check
+
+      - name: Run root Vitest and workflow-scope tests
+        run: pnpm test
+
+      - name: Build Vite frontend and Express backend
+        run: pnpm build
