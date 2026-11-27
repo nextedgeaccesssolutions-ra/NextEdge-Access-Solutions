@@ -1,16 +1,27 @@
 .git
 .github
-node_modules
-dist
-coverage
+
+# Dependencies and generated output
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/test-results
+**/playwright-report
+
+# Local development files
 .vscode
 .idea
-.DS_Store
-.manus-logs
-.env
-.env.*
-!.env.example
-*.pem
-*.key
-*.crt
-*.log
+
+# Environment files: exclude secrets, allow documented example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Private credentials, certificates, logs, and metadata
+**/*.pem
+**/*.key
+**/*.crt
+**/*.log
+**/.DS_Store
+**/.manus-logs
