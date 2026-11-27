@@ -1,7 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { Express, Request, Response } from "express";
 import { rateLimit } from "express-rate-limit";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "../db";
 import { pages, revisions, users } from "../../drizzle/schema";
@@ -179,7 +179,7 @@ export function registerGiieCmsIntegration(app: Express) {
       // A concurrent retry can race on the unique slug; return the existing item without mutating it.
       const brief = validated.data;
       const slug = `market-intel-${createHash("sha256").update(brief.signalId).digest("hex").slice(0, 24)}`;
-      const existing = (await db.select().from(pages).where(and(eq(pages.slug, slug))).limit(1).catch(() => []))[0];
+      const existing = (await db.select().from(pages).where(eq(pages.slug, slug)).limit(1).catch(() => []))[0];
       if (existing) {
         res.status(200).json({ success: true, duplicate: true, pageId: existing.id, status: existing.status, slug });
         return;
