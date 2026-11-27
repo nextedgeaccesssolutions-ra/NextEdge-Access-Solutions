@@ -23,7 +23,6 @@ import {
   type ExtraClient,
 } from "@/lib/settings";
 import { getWebsiteCatalogSyncStatus } from "@/lib/sheet-writeback";
-import { getSettingList } from "@/lib/settings";
 import { DEFAULT_HERO_SLIDES, sanitizeHeroSlides, type HeroCarouselSlide } from "@/lib/hero-carousel";
 import { getManagedServicePage } from "@/lib/managed-service-pages";
 export const dynamic = "force-dynamic";
