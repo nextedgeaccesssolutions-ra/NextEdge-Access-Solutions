@@ -9,8 +9,8 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.nextedge-access-solutions.com"),
   title: { default: "NextEdge Access Solutions (NEAS) — Rope Access & Height Safety Philippines", template: "%s | NEAS Philippines" },
-  description: "NEAS is a Philippine company providing certified rope access services, IRATA/SPRAT training, NDT inspections, and height-safety equipment. Based in Cebu, serving clients across the Philippines.",
-  keywords: ["rope access Philippines", "IRATA training Philippines", "height safety equipment", "rope access Cebu", "SPRAT training", "NDT inspection Philippines", "work at height", "PPE Philippines"],
+  description: "NEAS is based in Marilao, Bulacan, providing rope access, NDT inspection, facade, wind turbine and height-safety services for industrial and renewable-energy projects across the Philippines.",
+  keywords: ["rope access Philippines", "IRATA training Philippines", "height safety equipment", "rope access Bulacan", "SPRAT training", "NDT inspection Philippines", "work at height", "PPE Philippines"],
   authors: [{ name: "NextEdge Access Solutions (NEAS) OPC" }],
   icons: { icon: "/favicon.png" },
   openGraph: {
