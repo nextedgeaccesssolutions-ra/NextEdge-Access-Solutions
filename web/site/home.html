@@ -1093,6 +1093,12 @@ async function submitForm(e){
 (function(){
 var s=[].slice.call(document.querySelectorAll('.hero-slide')),lab=document.querySelector('.hero-vid-label'),i=-1;
 if(!s.length)return;
+// Keep the restored static hero for visitors who request reduced motion.
+if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+  lab.textContent='High-Rise Facades';
+  lab.classList.add('on');
+  return;
+}
 // Later slides download after the page has loaded, so the first view is not held up by six photos.
 function lazyBg(){s.forEach(function(el){if(el.dataset.bg){el.style.backgroundImage="url('"+el.dataset.bg+"')";delete el.dataset.bg;}});}
 if(document.readyState==='complete')lazyBg();else window.addEventListener('load',lazyBg);
