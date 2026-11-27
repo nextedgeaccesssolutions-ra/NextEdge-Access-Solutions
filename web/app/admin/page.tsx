@@ -23,7 +23,7 @@ import {
   type ExtraClient,
 } from "@/lib/settings";
 import { getWebsiteCatalogSyncStatus } from "@/lib/sheet-writeback";
-import { DEFAULT_HERO_SLIDES, sanitizeHeroSlides, type HeroCarouselSlide } from "@/lib/hero-carousel";
+import { getHeroSlides, type HeroCarouselSlide } from "@/lib/hero-carousel";
 import { getManagedServicePage } from "@/lib/managed-service-pages";
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -72,7 +72,7 @@ export default async function Admin() {
     getSettingList<string>("hidden_clients"),
   ]);
   const awaiting = orders.filter(o => o.status === "awaiting_payment").length;
-  const heroSlides = sanitizeHeroSlides(heroSlidesStored) ?? DEFAULT_HERO_SLIDES;
+  const heroSlides = getHeroSlides(heroSlidesStored, sitePhotos.hero);
   const AC = (v: "orders" | "products" | "customers") => (
     <AdminClient
       view={v}

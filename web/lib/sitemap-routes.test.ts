@@ -10,6 +10,8 @@ describe("static sitemap destinations", () => {
   it("includes the distinct public pages that declare their own canonical URLs", () => {
     expect(urls).toEqual([
       `${origin}/`,
+      `${origin}/about`,
+      `${origin}/services`,
       `${origin}/store`,
       `${origin}/our-clients`,
       `${origin}/locations/marilao-bulacan`,
@@ -50,8 +52,6 @@ describe("static sitemap destinations", () => {
   it("does not advertise homepage section aliases as separate indexable pages", () => {
     for (const section of [
       "home",
-      "about",
-      "services",
       "partners",
       "contact",
     ]) {

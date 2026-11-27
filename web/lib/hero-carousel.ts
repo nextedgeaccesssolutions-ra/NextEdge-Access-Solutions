@@ -61,3 +61,21 @@ export function sanitizeHeroSlides(value: unknown): HeroCarouselSlide[] | null {
   }
   return slides.some(slide => slide.enabled) ? slides : null;
 }
+
+/**
+ * Preserve the existing Website Photos > Homepage hero image when migrating
+ * from the legacy single-image setting. An explicitly saved carousel always
+ * takes precedence; invalid legacy URLs fall back to the built-in NEAS slides.
+ */
+export function getHeroSlides(value: unknown, legacyHeroImage?: unknown): HeroCarouselSlide[] {
+  const saved = sanitizeHeroSlides(value);
+  if (saved) return saved;
+  if (typeof legacyHeroImage === "string" && legacyHeroImage.trim()) {
+    const migrated = sanitizeHeroSlides([
+      { ...DEFAULT_HERO_SLIDES[0], image: legacyHeroImage },
+      ...DEFAULT_HERO_SLIDES.slice(1),
+    ]);
+    if (migrated) return migrated;
+  }
+  return DEFAULT_HERO_SLIDES;
+}
