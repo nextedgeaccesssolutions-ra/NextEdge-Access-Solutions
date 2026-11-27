@@ -41,10 +41,11 @@ test("NEAS local organization schema includes the Marilao business address", () 
 
 test("renewable-energy and offshore/onshore landing pages are present and sitemap-driven", () => {
   const ids = [...servicePagesSource.matchAll(/^\s*id: "([^"]+)"/gm)].map((match) => match[1]);
-  assert.equal(ids.length, 8, "expected six existing and two new service landing pages");
+  assert.equal(ids.length, 9, "expected six original and three additional service landing pages");
   assert.equal(new Set(ids).size, ids.length, "service page ids must be unique");
   assert.ok(ids.includes("renewable-energy"));
   assert.ok(ids.includes("offshore-onshore"));
+  assert.ok(ids.includes("solar-energy-industrial"));
   assert.match(sitemapSource, /\.\.\.SERVICE_PAGES\.map/);
   assert.match(sitemapSource, /\/services\/\$\{p\.id\}/);
 });
