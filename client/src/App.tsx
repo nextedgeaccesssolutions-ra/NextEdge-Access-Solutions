@@ -9,7 +9,6 @@ import Admin from "./pages/Admin";
 import StoreBooking from "./pages/StoreBooking";
 import CmsPage from "./pages/CmsPage";
 import GitHubConnector from "./pages/GitHubConnector";
-import SeoLanding from "./pages/SeoLanding";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function Router() {
@@ -19,8 +18,6 @@ function Router() {
       <Route path="/home"><Redirect to="/#hero" /></Route>
       <Route path="/store" component={StoreBooking} />
       <Route path="/store-booking" component={StoreBooking} />
-      <Route path="/services/:slug" component={SeoLanding} />
-      <Route path="/locations/:slug" component={SeoLanding} />
       <Route path="/services"><Redirect to="/#services" /></Route>
       <Route path="/partners"><Redirect to="/#partners" /></Route>
       <Route path="/contact"><Redirect to="/#contact" /></Route>
