@@ -1,0 +1,17 @@
+.git
+.github
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/test-results
+**/playwright-report
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+**/*.key
+**/*.crt
+**/*.log
+**/.DS_Store
+**/.manus-logs

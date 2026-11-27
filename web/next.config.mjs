@@ -33,6 +33,8 @@ const csp = [
 ].join("; ");
 
 const nextConfig = {
+  output: "standalone",
+  outputFileTracingRoot: workspaceRoot,
   turbopack: { root: workspaceRoot },
   outputFileTracingIncludes: { "/": ["./site/**/*"] },
   poweredByHeader: false,
