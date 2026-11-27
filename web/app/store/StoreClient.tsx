@@ -2,7 +2,7 @@
 import "./store.css";
 import "./floating-store.css";
 import FloatingStoreControls from "./FloatingStoreControls";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ShareBar from "@/components/ShareBar";
 
 type P = {
@@ -100,6 +100,7 @@ export default function StoreClient({
   >(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const cartbarRef = useRef<HTMLDivElement>(null);
   const byId = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
   useEffect(() => {
@@ -150,6 +151,31 @@ export default function StoreClient({
     .map(([id, n]) => ({ p: byId.get(id)!, n }));
   const count = lines.reduce((s, l) => s + l.n, 0),
     total = lines.reduce((s, l) => s + l.n * l.p.price, 0);
+
+  // Measure the cart dock because its height changes when actions wrap on
+  // narrow screens. The quick-purchase dock uses this value to stay separated.
+  useEffect(() => {
+    const element = cartbarRef.current;
+    if (!element) {
+      document.documentElement.style.removeProperty("--neas-cartbar-height");
+      return;
+    }
+    const updateHeight = () => {
+      document.documentElement.style.setProperty(
+        "--neas-cartbar-height",
+        `${Math.ceil(element.getBoundingClientRect().height)}px`
+      );
+    };
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(element);
+    window.addEventListener("resize", updateHeight);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateHeight);
+      document.documentElement.style.removeProperty("--neas-cartbar-height");
+    };
+  }, [count]);
   const add = (id: string, n: number) =>
     setCart(c => ({ ...c, [id]: Math.min(999, (c[id] || 0) + n) }));
   const setLine = (id: string, n: number) =>
@@ -403,7 +429,7 @@ export default function StoreClient({
         })}
       />
       {count > 0 && (
-        <div className="cartbar">
+        <div className="cartbar" ref={cartbarRef}>
           <div>
             🛒 <b>{count}</b> item(s) · <b>{peso(total)}</b>
           </div>
