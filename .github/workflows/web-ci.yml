@@ -86,3 +86,6 @@ jobs:
       - name: Build application without database access (no migrations)
         run: npm run build:app
         working-directory: web
+
+      - name: Build standalone Docker image without pushing
+        run: docker build -f web/Dockerfile -t neas-web:pr-validation .
