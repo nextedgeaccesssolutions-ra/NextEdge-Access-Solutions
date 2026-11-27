@@ -1,3 +1,4 @@
+import "./cart.css";
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
