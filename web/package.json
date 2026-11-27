@@ -23,7 +23,8 @@
     "prebuild": "node --experimental-strip-types --test scripts/test-seo-organization-schema.mjs",
     "test:hero-carousel": "node --experimental-strip-types --test scripts/test-hero-carousel.mjs",
     "test:homepage-carousel": "node --experimental-strip-types --test scripts/test-homepage-carousel.mjs",
-    "test:solar-service": "node --experimental-strip-types --test scripts/test-solar-service.mjs"
+    "test:solar-service": "node --experimental-strip-types --test scripts/test-solar-service.mjs",
+    "test:service-page-validation": "node --experimental-strip-types --test scripts/test-service-page-validation.mjs"
   },
   "dependencies": {
     "@vercel/speed-insights": "^2.1.0",
