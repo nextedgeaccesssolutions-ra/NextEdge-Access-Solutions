@@ -1,0 +1,80 @@
+name: NEAS Lighthouse Audit
+
+on:
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/neas-lighthouse-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neas-lighthouse-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  lighthouse:
+    name: Lighthouse baseline (local preview build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install website dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Build Next.js application without database migrations
+        run: npm run build:app
+        working-directory: web
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Start local production server
+        run: |
+          npm run start -- --hostname 127.0.0.1 > /tmp/neas-next.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/neas-next.log
+          exit 1
+        working-directory: web
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Run Lighthouse
+        run: |
+          npx --yes lighthouse@12.8.2 http://127.0.0.1:3000/ \
+            --chrome-flags="--headless --no-sandbox" \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --output=json --output-path=./lighthouse-report.json --quiet
+        working-directory: web
+
+      - name: Validate and summarize audit report
+        run: node scripts/assert-lighthouse-report.mjs lighthouse-report.json
+        working-directory: web
+
+      - name: Upload Lighthouse report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: neas-lighthouse-report-${{ github.run_id }}
+          path: web/lighthouse-report.json
+          if-no-files-found: warn
+          retention-days: 14
