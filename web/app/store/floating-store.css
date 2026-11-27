@@ -127,10 +127,6 @@ body:has(.neas-floating-purchase) { padding-bottom: 92px; }
 
 /* The cart summary sits at the viewport edge. Lift quick purchase above it
    whenever the cart summary is present, instead of stacking two bottom bars. */
-.cartbar {
-  left: 50%;
-  transform: translateX(-50%);
-}
 body:has(.neas-floating-purchase) {
   padding-bottom: 104px;
 }
