@@ -13,12 +13,6 @@ const publicPages = {
     description: "Learn about NextEdge Access Solutions and our approach to safe, reliable rope access and industrial services.",
     canonicalPath: "/about",
   },
-  services: {
-    section: "services",
-    title: "Rope Access & Industrial Services | NEAS",
-    description: "Explore NEAS rope access, renewable energy, wind turbine, offshore, onshore, telecom, and industrial service capabilities.",
-    canonicalPath: "/services",
-  },
   partners: {
     section: "partners",
     title: "NEAS Partners | NextEdge Access Solutions",
