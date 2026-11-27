@@ -84,3 +84,90 @@ body:has(.neas-floating-purchase) { padding-bottom: 92px; }
 @media (prefers-reduced-motion: reduce) {
   .neas-floating-purchase { scroll-behavior: auto; }
 }
+
+
+/* Keep the search and category controls within the store content width. */
+.sbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  gap: 10px;
+  padding: 10px 0 12px;
+}
+.sbar .input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.cats {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+  padding: 2px 2px 8px;
+}
+.cats button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  scroll-snap-align: start;
+}
+.cats:focus-within {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+/* The cart summary sits at the viewport edge. Lift quick purchase above it
+   whenever the cart summary is present, instead of stacking two bottom bars. */
+.cartbar {
+  left: 50%;
+  transform: translateX(-50%);
+}
+body:has(.neas-floating-purchase) {
+  padding-bottom: 104px;
+}
+body:has(.cartbar) {
+  padding-bottom: 112px;
+}
+body:has(.cartbar) .neas-floating-purchase {
+  bottom: calc(104px + env(safe-area-inset-bottom));
+}
+@media (max-width: 700px) {
+  .sbar {
+    top: 64px;
+    gap: 8px;
+    padding: 8px 0 10px;
+  }
+  .cats {
+    gap: 6px;
+    scrollbar-width: none;
+  }
+  .cats::-webkit-scrollbar {
+    display: none;
+  }
+  body:has(.neas-floating-purchase) {
+    padding-bottom: 132px;
+  }
+  body:has(.cartbar) {
+    padding-bottom: 168px;
+  }
+  body:has(.cartbar) .neas-floating-purchase {
+    bottom: calc(154px + env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 390px) {
+  body:has(.cartbar) {
+    padding-bottom: 190px;
+  }
+  body:has(.cartbar) .neas-floating-purchase {
+    bottom: calc(176px + env(safe-area-inset-bottom));
+  }
+}
