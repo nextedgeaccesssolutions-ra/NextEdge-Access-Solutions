@@ -1,5 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import type { Express, Request, Response } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import { rateLimit } from "express-rate-limit";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -83,7 +83,7 @@ function responseError(res: Response, status: number, error: string) {
 }
 
 export function registerGiieCmsIntegration(app: Express) {
-  app.post("/api/integrations/giie/commercial-briefs", integrationRateLimit, async (req: Request, res: Response) => {
+  app.post("/api/integrations/giie/commercial-briefs", integrationRateLimit, express.json({ limit: "32kb" }), async (req: Request, res: Response) => {
     const secret = process.env.NEAS_GIIE_CMS_HMAC_SECRET ?? "";
     const editorOpenId = process.env.NEAS_GIIE_CMS_EDITOR_OPEN_ID ?? "";
     const allowlist = allowedSourceHosts();
