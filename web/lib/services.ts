@@ -1,5 +1,5 @@
 /**
- * Server-side metadata for the six homepage services.
+ * Server-side metadata for the seven homepage services.
  *
  * The homepage itself is a static document (site/home.html) whose service copy
  * lives in an inline `SERVICES` object, read only by the browser. Social
