@@ -10,14 +10,20 @@ describe("static sitemap destinations", () => {
   it("includes the distinct public pages that declare their own canonical URLs", () => {
     expect(urls).toEqual([
       `${origin}/`,
+      `${origin}/about`,
+      `${origin}/services`,
       `${origin}/store`,
       `${origin}/our-clients`,
+      `${origin}/locations/marilao-bulacan`,
       `${origin}/services/rope-access`,
       `${origin}/services/wind-turbine`,
       `${origin}/services/metmast-telecom`,
       `${origin}/services/ndt-inspection`,
       `${origin}/services/coatings`,
       `${origin}/services/training`,
+      `${origin}/services/renewable-energy`,
+      `${origin}/services/offshore-onshore`,
+      `${origin}/services/solar-energy-industrial`,
       `${origin}/privacy-policy`,
     ]);
   });
@@ -26,6 +32,10 @@ describe("static sitemap destinations", () => {
     const { SERVICE_PAGES } = await import("./service-pages");
     for (const page of SERVICE_PAGES)
       expect(urls).toContain(`${origin}/services/${page.id}`);
+  });
+
+  it("includes the local Marilao page as a crawlable destination", () => {
+    expect(urls).toContain(`${origin}/locations/marilao-bulacan`);
   });
 
   it("homepage service cards link to every service landing page with a crawlable href", async () => {
@@ -39,11 +49,19 @@ describe("static sitemap destinations", () => {
       expect(html).toContain(`href="/services/${page.id}"`);
   });
 
+  it("keeps renewable and offshore/onshore landing pages crawlable from the homepage", async () => {
+    const { readFileSync } = await import("node:fs");
+    const html = readFileSync(
+      new URL("../site/home.html", import.meta.url),
+      "utf8"
+    );
+    expect(html).toContain('href="/services/renewable-energy"');
+    expect(html).toContain('href="/services/offshore-onshore"');
+  });
+
   it("does not advertise homepage section aliases as separate indexable pages", () => {
     for (const section of [
       "home",
-      "about",
-      "services",
       "partners",
       "contact",
     ]) {
