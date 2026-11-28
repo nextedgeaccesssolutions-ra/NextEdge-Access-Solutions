@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ServiceQuoteForm from "@/components/ServiceQuoteForm";
-import { SERVICE_META } from "@/lib/services";
 import { SERVICE_PAGES, getServicePage } from "@/lib/service-pages";
 
 const ORIGIN = "https://www.nextedge-access-solutions.com";
@@ -23,7 +22,7 @@ export async function generateMetadata({
   const page = getServicePage((await params).slug);
   if (!page) return {};
   const path = `/services/${page.id}`;
-  const image = SERVICE_META[page.id].image;
+  const image = page.image;
   return {
     title: { absolute: page.title },
     description: page.metaDescription,
@@ -117,7 +116,7 @@ export default async function ServicePageView({
 }) {
   const page = getServicePage((await params).slug);
   if (!page) notFound();
-  const image = SERVICE_META[page.id].image;
+  const image = page.image;
   const others = SERVICE_PAGES.filter(p => p.id !== page.id);
   const waText = encodeURIComponent(
     `Hello NEAS, I'd like a quote for ${page.enquiryLabel}.`
