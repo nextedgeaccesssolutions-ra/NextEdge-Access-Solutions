@@ -1,5 +1,5 @@
 /**
- * Server-side metadata for the six homepage services.
+ * Server-side metadata for the seven homepage services.
  *
  * The homepage itself is a static document (site/home.html) whose service copy
  * lives in an inline `SERVICES` object, read only by the browser. Social
@@ -38,6 +38,11 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
     title: "Training, Consultancy & PPE Supply",
     desc: "Professional training courses, safety consultancy, and certified PPE supply to ensure your teams work safely and in full compliance with international standards.",
     image: "/img/390f5ed3244c.jpg",
+  },
+  "solar-energy-industrial": {
+    title: "Solar Energy & Industrial Services",
+    desc: "Specialist access and industrial field support for solar energy, power infrastructure, inspection and maintenance projects.",
+    image: "/img/hero-power.webp",
   },
   "wind-turbine": {
     title: "Wind Turbine Services",
