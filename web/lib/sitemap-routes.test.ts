@@ -72,4 +72,16 @@ describe("static sitemap destinations", () => {
   it("uses the supplied timestamp for each static entry", () => {
     expect(entries.every(entry => entry.lastModified === now)).toBe(true);
   });
+
+
+  it("keeps every standalone sitemap page backed by a route module", async () => {
+    const { existsSync } = await import("node:fs");
+    for (const route of [
+      "../app/about/page.tsx",
+      "../app/services/page.tsx",
+      "../app/locations/marilao-bulacan/page.tsx",
+    ]) {
+      expect(existsSync(new URL(route, import.meta.url))).toBe(true);
+    }
+  });
 });
