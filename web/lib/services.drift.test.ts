@@ -108,9 +108,11 @@ describe("getServiceMeta", () => {
 });
 
 describe("service landing page image metadata", () => {
-  it("uses the registered rope-access image for its standalone page", () => {
-    const page = SERVICE_PAGES.find((candidate) => candidate.id === "rope-access");
-    expect(page?.image).toBe(SERVICE_META["rope-access"].image);
+  it("reuses registered share images for homepage-backed service pages", () => {
+    for (const page of SERVICE_PAGES) {
+      const meta = SERVICE_META[page.id];
+      if (meta) expect(page.image).toBe(meta.image);
+    }
   });
 
   it("provides a usable image for every standalone service page", () => {

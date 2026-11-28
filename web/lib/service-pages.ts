@@ -13,7 +13,7 @@ import { SERVICE_META } from "./services";
 
 export type ServicePage = {
   id: string;
-  image?: string;
+  image: string;
   /** Page <title> and H1: leads with the search phrase buyers use. */
   title: string;
   h1: string;
@@ -93,6 +93,7 @@ export const SERVICE_PAGES: ServicePage[] = [
   },
   {
     id: "wind-turbine",
+    image: SERVICE_META["wind-turbine"].image,
     title: "Wind Turbine Blade Inspection & Repair Philippines | NEAS",
     h1: "Wind Turbine Blade Inspection, Repair & Maintenance",
     metaDescription:
@@ -138,6 +139,7 @@ export const SERVICE_PAGES: ServicePage[] = [
   },
   {
     id: "metmast-telecom",
+    image: SERVICE_META["metmast-telecom"].image,
     title: "Met Mast & Telecom Tower Services Philippines | NEAS",
     h1: "Met Mast and Telecom Tower Services",
     metaDescription:
@@ -181,6 +183,7 @@ export const SERVICE_PAGES: ServicePage[] = [
   },
   {
     id: "ndt-inspection",
+    image: SERVICE_META["ndt-inspection"].image,
     title: "NDT & Industrial Inspection by Rope Access Philippines | NEAS",
     h1: "NDT and Industrial Inspection by Rope Access",
     metaDescription:
@@ -220,6 +223,7 @@ export const SERVICE_PAGES: ServicePage[] = [
   },
   {
     id: "coatings",
+    image: SERVICE_META["coatings"].image,
     title: "Industrial Blasting, Painting & Coatings at Height | NEAS",
     h1: "Blasting, Painting and Protective Coatings at Height",
     metaDescription:
@@ -258,6 +262,7 @@ export const SERVICE_PAGES: ServicePage[] = [
   },
   {
     id: "training",
+    image: SERVICE_META["training"].image,
     title: "IRATA Rope Access & Work at Height Training Philippines | NEAS",
     h1: "Rope Access and Work-at-Height Training",
     metaDescription:
