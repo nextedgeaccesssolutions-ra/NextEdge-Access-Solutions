@@ -18,3 +18,15 @@ test("Dependabot monitors root npm, web npm and GitHub Actions weekly", () => {
     assert.match(entry.block, /^    schedule:\n      interval: "weekly"$/m, `${entry.ecosystem} ${entry.directory} must be checked weekly`);
   }
 });
+
+test("Dependabot keeps the approved weekly cadence, grouping and PR cap", () => {
+  for (const entry of entries) {
+    const label = `${entry.ecosystem} ${entry.directory}`;
+    assert.match(entry.block, /^      day: "monday"$/m, `${label} must run on Monday`);
+    assert.match(entry.block, /^      time: "03:00"$/m, `${label} must retain the 03:00 run time`);
+    assert.match(entry.block, /^      timezone: "Asia\\/Manila"$/m, `${label} must use Asia/Manila time`);
+    assert.match(entry.block, /^    groups:\n      [a-z0-9-]+:\n        patterns: \["\\*"\]$/m, `${label} must keep grouped dependency updates`);
+    assert.match(entry.block, /^    open-pull-requests-limit: 5$/m, `${label} must retain the five-PR cap`);
+    assert.match(entry.block, /^    labels: \["dependencies", "automation"\]$/m, `${label} must keep dependency automation labels`);
+  }
+});
