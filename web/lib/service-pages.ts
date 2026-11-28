@@ -12,7 +12,8 @@
 import { SERVICE_META } from "./services";
 
 export type ServicePage = {
-  id: keyof typeof SERVICE_META;
+  id: string;
+  image?: string;
   /** Page <title> and H1: leads with the search phrase buyers use. */
   title: string;
   h1: string;
@@ -306,6 +307,154 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
     ],
     enquiryLabel: "Training, Consultancy & PPE",
+  },
+  {
+    id: "renewable-energy",
+    image: SERVICE_META["wind-turbine"].image,
+    title: "Renewable Energy Project Services Philippines | NEAS",
+    h1: "Renewable Energy Project Support in the Philippines",
+    metaDescription:
+      "NEAS supports wind energy projects with turbine blade inspection and repair, met mast erection, Lidar installation and specialist work-at-height services. Enquire now.",
+    eyebrow: "Renewable energy · Wind measurement · Field services",
+    intro:
+      "NEAS supports renewable energy projects through specialist wind turbine, met mast and Lidar services. Our teams provide field support for wind measurement infrastructure and work at height across the project lifecycle.",
+    scope: [
+      "Wind turbine blade inspection and repair",
+      "Blade and nacelle cleaning and repainting",
+      "Gurney flap installation",
+      "Met mast civil works and tower erection",
+      "Met mast apparatus supply",
+      "Lidar supply and installation",
+      "Lifeline and anchor bolt installation",
+    ],
+    industries: [
+      "Wind energy developers",
+      "Wind farm owners and operators",
+      "Renewable energy project contractors",
+      "Wind measurement and survey teams",
+    ],
+    experience: [
+      "Wind-sector relationships with Triconti ECC Renewables and Atimonan Windkraft",
+      "Partnership with ProfEC Ventus, a wind energy testing and calibration laboratory",
+      "Met mast tower erection and Lidar installation services in the Philippines",
+    ],
+    faqs: [
+      {
+        q: "What renewable energy services does NEAS provide?",
+        a: "NEAS provides wind turbine blade inspection and repair, blade cleaning and repainting, Gurney flap installation, met mast erection, and Lidar supply and installation.",
+      },
+      {
+        q: "Can NEAS support wind measurement campaigns?",
+        a: "NEAS provides met mast civil works, tower erection, apparatus supply, and Lidar supply and installation. Share your project location and measurement requirements for a scope review.",
+      },
+      {
+        q: "Does NEAS provide wind turbine blade maintenance?",
+        a: "Yes. The listed scope includes blade inspection and repair, cleaning, repainting, and Gurney flap installation.",
+      },
+      { q: "How can I request a project quotation?", a: PRICING_ANSWER },
+    ],
+    enquiryLabel: "Renewable Energy Project Services",
+  },
+  {
+    id: "offshore-onshore",
+    image: SERVICE_META["ndt-inspection"].image,
+    title: "Offshore & Onshore Industrial Services Philippines | NEAS",
+    h1: "Offshore and Onshore Industrial Services",
+    metaDescription:
+      "NEAS provides rope access, NDT and inspection, protective coatings, maintenance and standby rescue support for offshore, onshore and industrial assets.",
+    eyebrow: "Offshore · Onshore · Power and industrial assets",
+    intro:
+      "NEAS combines specialist rope access with industrial inspection, maintenance and protective coating capabilities for hard-to-reach assets. Services can be scoped for offshore and onshore facilities, power plants and industrial sites.",
+    scope: [
+      "Rope access for inspection and maintenance",
+      "Non-destructive testing and welding inspection",
+      "Third-party and drone inspection",
+      "Blasting, surface preparation and protective coatings",
+      "Industrial painting, waterproofing and concrete repair",
+      "Mechanical and electrical support, cable pulling and torquing",
+      "Lifting operations and standby rescue",
+    ],
+    industries: [
+      "Oil and gas facilities",
+      "Offshore platforms and marine assets",
+      "Power plants",
+      "Petrochemical and industrial facilities",
+    ],
+    experience: [
+      "Offshore project experience in Dubai and Qatar, as stated in the company profile",
+      "RasGas, Qatar, listed in the company experience profile",
+      "International high-rise and industrial project exposure in the Middle East",
+    ],
+    faqs: [
+      {
+        q: "What offshore and onshore services does NEAS offer?",
+        a: "The service scope includes rope access, NDT and welding inspection, third-party and drone inspection, protective coatings, industrial painting, mechanical and electrical support, lifting operations and standby rescue.",
+      },
+      {
+        q: "Can NEAS support hard-to-reach inspection points?",
+        a: "Yes. NEAS combines rope access with inspection capabilities to reach difficult areas on industrial and marine assets. The final method is confirmed after reviewing the asset, hazards and work scope.",
+      },
+      {
+        q: "Does NEAS provide protective coating services?",
+        a: "Yes. The listed scope includes blasting, surface preparation, protective coatings, industrial painting, waterproofing and concrete repair.",
+      },
+      { q: "How do I request a quotation?", a: PRICING_ANSWER },
+    ],
+    enquiryLabel: "Offshore & Onshore Industrial Services",
+  },
+  {
+    id: "solar-energy-industrial",
+    image: "/img/hero-power.webp",
+    title: "Solar Energy & Industrial Services Philippines | NEAS",
+    h1: "Solar Energy & Industrial Services",
+    metaDescription: "NEAS supports solar energy and industrial projects in the Philippines with specialist access, project support, inspection, maintenance and industrial services.",
+    eyebrow: "Solar PV · Renewable Energy · Industrial Support",
+    intro: "NEAS provides specialist access and industrial field support for solar energy and power infrastructure projects. We work with project owners, EPC contractors and operations teams to scope practical support for site access, inspection, maintenance and industrial work packages.",
+    scope: [
+      "Solar PV project and site support",
+      "Solar farm and rooftop PV inspection assistance",
+      "Solar module and structure cleaning support",
+      "Access planning and rope access for difficult-to-reach areas",
+      "Structural inspection and condition assessment",
+      "Industrial NDT and inspection support",
+      "Surface preparation, protective coatings and maintenance",
+      "Power infrastructure and electrical project support, subject to applicable licensing and approvals",
+    ],
+    industries: [
+      "Utility-scale solar farms",
+      "Commercial and industrial rooftop solar projects",
+      "Solar EPC and O&M contractors",
+      "Power plants and energy infrastructure operators",
+      "Industrial facilities and maintenance contractors",
+    ],
+    experience: [
+      "NEAS provides specialist rope access, inspection, maintenance and renewable-energy field support capabilities",
+      "Project scope, workforce requirements and applicable technical approvals are confirmed before mobilization",
+    ],
+    faqs: [
+      {
+        q: "What solar energy services does NEAS provide?",
+        a: "NEAS can scope solar project support, site access, inspection assistance, cleaning support, structural inspection and industrial maintenance work packages based on the project's requirements.",
+      },
+      {
+        q: "Can NEAS support solar farm maintenance?",
+        a: "NEAS can discuss inspection, cleaning support and industrial maintenance requirements with solar asset owners and O&M contractors. The exact scope is confirmed after reviewing the site, access conditions and work method.",
+      },
+      {
+        q: "Does NEAS provide industrial rope access?",
+        a: "Yes. NEAS provides rope access services for difficult-to-reach structures and industrial assets, subject to a site-specific access and safety assessment.",
+      },
+      {
+        q: "Can NEAS support renewable energy contractors?",
+        a: "NEAS can coordinate specialist access and industrial field support for renewable energy project owners, EPC contractors and O&M teams.",
+      },
+      {
+        q: "Does NEAS undertake electrical installation and commissioning?",
+        a: "Electrical work is subject to applicable Philippine licensing, competent personnel, project approvals and the agreed scope. Share your requirements so NEAS can confirm the appropriate delivery arrangement.",
+      },
+      { q: "How can clients request a project quotation?", a: PRICING_ANSWER },
+    ],
+    enquiryLabel: "Solar Energy & Industrial Services",
   },
 ];
 
