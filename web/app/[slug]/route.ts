@@ -7,18 +7,6 @@ const publicPages = {
     description: "NextEdge Access Solutions provides rope access, work-at-height, inspection, maintenance, training, and PPE solutions across the Philippines.",
     canonicalPath: "/",
   },
-  about: {
-    section: "about",
-    title: "About NEAS | NextEdge Access Solutions",
-    description: "Learn about NextEdge Access Solutions and our approach to safe, reliable rope access and industrial services.",
-    canonicalPath: "/about",
-  },
-  services: {
-    section: "services",
-    title: "Rope Access & Industrial Services | NEAS",
-    description: "Explore NEAS rope access, renewable energy, wind turbine, offshore, onshore, telecom, and industrial service capabilities.",
-    canonicalPath: "/services",
-  },
   partners: {
     section: "partners",
     title: "NEAS Partners | NextEdge Access Solutions",
