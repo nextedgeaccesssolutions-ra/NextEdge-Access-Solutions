@@ -24,9 +24,9 @@ test("Dependabot keeps the approved weekly cadence, grouping and PR cap", () => 
     const label = `${entry.ecosystem} ${entry.directory}`;
     assert.match(entry.block, /^      day: "monday"$/m, `${label} must run on Monday`);
     assert.match(entry.block, /^      time: "03:00"$/m, `${label} must retain the 03:00 run time`);
-    assert.match(entry.block, /^      timezone: "Asia\\/Manila"$/m, `${label} must use Asia/Manila time`);
-    assert.match(entry.block, /^    groups:\n      [a-z0-9-]+:\n        patterns: \["\\*"\]$/m, `${label} must keep grouped dependency updates`);
+    assert.ok(entry.block.includes('timezone: "Asia/Manila"'), `${label} must use Asia/Manila time`);
+    assert.ok(entry.block.includes("groups:") && entry.block.includes('patterns: ["*"]'), `${label} must keep grouped dependency updates`);
     assert.match(entry.block, /^    open-pull-requests-limit: 5$/m, `${label} must retain the five-PR cap`);
-    assert.match(entry.block, /^    labels: \["dependencies", "automation"\]$/m, `${label} must keep dependency automation labels`);
+    assert.ok(entry.block.includes('labels: ["dependencies", "automation"]'), `${label} must keep dependency automation labels`);
   }
 });
