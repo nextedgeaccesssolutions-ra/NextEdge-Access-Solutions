@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SERVICE_META, getServiceMeta } from "./services";
+import { SERVICE_PAGES } from "./service-pages";
 
 const html = readFileSync(
   fileURLToPath(new URL("../site/home.html", import.meta.url)),
@@ -103,5 +104,13 @@ describe("getServiceMeta", () => {
     expect(getServiceMeta("constructor")).toBeNull();
     expect(getServiceMeta("toString")).toBeNull();
     expect(getServiceMeta("__proto__")).toBeNull();
+  });
+});
+
+describe("service landing page image metadata", () => {
+  it("provides a usable image for every standalone service page", () => {
+    for (const page of SERVICE_PAGES) {
+      expect(page.image, `${page.id} must define its own page image`).toBeTruthy();
+    }
   });
 });
