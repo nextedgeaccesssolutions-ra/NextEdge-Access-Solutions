@@ -64,6 +64,10 @@ jobs:
         run: npm run test:aiw-skills
         working-directory: web
 
+      - name: Test homepage reduced-motion fallback
+        run: node --test scripts/test-homepage-reduced-motion.mjs
+        working-directory: web
+
       - name: Verify clean public route contract
         run: npm run test:clean-routes
         working-directory: web

@@ -688,6 +688,15 @@ body{background:var(--bg);color:var(--fg)}
           <a class="service-more" href="/services/training" onclick="event.stopPropagation()">See full service &amp; get a quote →</a>
         </div>
       </div>
+      <div class="service-card reveal" onclick="openModal('solar-energy-industrial')">
+        <div class="service-photo" style="background-image:url('/img/hero-power.webp')"></div>
+        <div class="service-body">
+          <div class="service-tag">Solar &amp; Industrial</div>
+          <div class="service-title">Solar Energy &amp; Industrial Services</div>
+          <p class="service-desc">Specialist access and industrial field support for solar energy, power infrastructure, inspection and maintenance projects.</p>
+          <a class="service-more" href="/services/solar-energy-industrial" onclick="event.stopPropagation()">See full service &amp; get a quote →</a>
+        </div>
+      </div>
       <div class="service-card reveal" onclick="openModal('wind-turbine')">
         <div class="service-photo" style="background-image:url('/img/0ce37cb33507.webp')"></div>
         <div class="service-body">
@@ -698,6 +707,12 @@ body{background:var(--bg);color:var(--fg)}
         </div>
       </div>
     </div>
+    <p class="section-lead" style="text-align:center;margin-top:18px">
+      Explore additional project capabilities:
+      <a href="/services/renewable-energy" style="color:#ca9332;text-decoration:underline">Renewable Energy</a>
+      <span aria-hidden="true"> · </span>
+      <a href="/services/offshore-onshore" style="color:#ca9332;text-decoration:underline">Offshore &amp; Onshore Industrial Services</a>
+    </p>
   </div>
 </section>
 
@@ -995,6 +1010,7 @@ const SERVICES={
   'coatings':{tag:'Coatings',title:'Blasting, Painting & Coatings',desc:'Comprehensive surface preparation, protective coating, and painting services for industrial structures, offshore platforms, and commercial buildings.',feats:['Abrasive blasting & surface prep','Industrial & marine painting','Protective anti-corrosion coatings','Repainting & touch-up works','GFRC repair & painting','I-beam cleaning & repainting','Offshore structure coating','Compliance with international paint specs']},
   
   'metmast-telecom':{tag:'Met Mast & Telecom',title:'Met Mast & Telecom Tower Services',desc:'NEAS delivers specialist rope access for Met Mast projects and telecom infrastructure across the Philippines — from civil works and erection to commissioning and annual maintenance.',feats:['Met Mast civil works & erection','Lidar supply & installation','Annual & quarterly Met Mast maintenance','Cell site inspection & antenna install','Telecom tower erection & commissioning','Decommissioning services','Cable management & routing','Site safety assessment']},
+  'solar-energy-industrial':{tag:'Solar & Industrial',title:'Solar Energy & Industrial Services',desc:'Specialist access and industrial field support for solar energy, power infrastructure, inspection and maintenance projects.',feats:['Solar PV project and site support','Solar farm and rooftop PV inspection assistance','Solar module and structure cleaning support','Access planning and rope access for difficult-to-reach areas','Structural inspection and condition assessment','Industrial NDT and inspection support','Surface preparation, protective coatings and maintenance']},
   'wind-turbine':{tag:'Wind Energy',title:'Wind Turbine Services',desc:'NEAS provides specialist rope access services for wind turbines across the Philippines — from blade inspection and repair to tower maintenance and decommissioning.',feats:['Blade inspection & crack detection','Blade leading-edge repair','Lightning protection system checks','Tower internal & external inspection','Nacelle & hub access works','WTG decommissioning support','Annual maintenance contracts','Safety system installation']},'training':{tag:'Training & PPE',title:'Training, Consultancy & PPE Supply',desc:'Professional training courses, safety consultancy, and certified PPE supply to ensure your teams work safely and in full compliance with international standards.',feats:['Rope access (IRATA protocol)','Working at Height (WAH)','Rope rescue & confined space','Telecom & Met Mast tower courses','Wind turbine safety training','PPE inspection & certification','Safety consultancy & auditing','Premium certified PPE supply']}
 };
 
@@ -1093,6 +1109,12 @@ async function submitForm(e){
 (function(){
 var s=[].slice.call(document.querySelectorAll('.hero-slide')),lab=document.querySelector('.hero-vid-label'),i=-1;
 if(!s.length)return;
+// Keep the restored static hero for visitors who request reduced motion.
+if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+  lab.textContent='High-Rise Facades';
+  lab.classList.add('on');
+  return;
+}
 // Later slides download after the page has loaded, so the first view is not held up by six photos.
 function lazyBg(){s.forEach(function(el){if(el.dataset.bg){el.style.backgroundImage="url('"+el.dataset.bg+"')";delete el.dataset.bg;}});}
 if(document.readyState==='complete')lazyBg();else window.addEventListener('load',lazyBg);
