@@ -49,6 +49,16 @@ describe("static sitemap destinations", () => {
       expect(html).toContain(`href="/services/${page.id}"`);
   });
 
+  it("keeps renewable and offshore/onshore landing pages crawlable from the homepage", async () => {
+    const { readFileSync } = await import("node:fs");
+    const html = readFileSync(
+      new URL("../site/home.html", import.meta.url),
+      "utf8"
+    );
+    expect(html).toContain('href="/services/renewable-energy"');
+    expect(html).toContain('href="/services/offshore-onshore"');
+  });
+
   it("does not advertise homepage section aliases as separate indexable pages", () => {
     for (const section of [
       "home",
