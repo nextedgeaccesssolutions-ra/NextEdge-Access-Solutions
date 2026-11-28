@@ -12,6 +12,8 @@ on:
       - "pnpm-lock.yaml"
       - "web/package.json"
       - "web/package-lock.json"
+      - ".github/dependabot.yml"
+      - "scripts/test-dependabot-config.mjs"
       - ".github/workflows/dependency-security.yml"
       - "docs/dependency-security-remediation.md"
 
@@ -40,6 +42,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - name: Validate Dependabot package coverage
+        run: node --test scripts/test-dependabot-config.mjs
       - name: Install exactly from lockfile
         run: pnpm install --frozen-lockfile
       - name: Capture full dependency audit report
