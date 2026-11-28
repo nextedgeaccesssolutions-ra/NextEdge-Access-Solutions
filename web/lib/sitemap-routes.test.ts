@@ -83,5 +83,8 @@ describe("static sitemap destinations", () => {
     ]) {
       expect(existsSync(new URL(route, import.meta.url))).toBe(true);
     }
+    for (const route of ["../app/about/route.ts", "../app/services/route.ts"]) {
+      expect(existsSync(new URL(route, import.meta.url))).toBe(false);
+    }
   });
 });
