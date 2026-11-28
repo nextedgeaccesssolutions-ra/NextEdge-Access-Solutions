@@ -42,6 +42,7 @@ const PRICING_ANSWER =
 export const SERVICE_PAGES: ServicePage[] = [
   {
     id: "rope-access",
+    image: SERVICE_META["rope-access"].image,
     title: "Rope Access & Facade Services Philippines | IRATA Certified | NEAS",
     h1: "Rope Access & Facade Services in the Philippines",
     metaDescription:

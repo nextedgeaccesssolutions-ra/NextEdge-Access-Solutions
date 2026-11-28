@@ -108,6 +108,11 @@ describe("getServiceMeta", () => {
 });
 
 describe("service landing page image metadata", () => {
+  it("uses the registered rope-access image for its standalone page", () => {
+    const page = SERVICE_PAGES.find((candidate) => candidate.id === "rope-access");
+    expect(page?.image).toBe(SERVICE_META["rope-access"].image);
+  });
+
   it("provides a usable image for every standalone service page", () => {
     for (const page of SERVICE_PAGES) {
       expect(page.image, `${page.id} must define its own page image`).toBeTruthy();
