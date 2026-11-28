@@ -60,6 +60,16 @@ describe("service metadata stays in step with the static homepage", () => {
     );
   });
 
+  it("includes a crawlable solar-energy service card and matching modal copy", () => {
+    const solar = SERVICE_META["solar-energy-industrial"];
+    expect(solar).toBeDefined();
+    expect(images["solar-energy-industrial"]).toBe(solar.image);
+    expect(inline["solar-energy-industrial"]).toEqual({
+      title: solar.title,
+      desc: solar.desc,
+    });
+  });
+
   for (const [id, meta] of Object.entries(SERVICE_META)) {
     it(`matches the homepage copy for ${id}`, () => {
       expect(
